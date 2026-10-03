@@ -1,0 +1,1 @@
+{"updated_at": 1789448164.555788, "scale": 1.0, "reasons": [], "thresholds": {"front": {"stop_clearance_m": 0.2, "release_clearance_m": 0.28}, "left": {"stop_clearance_m": 0.1, "release_clearance_m": 0.15}, "right": {"stop_clearance_m": 0.1, "release_clearance_m": 0.15}}, "scope": "前进、侧移及转弯；倒车依赖激光雷达", "enforced": true}

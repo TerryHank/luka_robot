@@ -1,0 +1,163 @@
+"""Shared UVC stereo source with optional calibrated, read-only depth."""
+import os
+import threading
+import time
+
+import cv2
+import numpy as np
+from stereo_depth import StereoDepth
+
+DEVICE = '/dev/v4l/by-id/usb-SunplusIT_Inc_SPCA2650_PC_Camera_J20260313V0-video-index0'
+
+
+class StereoCamera:
+    def __init__(self, sdk=None, device=None):
+        self.high_resolution = os.getenv('NX_STEREO_HIGH_RES', '0') == '1'
+        self.full_fov_people = os.getenv('NX_STEREO_FULL_FOV_PEOPLE', '0') == '1'
+        self.stereo_width = 2560 if self.high_resolution else 1600
+        self.stereo_height = 720 if self.high_resolution else 600
+        self.device_path = device if isinstance(device, str) else DEVICE
+        self.color = cv2.VideoCapture(self.device_path, cv2.CAP_V4L2)
+        if not self.color.isOpened():
+            raise RuntimeError('双目 UVC 相机未连接或被其他进程占用')
+        self.color.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+        self.color.set(cv2.CAP_PROP_FRAME_WIDTH, self.stereo_width)
+        self.color.set(cv2.CAP_PROP_FRAME_HEIGHT, self.stereo_height)
+        self.color.set(cv2.CAP_PROP_FPS, 30)
+        self.color.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        self.latest = None
+        self.latest_high = None
+        self.latest_people = None
+        self.latest_people_high = None
+        self.latest_pair = None
+        self.latest_lock = threading.Lock()
+        self.error = None
+        self.depth_error = None
+        self.stopping = False
+        calibration_path = os.getenv('NX_STEREO_CALIBRATION_JSON')
+        self.depth_engine = StereoDepth(calibration_path) if calibration_path else None
+        if self.depth_engine is not None and not self.high_resolution:
+            raise ValueError('calibrated stereo depth requires NX_STEREO_HIGH_RES=1')
+        self.has_metric_depth = self.depth_engine is not None
+        self.calibration = {
+            'source': 'stereo_uvc_uncalibrated', 'metric_depth_available': False,
+            'color': [0., 0., 0., 0.], 'color_dist': [0.] * 5,
+            'depth': [0., 0., 0., 0.], 'depth_dist': [0.] * 5,
+            'rotation': [0.] * 9, 'translation': [0.] * 3,
+        }
+        if self.depth_engine is not None:
+            self.calibration.update(source='stereo_uvc_rectified', metric_depth_available=True,
+                                    color=self.depth_engine.intrinsic_640x480)
+        if self.full_fov_people and self.depth_engine is None:
+            raise ValueError('full-FOV people depth requires stereo calibration')
+        self.people_calibration = dict(self.calibration)
+        if self.full_fov_people:
+            self.people_calibration.update(source='stereo_uvc_raw_left_partial_depth',
+                color=self.depth_engine.raw_intrinsic_640x480,
+                color_dist=self.depth_engine.raw_distortion)
+        self.thread = threading.Thread(target=self._capture, daemon=True)
+        self.thread.start()
+        self.depth_thread = None
+        if self.depth_engine is not None:
+            self.depth_thread = threading.Thread(target=self._depth_loop, daemon=True)
+            self.depth_thread.start()
+
+    def _capture(self):
+        failures = 0
+        last_reopen = 0.
+        while not self.stopping:
+            try:
+                if self.color is None or not self.color.isOpened():
+                    if time.monotonic()-last_reopen < 1.0:
+                        time.sleep(.1)
+                        continue
+                    last_reopen = time.monotonic()
+                    candidate = cv2.VideoCapture(self.device_path, cv2.CAP_V4L2)
+                    if not candidate.isOpened():
+                        candidate.release()
+                        self.error = '双目相机已断开，正在重连'
+                        continue
+                    candidate.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+                    candidate.set(cv2.CAP_PROP_FRAME_WIDTH, self.stereo_width)
+                    candidate.set(cv2.CAP_PROP_FRAME_HEIGHT, self.stereo_height)
+                    candidate.set(cv2.CAP_PROP_FPS, 30)
+                    candidate.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                    self.color = candidate
+                    failures = 0
+                ok, stereo = self.color.read()
+                if not ok or stereo is None:
+                    failures += 1
+                    if failures >= 10:
+                        self.error = '双目相机连续取帧失败，正在重新打开设备'
+                        self.color.release()
+                        self.color = None
+                        with self.latest_lock:
+                            self.latest_pair = None
+                            self.latest = None
+                            self.latest_people = None
+                    time.sleep(.03)
+                    continue
+                if stereo.shape != (self.stereo_height, self.stereo_width, 3):
+                    raise ValueError(f'双目画面尺寸异常：{stereo.shape}')
+                if self.high_resolution:
+                    left_raw = stereo[:, :1280].copy()
+                    right_raw = stereo[:, 1280:].copy()
+                    left = cv2.copyMakeBorder(left_raw, 120, 120, 0, 0,
+                                              cv2.BORDER_CONSTANT, value=(0, 0, 0))
+                else:
+                    left_raw = stereo[:, :800].copy()
+                    right_raw = stereo[:, 800:].copy()
+                    left = left_raw
+                stamp, mono = time.time(), time.monotonic()
+                with self.latest_lock:
+                    self.latest_pair = (mono, left_raw, right_raw, stamp)
+                    if self.depth_engine is None:
+                        rgb = cv2.resize(left, (640, 480), interpolation=cv2.INTER_AREA)
+                        # Zeros are invalid depth pixels, never metric measurements.
+                        depth = np.zeros((480, 640), dtype=np.uint16)
+                        self.latest_high = (mono, left)
+                        self.latest = (stamp, mono, rgb, depth, 0.)
+                    self.error = None
+                failures = 0
+            except Exception as exc:
+                self.error = repr(exc)
+                time.sleep(.1)
+
+    def _depth_loop(self):
+        last_mono = None
+        while not self.stopping:
+            with self.latest_lock:
+                pair = self.latest_pair
+            if pair is None or pair[0] == last_mono:
+                time.sleep(.01)
+                continue
+            last_mono = pair[0]
+            try:
+                rgb, high, depth = self.depth_engine.process(pair[1], pair[2])
+                people = self.depth_engine.people_view(pair[1], depth) if self.full_fov_people else None
+                if time.monotonic() - pair[0] > .5:
+                    continue
+                with self.latest_lock:
+                    self.latest_high = (pair[0], high)
+                    self.latest = (pair[3], pair[0], rgb, depth, 0.)
+                    if people is not None:
+                        self.latest_people = (pair[3], pair[0], people[0], people[2], 0.)
+                        self.latest_people_high = (pair[0], people[1])
+                self.depth_error = None
+            except Exception as exc:
+                self.depth_error = repr(exc)
+                time.sleep(.1)
+
+    def people_snapshot(self):
+        with self.latest_lock:
+            if self.full_fov_people:
+                return self.latest_people, self.latest_people_high
+            return self.latest, self.latest_high
+
+    def close(self):
+        self.stopping = True
+        self.thread.join(timeout=2)
+        if self.depth_thread is not None:
+            self.depth_thread.join(timeout=2)
+        if self.color is not None:
+            self.color.release()

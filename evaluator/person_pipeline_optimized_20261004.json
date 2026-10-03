@@ -1,0 +1,36 @@
+{
+  "face_recognition": {
+    "enabled": false,
+    "loaded": false
+  },
+  "person_detector": {
+    "requested": "yolo26_seg",
+    "active": "yolo26m_objv1_seg_bpu",
+    "fallback_reason": null,
+    "monitor_only": true,
+    "confidence": 0.35,
+    "model": "/home/sunrise/yolo26m-objv1-seg.pt",
+    "runtime_model": "/home/sunrise/luka_ws/perception/person_follow/models/bpu_yolo26/yolo26m_objv1_seg_bpu_nashe_640x640_nv12.hbm",
+    "classes": [
+      "person"
+    ],
+    "depth_method": "seg_valid_arithmetic_mean",
+    "timings_ms": {
+      "pre": 1.5346069999395695,
+      "forward": 49.78152800003954,
+      "post": 1.9017790000361856,
+      "total": 53.2179140000153
+    }
+  },
+  "active": true,
+  "fps": 7.98,
+  "inference_s": 0.102,
+  "error": null,
+  "samples": 90,
+  "age_median": 0.14399470075250065,
+  "age_max": 0.3572064040336045,
+  "stale_over_0_5": 0,
+  "frames": 86,
+  "person_frames": 0,
+  "last_tracks": []
+}

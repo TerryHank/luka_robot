@@ -1,0 +1,19 @@
+[Unit]
+Description=NX local person and face monitor (no motion control)
+After=network.target locateanything-preview.service
+
+[Service]
+Type=simple
+User=nvidia
+WorkingDirectory=/home/nvidia/person_follow
+Environment=LD_LIBRARY_PATH=/usr/lib/aarch64-linux-gnu/nvidia:/usr/local/cuda/lib64
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/nvidia/spatial_memory/.venv/bin/python /home/nvidia/person_follow/server.py
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+KillMode=control-group
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

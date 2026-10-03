@@ -1,0 +1,46 @@
+schema_version: '1.0'
+generated_by: ddsm_car_control/semantic_mapping_recorder
+floor_id: floor_3
+frame_id: map
+updated_at: 2026-08-08T15:16:19+0800
+objects:
+- id: auto_refrigerator_001
+  class_name: refrigerator
+  display_name: 冰箱
+  floor_id: floor_3
+  frame_id: map
+  x: 0.3087933791570659
+  y: 2.760496214392584
+  z: 0.5973258064487066
+  confidence: 0.5376513997713724
+  observations: 9
+  first_seen: 2026-08-06T13:17:17+0800
+  last_seen: 2026-08-06T13:17:30+0800
+  source: rgbd_multi_frame
+  waypoint_status: ready
+  approach_waypoint:
+    x: -0.36613361101380043
+    y: 1.9561495491176573
+    yaw: 0.8726646259971647
+    clearance: 0.5099019589574096
+- id: auto_chair_001
+  class_name: chair
+  display_name: 椅子
+  floor_id: floor_3
+  frame_id: map
+  x: -1.6651721987820096
+  y: 1.1168383362566268
+  z: 0.4835760217237922
+  confidence: 0.8333224654197693
+  observations: 33
+  first_seen: 2026-08-06T13:25:12+0800
+  last_seen: 2026-08-08T15:16:19+0800
+  source: rgbd_multi_frame
+  waypoint_status: ready
+  approach_waypoint:
+    x: -1.9558893206088286
+    y: 0.31809960858860475
+    yaw: 1.2217304763960302
+    clearance: 0.62
+rooms: []
+note: Confirmed objects generate safe approach POIs. Manual POIs are preserved.

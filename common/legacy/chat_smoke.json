@@ -1,0 +1,1 @@
+{"model":"qwen3-4b-chat","messages":[{"role":"user","content":"请用一句简短中文回答：你是谁？"}],"max_tokens":40,"temperature":0.2,"stream":false}

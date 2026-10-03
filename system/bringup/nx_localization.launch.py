@@ -1,0 +1,1 @@
+../../localization/launch/nx_localization.launch.py

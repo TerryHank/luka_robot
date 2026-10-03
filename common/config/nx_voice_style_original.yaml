@@ -1,0 +1,7 @@
+/**:
+  ros__parameters:
+    tts_engine: vits
+    tts_model_dir: /home/sunrise/luka_ws/common/models/voice/vits-zh-hf-fanchen-C
+    tts_sid: 14
+    tts_speed: 1.2
+    tts_num_threads: 4

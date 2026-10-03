@@ -1,0 +1,32 @@
+# Generated ROS 2 workspace artifacts
+/build/
+/install/
+/log/
+/Log/
+__pycache__/
+*.pyc
+
+# Credentials and secrets
+*.env
+.env*
+**/*credential*
+**/*credentials*
+**/*secret*
+**/*token*
+*.pem
+*.key
+
+# Large models, virtual environments, and SDK binaries
+**/models/
+**/*_venv/
+**/venv/
+**/SDK/
+**/*.gguf
+**/*.onnx
+**/*.engine
+**/*.hbm
+**/*.pt
+**/*.whl
+**/*.so
+**/*.so.*
+**/*.zip

@@ -1,0 +1,8 @@
+[10/03 20:08:36.347720][info][89414][Context.cpp:68] Context created with config: default config!
+[10/03 20:08:36.347723][info][89414][Context.cpp:73] Work directory=/home/sunrise, SDK version=v1.10.37-20260707-3f75820
+[10/03 20:08:36.347727][info][89414][LinuxPal.cpp:60] createObPal: create LinuxPal!
+[10/03 20:08:36.419667][warning][89414][OpenNIDeviceInfo.cpp:192] New openni device matched.
+[10/03 20:08:36.419771][info][89414][LinuxPal.cpp:209] Create PollingDeviceWatcher!
+[10/03 20:08:36.419801][info][89414][DeviceManager.cpp:15] Current found device(s): (1)
+devices=1
+name=Astra Pro Plus firmware=RD2513 serial=19032230413 pid=1551

@@ -1,0 +1,19 @@
+# /etc/systemd/system/luka-ws-vision.service
+[Unit]
+Description=Luka Orbbec RGB-D camera and object memory
+After=luka-ws-orbbec-camera.service network-online.target luka-ws-object-api.service luka-ws-dashboard.service
+Requires=luka-ws-orbbec-camera.service luka-ws-object-api.service luka-ws-dashboard.service
+
+[Service]
+UnsetEnvironment=NX_STEREO_CALIBRATION_JSON
+Type=simple
+User=sunrise
+Group=sunrise
+WorkingDirectory=/home/sunrise/luka_ws/perception/locateanything_trial_20260907
+Environment=NX_CAMERA_SOURCE=orbbec_ros
+ExecStart=/bin/bash /home/sunrise/luka_ws/system/scripts/start_orbbec_vision.sh
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

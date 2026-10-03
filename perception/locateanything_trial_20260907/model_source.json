@@ -1,0 +1,8 @@
+{
+  "original_model": "nvidia/LocateAnything-3B",
+  "quantized_repo": "mudler/locate-anything.cpp-gguf",
+  "revision": "4e50db5b836dd876f5e464734ef5484cae754a52",
+  "file": "locate-anything-q4_k.gguf",
+  "size": 4716320320,
+  "sha256": "894088a00a2cd2bbb7f34b12893988dd0376c8ed92213a9f2cf6420f1e3901da"
+}

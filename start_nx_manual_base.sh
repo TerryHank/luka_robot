@@ -1,0 +1,1 @@
+system/bringup/start_nx_manual_base.sh

@@ -1,0 +1,21 @@
+{
+  "all_robot_services_inactive": true,
+  "old_service_definitions_checked": 12,
+  "old_service_definitions_changed": [],
+  "original_files": {
+    "checked": 8183,
+    "old_changed": [],
+    "created_at": "2026-10-03T19:39:42.183503"
+  },
+  "regression": {
+    "new_passed": 494,
+    "new_failed": 39,
+    "old_passed": 493,
+    "old_failed": 39,
+    "worker_fixture_collection_error_on_both": true
+  },
+  "odin_in_new_workspace": false,
+  "motion_acceptance_executed": false,
+  "depth_hardware_equivalent": false,
+  "full_functional_acceptance_complete": false
+}

@@ -1,0 +1,19 @@
+Loading Segment model: /home/sunrise/yolo26m-objv1-seg.pt...
+Applying BPU Monkey Patch for Segmentation (Output Layout: NHWC)...
+Starting export (imgsz=640)...
+WARNING ⚠️ 'end2end=True' is deprecated and will be removed in the future. Use 'nms=False' instead.
+Ultralytics 8.4.172 🚀 Python-3.10.12 torch-2.6.0+cpu CPU (Cortex-A78AE)
+YOLO26m-seg summary (fused): 149 layers, 23,788,883 parameters, 0 gradients, 123.0 GFLOPs
+
+[34m[1mPyTorch:[0m starting from '/home/sunrise/yolo26m-objv1-seg.pt' with input shape (1, 3, 640, 640) BCHW and output shape(s) ((1, 80, 80, 365), (1, 80, 80, 4), (1, 80, 80, 32), (1, 40, 40, 365), (1, 40, 40, 4), (1, 40, 40, 32), (1, 20, 20, 365), (1, 20, 20, 4), (1, 20, 20, 32), (1, 160, 160, 32)) (53.2 MB)
+
+[34m[1mONNX:[0m starting export with onnx 1.17.0 opset 19...
+[34m[1mONNX:[0m export success ✅ 7.7s, saved as '/home/sunrise/yolo26m-objv1-seg.onnx' (90.8 MB)
+
+Export complete (14.6s)
+Results saved to [1m/home/sunrise/yolo26m-objv1-seg.onnx[0m
+Predict:         yolo predict task=segment model=/home/sunrise/yolo26m-objv1-seg.onnx imgsz=640 
+Validate:        yolo val task=segment model=/home/sunrise/yolo26m-objv1-seg.onnx imgsz=640   
+Visualize:       https://netron.app
+
+✅ Export success: /home/sunrise/luka_ws/perception/person_follow/models/bpu_yolo26/yolo26m_objv1_seg_bpu.onnx

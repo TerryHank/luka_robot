@@ -1,0 +1,137 @@
+"""Metric range from the upper part of a segmented visible person.
+
+This is a per-frame measurement, not an identity or motion decision. The
+caller must match the mask to the selected person and reject stale/ambiguous
+tracks. Partial/complete occlusion can still leave no valid range.
+"""
+import math
+
+import numpy as np
+
+
+def masked_upper_body_geometry(depth_m, box, mask, intrinsics, skew_s=0.):
+    result = {'valid': False, 'reason': 'invalid_masked_depth',
+              'source': 'stereo_person_mask_upper_body'}
+    depth = np.asarray(depth_m)
+    mask = np.asarray(mask)
+    if (depth.ndim != 2 or not np.issubdtype(depth.dtype, np.floating) or
+            mask.ndim != 2):
+        result['reason'] = 'invalid_depth_or_mask'
+        return result
+    if not math.isfinite(skew_s) or abs(skew_s) > .12:
+        result['reason'] = 'rgb_depth_not_synchronized'
+        return result
+    try:
+        fx, cx = float(intrinsics['fx']), float(intrinsics['cx'])
+        x1, y1, x2, y2 = (int(v) for v in box)
+        if (not math.isfinite(fx) or fx <= 0 or not math.isfinite(cx) or
+                not (0 <= x1 < x2 <= depth.shape[1] and
+                     0 <= y1 < y2 <= depth.shape[0])):
+            raise ValueError()
+    except (ValueError, TypeError, KeyError, OverflowError):
+        result['reason'] = 'invalid_geometry_inputs'
+        return result
+    if mask.shape != (y2-y1, x2-x1):
+        result['reason'] = 'mask_box_shape_mismatch'
+        return result
+    height, width = mask.shape
+    left, right = int(.20*width), max(int(.80*width), int(.20*width)+1)
+    top, bottom = int(.13*height), max(int(.58*height), int(.13*height)+1)
+    region_mask = mask[top:bottom, left:right] > 0
+    patch = depth[y1+top:y1+bottom, x1+left:x1+right]
+    selected = region_mask & np.isfinite(patch) & (patch >= .45) & (patch <= 4.)
+    values = patch[selected]
+    covered = int(region_mask.sum())
+    result.update(valid_pixels=int(len(values)),
+                  valid_fraction=round(len(values)/max(1, covered), 3),
+                  depth_roi=[x1+left, y1+top, x1+right, y1+bottom])
+    if covered < 500 or len(values) < 120 or len(values)/covered < .02:
+        result['reason'] = 'insufficient_masked_upper_depth'
+        return result
+    counts, edges = np.histogram(values, bins=np.arange(.4, 4.101, .1))
+    peak = int(np.argmax(counts))
+    centre = float((edges[peak]+edges[peak+1])/2)
+    in_layer = np.abs(values-centre) <= .18
+    support = float(np.mean(in_layer))
+    result['layer_support'] = round(support, 3)
+    if support < .60:
+        result['reason'] = 'ambiguous_masked_depth_layers'
+        return result
+    layer = values[in_layer]
+    p10, median, p90 = np.percentile(layer, [10, 50, 90])
+    if p90-p10 > max(.30, .16*median):
+        result['reason'] = 'masked_depth_spread_too_large'
+        return result
+    ys, xs = np.nonzero(selected)
+    u = float(np.median(xs[in_layer])+x1+left)
+    result.update(valid=True, reason='ok', distance_m=round(float(median), 4),
+                  bearing_rad=float(math.atan2(u-cx, fx)),
+                  horizontal_m=float(median*(u-cx)/fx),
+                  depth_spread_m=round(float(p90-p10), 4))
+    return result
+
+
+def masked_chest_geometry(depth_m, box, mask, intrinsics, skew_s=0.):
+    """Strict central-chest range when a broad torso ROI contains furniture.
+
+    Only a dense, single stereo layer inside the person's segmentation mask
+    is accepted. This does not infer a range from the box or from a face.
+    """
+    result = {'valid': False, 'reason': 'invalid_chest_depth',
+              'source': 'stereo_person_mask_chest'}
+    depth = np.asarray(depth_m)
+    mask = np.asarray(mask)
+    if (depth.ndim != 2 or not np.issubdtype(depth.dtype, np.floating) or
+            mask.ndim != 2 or not math.isfinite(skew_s) or abs(skew_s) > .12):
+        result['reason'] = 'invalid_depth_or_mask'
+        return result
+    try:
+        fx, cx = float(intrinsics['fx']), float(intrinsics['cx'])
+        x1, y1, x2, y2 = (int(v) for v in box)
+        if (not math.isfinite(fx) or fx <= 0 or not math.isfinite(cx) or
+                not (0 <= x1 < x2 <= depth.shape[1] and
+                     0 <= y1 < y2 <= depth.shape[0]) or
+                mask.shape != (y2-y1, x2-x1)):
+            raise ValueError()
+    except (ValueError, TypeError, KeyError, OverflowError):
+        result['reason'] = 'invalid_geometry_inputs'
+        return result
+    height, width = mask.shape
+    left, right = int(.25*width), int(.75*width)
+    top, bottom = int(.20*height), int(.40*height)
+    if right <= left or bottom <= top:
+        result['reason'] = 'chest_roi_too_small'
+        return result
+    roi_mask = mask[top:bottom, left:right] > 0
+    patch = depth[y1+top:y1+bottom, x1+left:x1+right]
+    valid = roi_mask & np.isfinite(patch) & (patch >= .45) & (patch <= 4.)
+    values = patch[valid]
+    covered = int(roi_mask.sum())
+    result.update(valid_pixels=int(values.size),
+                  valid_fraction=round(values.size/max(1, covered), 3),
+                  depth_roi=[x1+left, y1+top, x1+right, y1+bottom])
+    if covered < 500 or values.size < 200 or values.size/covered < .08:
+        result['reason'] = 'insufficient_chest_depth'
+        return result
+    counts, edges = np.histogram(values, bins=np.arange(.4, 4.101, .1))
+    peak = int(np.argmax(counts))
+    centre = float((edges[peak]+edges[peak+1])/2)
+    in_layer = np.abs(values-centre) <= .18
+    support = float(np.mean(in_layer))
+    result['layer_support'] = round(support, 3)
+    if support < .83 or int(in_layer.sum()) < 200:
+        result['reason'] = 'ambiguous_chest_depth_layers'
+        return result
+    layer = values[in_layer]
+    p10, median, p90 = np.percentile(layer, [10, 50, 90])
+    spread = float(p90-p10)
+    result['depth_spread_m'] = round(spread, 4)
+    if spread > .20:
+        result['reason'] = 'chest_depth_spread_too_large'
+        return result
+    ys, xs = np.nonzero(valid)
+    u = float(np.median(xs[in_layer])+x1+left)
+    result.update(valid=True, reason='ok', distance_m=round(float(median), 4),
+                  bearing_rad=float(math.atan2(u-cx, fx)),
+                  horizontal_m=float(median*(u-cx)/fx))
+    return result

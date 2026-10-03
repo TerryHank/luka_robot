@@ -1,0 +1,33 @@
+{
+    "ROS2.distro": "humble",
+    "python.autoComplete.extraPaths": [
+        "/home/sunrise/luka_ws/build/ddsm_car_control",
+        "/home/sunrise/luka_ws/install/ddsm_car_control/lib/python3.10/site-packages",
+        "/home/sunrise/luka_ws/install/waterplus_map_tools/local/lib/python3.10/dist-packages",
+        "/home/sunrise/luka_ws/build/teleop_twist_keyboard",
+        "/home/sunrise/luka_ws/install/teleop_twist_keyboard/lib/python3.10/site-packages",
+        "/home/sunrise/luka_ws/build/nav_llm_agent",
+        "/home/sunrise/luka_ws/install/nav_llm_agent/lib/python3.10/site-packages",
+        "/home/sunrise/luka_ws/build/hotel_semantic_map",
+        "/home/sunrise/luka_ws/install/hotel_semantic_map/lib/python3.10/site-packages",
+        "/home/sunrise/luka_ws/install/hotel_semantic_map_msgs/local/lib/python3.10/dist-packages",
+        "/home/sunrise/luka_ws/install/explore_lite_msgs/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/sunrise/luka_ws/build/ddsm_car_control",
+        "/home/sunrise/luka_ws/install/ddsm_car_control/lib/python3.10/site-packages",
+        "/home/sunrise/luka_ws/install/waterplus_map_tools/local/lib/python3.10/dist-packages",
+        "/home/sunrise/luka_ws/build/teleop_twist_keyboard",
+        "/home/sunrise/luka_ws/install/teleop_twist_keyboard/lib/python3.10/site-packages",
+        "/home/sunrise/luka_ws/build/nav_llm_agent",
+        "/home/sunrise/luka_ws/install/nav_llm_agent/lib/python3.10/site-packages",
+        "/home/sunrise/luka_ws/build/hotel_semantic_map",
+        "/home/sunrise/luka_ws/install/hotel_semantic_map/lib/python3.10/site-packages",
+        "/home/sunrise/luka_ws/install/hotel_semantic_map_msgs/local/lib/python3.10/dist-packages",
+        "/home/sunrise/luka_ws/install/explore_lite_msgs/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ]
+}

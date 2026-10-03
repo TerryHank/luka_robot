@@ -1,0 +1,78 @@
+# Named goals in the map frame. floor_4, synced 2026-08-22 from dashboard
+# calibration (config/semantic/floor_4/pois.yaml). Real points only.
+frame_id: map
+waypoints:
+  home:
+    aliases:
+    - 充电点
+    - 起点
+    - 家
+    - spawn
+    x: -2.01
+    y: 0.205
+    yaw: 0.0
+    description: 充电点
+  kitchen:
+    aliases:
+    - 厨房
+    x: -0.036
+    y: 0.002
+    yaw: 0.0
+    description: 厨房
+  bedroom:
+    aliases:
+    - 卧室
+    - 房间
+    x: -1.894
+    y: -1.014
+    yaw: 0.0
+    description: 卧室
+  bathroom:
+    aliases:
+    - 浴室
+    - 卫生间
+    - 厕所
+    x: -1.11
+    y: -0.143
+    yaw: 0.0
+    description: 浴室
+  wp_005:
+    internal: true
+    x: -3.556
+    y: 3.659
+    yaw: 1.532
+    description: 现场标定点
+  wp_006:
+    aliases:
+    - 电梯测试等待点
+    - 电梯等待点
+    x: -3.155
+    y: 1.815
+    yaw: 1.628
+    description: 电梯测试等待点
+  elevator_exit_stage:
+    x: -3.593
+    y: 2.710
+    yaw: 1.532
+    description: 电梯出梯门内中转点
+    internal: true
+  wp_007:
+    x: -2.01
+    y: 0.205
+    yaw: 0.0
+    description: home(充电点)
+  wp_008:
+    x: -0.036
+    y: 0.002
+    yaw: 0.0
+    description: 厨房
+  wp_009:
+    x: -1.894
+    y: -1.014
+    yaw: 0.0
+    description: 卧室
+  wp_010:
+    x: -1.11
+    y: -0.143
+    yaw: 0.0
+    description: 浴室

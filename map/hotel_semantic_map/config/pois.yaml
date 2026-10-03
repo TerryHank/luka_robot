@@ -1,0 +1,56 @@
+pois:
+  - id: home
+    display_name: 充电点
+    poi_type: home
+    floor_id: floor_1
+    area_id: floor_1_unassigned
+    x: -1.2133374365475493
+    y: 0.48838636683492
+    yaw: 1.2854961520010955
+    final_approach_profile: none
+    enabled: true
+    map_version: "2026.07.13-v1"
+  - id: wp_001
+    display_name: 办公桌
+    poi_type: waypoint
+    floor_id: floor_1
+    area_id: floor_1_unassigned
+    x: 0.609976888629133
+    y: -0.5571042068999
+    yaw: -0.2197189891945507
+    final_approach_profile: doorway
+    enabled: true
+    map_version: "2026.07.13-v1"
+  - id: wp_002
+    display_name: 沙发
+    poi_type: waypoint
+    floor_id: floor_1
+    area_id: floor_1_unassigned
+    x: -1.3320874595877448
+    y: -1.2482963337901065
+    yaw: -2.633466710709893
+    final_approach_profile: doorway
+    enabled: true
+    map_version: "2026.07.13-v1"
+  - id: wp_003
+    display_name: 门口
+    poi_type: waypoint
+    floor_id: floor_1
+    area_id: floor_1_unassigned
+    x: -0.7408813429318337
+    y: 1.8145882145205219
+    yaw: 1.3927942077167546
+    final_approach_profile: doorway
+    enabled: true
+    map_version: "2026.07.13-v1"
+  - id: wp_004
+    display_name: 茶桌
+    poi_type: waypoint
+    floor_id: floor_1
+    area_id: floor_1_unassigned
+    x: -1.5139162682266651
+    y: 0.03394112096373747
+    yaw: -0.3354248123440516
+    final_approach_profile: doorway
+    enabled: true
+    map_version: "2026.07.13-v1"

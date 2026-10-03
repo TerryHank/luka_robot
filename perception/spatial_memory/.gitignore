@@ -1,0 +1,5 @@
+.venv/
+models/
+sdk/
+data/
+__pycache__/

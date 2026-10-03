@@ -1,0 +1,26 @@
+/**:
+  ros__parameters:
+    serial_port: /dev/nx_base
+    protocol: free
+    firmware: x
+    free_ack_writes: false
+    serial_timeout: 0.03
+    cmd_freq: 20.0
+    feedback_freq: 10.0
+    feedback_enabled: true
+    read_speed_feedback: false
+    manual_cmd_vel_topic: /nx/gamepad_unverified_cmd_vel
+    nav_cmd_vel_topic: /nx/nav_safe
+    manual_override_timeout: 0.25
+    timeout: 0.25
+    max_linear_speed: 0.42
+    max_angular_speed: 1.6
+    max_motor_rpm: 300.0
+    mecanum_lateral_scale: 0.8
+    mecanum_angular_scale: 0.7
+    mecanum_angular_direction: -1
+    mecanum_lateral_direction: 1
+    heading_pid_enabled: false
+    sync_motion: false
+    publish_odom: true
+    publish_tf: true

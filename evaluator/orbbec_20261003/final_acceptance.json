@@ -1,0 +1,26 @@
+{
+  "vision": {
+    "camera_online": true,
+    "camera_source": "orbbec_ros",
+    "metric_depth_available": true,
+    "camera_error": null
+  },
+  "people": {
+    "active": true,
+    "fps": 8.0,
+    "error": null,
+    "metric_depth_available": true,
+    "motion_enabled": false
+  },
+  "active_units": "luka-ws-agent.service         loaded active running Luka S100 local command agent (validated dashboard tools)\nluka-ws-chat.service          loaded active running Luka S100 local Qwen3 chat (CPU)\nluka-ws-dashboard.service     loaded active running Luka S100 software-only dashboard\nluka-ws-object-api.service    loaded active running Luka S100 BPU COCO detector API\nluka-ws-orbbec-camera.service loaded active running Luka Astra Pro Plus RGB-D camera (Orbbec SDK v1)\nluka-ws-people.service        loaded active running Luka S100 person and face monitor (requires connected camera)\nluka-ws-vision.service        loaded active running Luka Orbbec RGB-D camera and object memory\nluka-ws-yoloe26-live.service  loaded active running Luka S100 YOLOE-26n live object search\n",
+  "old_services": {
+    "checked": 12,
+    "changed": []
+  },
+  "sdk_version": "1.10.37",
+  "ros_driver_version": "1.5.21",
+  "camera": "Astra Pro Plus",
+  "firmware": "RD2513",
+  "zip_sha256": "3c269b7eac354dbb69a6d4519cc587b21b6390baaacce7ce79331593c97489a0",
+  "camera_unit_enabled": "disabled"
+}

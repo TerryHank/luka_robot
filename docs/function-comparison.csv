@@ -1,0 +1,35 @@
+﻿功能,旧目录相对路径,复制前对比,新目录相对路径,最终状态
+底盘控制、导航保护、任务/楼层管理,ddsm_car_ws/src/ddsm_car_control,相同 109 / 不同 0 / 缺失 6,control/ddsm_car_control,已复制，路径指向新工作区
+键盘遥控,ddsm_car_ws/src/teleop_twist_keyboard,相同 13 / 不同 0 / 缺失 0,control/teleop_twist_keyboard,已复制，路径指向新工作区
+语义地图,ddsm_car_ws/src/hotel_semantic_map,相同 18 / 不同 0 / 缺失 0,map/hotel_semantic_map,已复制，路径指向新工作区
+语义地图接口,ddsm_car_ws/src/hotel_semantic_map_msgs,相同 9 / 不同 0 / 缺失 0,map/hotel_semantic_map_msgs,已复制，路径指向新工作区
+航点工具,ddsm_car_ws/src/waterplus_map_tools,相同 9 / 不同 0 / 缺失 0,map/waterplus_map_tools,已复制，路径指向新工作区
+探索规划,ddsm_car_ws/src/m-explore-ros2/explore,相同 17 / 不同 0 / 缺失 0,planning/explore,已复制，路径指向新工作区
+探索状态接口,ddsm_car_ws/src/m-explore-ros2/explore_lite_msgs,相同 3 / 不同 0 / 缺失 0,planning/explore_lite_msgs,已复制，路径指向新工作区
+地图合并（保持原 COLCON_IGNORE）,ddsm_car_ws/src/m-explore-ros2/map_merge,相同 32 / 不同 0 / 缺失 0,map/map_merge,已复制，路径指向新工作区；保留原禁用构建状态
+Nav2 启动包,ddsm_car_ws/src/nav2_bringup,相同 4 / 不同 0 / 缺失 0,system/nav2_bringup,已复制，路径指向新工作区
+语言代理、聊天记忆、工作流,ddsm_car_ws/src/nav_llm_agent,相同 44 / 不同 1 / 缺失 7,system/nav_llm_agent,已复制，路径指向新工作区
+Odin 驱动（按用户要求排除）,ddsm_car_ws/src/odin_ros_driver,相同 51 / 不同 0 / 缺失 0,sensing/odin_ros_driver,排除；源码、兼容入口、build/install 已从新工作区移除
+奥比驱动源码（保持原 COLCON_IGNORE）,ddsm_car_ws/src/OrbbecSDK_ROS2,相同 219 / 不同 0 / 缺失 0,sensing/OrbbecSDK_ROS2,已启用并构建3个ROS包；Orbbec SDK v1.10.37；Astra Pro Plus RGB/深度约30Hz验收通过
+双雷达驱动,ddsm_car_ws/src/rplidar_ros,相同 110 / 不同 0 / 缺失 0,sensing/rplidar_ros,已复制，路径指向新工作区
+OpenCV 桥源码（保持原 COLCON_IGNORE，运行使用系统版本）,ddsm_car_ws/src/vision_opencv,相同 30 / 不同 0 / 缺失 0,perception/vision_opencv,已复制，路径指向新工作区；保留原禁用构建状态
+页面、网页遥控、巡航找物、跟随联锁、语音工具,ddsm_car_ws/tools,缺少该功能目录,visualization/console（system/runtime/tools 为兼容链接）,已复制，路径指向新工作区
+运行配置、定位/楼层状态、航点,ddsm_car_ws/config,缺少该功能目录,common/config,已复制，路径指向新工作区
+栅格地图,ddsm_car_ws/maps,缺少该功能目录,map/maps,已复制，路径指向新工作区
+离线语音等模型,ddsm_car_ws/models,缺少该功能目录,common/models,已复制，路径指向新工作区
+原运行依赖,ddsm_car_ws/vendor,缺少该功能目录,common/vendor,已复制，路径指向新工作区
+产品账号、声纹、用户数据,ddsm_car_ws/product,缺少该功能目录,system/product,已复制，路径指向新工作区
+音乐运行数据,ddsm_car_ws/music,缺少该功能目录,system/music,已复制，路径指向新工作区
+运行状态,ddsm_car_ws/runtime,缺少该功能目录,common/runtime,已复制，路径指向新工作区
+辅助脚本,ddsm_car_ws/scripts,缺少该功能目录,system/scripts,已复制，路径指向新工作区
+语音验收材料,ddsm_car_ws/voice_tests,缺少该功能目录,e2e/voice_tests,已复制，路径指向新工作区
+Qwen 模型和 llama.cpp 运行库,nx_chat,缺少该功能目录,system/nx_chat,已复制，路径指向新工作区
+人体、人脸身份与跟随,person_follow,缺少该功能目录,perception/person_follow,已复制，路径指向新工作区
+双目相机、深度和空间记忆,spatial_memory,缺少该功能目录,perception/spatial_memory,新默认使用Orbbec ROS RGB-D；共享有效深度与工厂内参；单目/双目旧模式保留
+视觉服务、物体和语义记忆,locateanything_trial_20260907,缺少该功能目录,perception/locateanything_trial_20260907,已复制，路径指向新工作区
+YOLOE 开放词表找物服务与独立虚拟环境,yoloe26_live,缺少该功能目录,perception/yoloe26_live,已复制；单目高清帧二维推理验收通过
+双目标定,stereo_calibration,缺少该功能目录,sensing/stereo_calibration,旧标定保留归档；当前是不同物理单目相机，运行服务已停用旧标定
+S100 BPU COCO 检测 API,s100_object_api.py,缺少,perception/object_api/s100_object_api.py,已复制并启动检查
+定位启动,ddsm_car_ws/nx_localization.launch.py,缺少 S100 入口,localization/launch/nx_localization.launch.py,已复制
+启动脚本,ddsm_car_ws/start_nx_*.sh、顶层启动文件,缺少整套入口,system/bringup,已复制并改为新路径
+系统服务及 helper,/etc/systemd/system/luka-s100-*、/usr/local/sbin/luka-s100-*,无新工作区服务,system/services、system/helpers,已生成 luka-ws-*，不启用开机启动

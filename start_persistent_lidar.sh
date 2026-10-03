@@ -1,0 +1,1 @@
+system/bringup/start_persistent_lidar.sh

@@ -1,0 +1,121 @@
+"""Consolidate a narrowly defined whole-body / upper-body detector duplicate.
+
+This is an observation cleanup, not person re-identification.  It never merges
+ordinary overlapping, similar-size people.  Missing depth needs exactly one
+detected face as additional evidence; face counting does not assert identity.
+The caller remains responsible for ambiguous tracking and stale-frame handling.
+"""
+from __future__ import annotations
+
+import copy
+import math
+from numbers import Integral
+
+
+def _bbox(row):
+    try:
+        box = tuple(float(x) for x in row.get("bbox", ()))
+    except (TypeError, ValueError):
+        return None
+    if (len(box) != 4 or not all(math.isfinite(x) for x in box) or
+            box[2] <= box[0] or box[3] <= box[1]):
+        return None
+    return box
+
+
+def _area(box):
+    return (box[2] - box[0]) * (box[3] - box[1])
+
+
+def _depth(row):
+    # Explicitly invalid geometry must never supply evidence via a stale field.
+    if row.get("depth_valid") is False:
+        return None
+    try:
+        value = float(row.get("depth_m"))
+    except (ValueError, TypeError):
+        return None
+    return value if math.isfinite(value) and value > 0 else None
+
+
+def _geometry_candidate(large, small):
+    small_area, large_area = _area(small), _area(large)
+    if not .25 <= small_area / large_area <= .80:
+        return False
+    overlap_w = max(0., min(large[2], small[2]) - max(large[0], small[0]))
+    overlap_h = max(0., min(large[3], small[3]) - max(large[1], small[1]))
+    if overlap_w * overlap_h / small_area < .94:
+        return False
+    small_w, small_h = small[2] - small[0], small[3] - small[1]
+    if abs(large[1] - small[1]) > .10 * small_h:
+        return False
+    return abs((large[0] + large[2] - small[0] - small[2]) / 2) <= .20 * small_w
+
+
+def consolidate_people(detections, face_count=None):
+    """Return detached detection dictionaries with safe nested duplicates removed.
+
+    ``face_count(union_bbox)`` is an optional callable returning a nonnegative
+    integer, or ``None`` if unknown.  It is invoked only for geometry/depth
+    candidate pairs.  Two or more faces always forbid a merge; when either
+    detection lacks valid depth, exactly one face is required.  A callback
+    error skips that pair.  At most the first eight input detections are
+    considered (at most 28 candidate pairs); extra entries remain unchanged.
+
+    The larger detection retains its geometry and all its depth/bearing fields.
+    Only confidence is raised to the group's maximum. ``duplicate_boxes`` counts
+    the additional boxes suppressed, so consolidating a pair produces 1.
+    """
+    rows = [copy.deepcopy(row) for row in detections]
+    boxes = [_bbox(row) for row in rows[:8]]
+    order = sorted((i for i, box in enumerate(boxes) if box is not None),
+                   key=lambda i: (-_area(boxes[i]), i))
+    suppressed = set()
+    face_cache = {}
+    for offset, large_i in enumerate(order):
+        if large_i in suppressed:
+            continue
+        large = boxes[large_i]
+        large_d = _depth(rows[large_i])
+        for small_i in order[offset + 1:]:
+            if small_i in suppressed:
+                continue
+            small = boxes[small_i]
+            if not _geometry_candidate(large, small):
+                continue
+            small_d = _depth(rows[small_i])
+            both_depth = large_d is not None and small_d is not None
+            if both_depth and abs(large_d - small_d) > .25:
+                continue
+            count = None
+            if face_count is not None:
+                union = (min(large[0], small[0]), min(large[1], small[1]),
+                         max(large[2], small[2]), max(large[3], small[3]))
+                if union not in face_cache:
+                    try:
+                        value = face_count(list(union))
+                        valid_count = isinstance(value, Integral) and not isinstance(value, bool) and value >= 0
+                        face_cache[union] = (True, int(value) if valid_count else None)
+                    except Exception:
+                        face_cache[union] = (False, None)
+                available, count = face_cache[union]
+                if not available:
+                    continue
+            if count is not None and count > 1:
+                continue
+            if not both_depth and count != 1:
+                continue
+            suppressed.add(small_i)
+            rows[large_i]["duplicate_consolidated"] = True
+            rows[large_i]["duplicate_boxes"] = rows[large_i].get("duplicate_boxes", 0) + 1
+            scores = []
+            for row in (rows[large_i], rows[small_i]):
+                try:
+                    score = float(row.get("confidence"))
+                    if math.isfinite(score):
+                        scores.append(score)
+                except (TypeError, ValueError):
+                    pass
+            if scores:
+                rows[large_i]["confidence"] = max(scores)
+    return [row for i, row in enumerate(rows) if i not in suppressed]

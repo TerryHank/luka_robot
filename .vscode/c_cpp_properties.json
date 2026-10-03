@@ -1,0 +1,26 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${workspaceFolder}/.vscode/browse.vc.db",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/sunrise/luka_ws/install/waterplus_map_tools/include/**",
+        "/home/sunrise/luka_ws/install/hotel_semantic_map_msgs/include/**",
+        "/home/sunrise/luka_ws/install/explore_lite/include/**",
+        "/home/sunrise/luka_ws/install/explore_lite_msgs/include/**",
+        "/opt/ros/humble/include/**",
+        "/home/sunrise/luka_ws/planning/explore/include/**",
+        "/home/sunrise/luka_ws/sensing/rplidar_ros/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ros2",
+      "intelliSenseMode": "gcc-arm64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++17"
+    }
+  ],
+  "version": 4
+}

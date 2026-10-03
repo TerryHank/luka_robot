@@ -1,0 +1,602 @@
+/* Monitor-only people UI. Include after nx_people_ui.html; no wheel commands. */
+(() => {
+  'use strict';
+  const panel = document.getElementById('nxPeople');
+  if (!panel || panel.dataset.initialized === 'true') return;
+  panel.dataset.initialized = 'true';
+  const el = suffix => document.getElementById('nxPeople' + suffix);
+  const canvas = el('Canvas'), ctx = canvas.getContext('2d');
+  const STALE_SECONDS = 0.7; // Keep interactive actions stricter than display.
+  // Keep the overlay with the exact displayed JPEG for the same display grace.
+  // Actions below retain their stricter 0.7 s freshness check.
+  const FRAME_STALE_SECONDS = 1.5;
+  const STATUS_INTERVAL_MS = 250;
+  const DISPLAY_GRACE_SECONDS = 1.5;
+  let state = null, receivedAt = 0, disconnected = true, busy = false;
+  let polling = false, loadingFrame = false, frame = null, frameReceivedAt = 0, frameSourceAge = Infinity;
+  let frameError = '', pendingDelete = null, stopped = false;
+  let lastFrameStamp = null, drawnTracks = [], trackOrderSignature = '', profileSignature = '', targetProfileSignature = '';
+  const trackRows = new Map();
+  let emptyTracksNode = null;
+  let composingName = false;
+  const finite = value => typeof value === 'number' && Number.isFinite(value);
+  const secondsSince = at => at ? (performance.now() - at) / 1000 : Infinity;
+  const trackKey = track => String(track.track_id);
+  const tracks = () => Array.isArray(state?.tracks) ? state.tracks : [];
+  const isSelectedTrack = track => track.selected === true &&
+    (state?.selected_track_id == null || String(state.selected_track_id) === trackKey(track));
+  // New unselected boxes need a few consecutive strong observations before
+  // they appear as selectable people. A one-frame duplicate remains diagnostic
+  // data on the server, but no longer flashes as a second person in the UI.
+  const displayableTrack = track => isSelectedTrack(track) ||
+    (track.observation_strength === 'strong' && finite(track.first_seen) &&
+     finite(track.last_strong_seen) && track.last_strong_seen - track.first_seen >= .25);
+  const selected = () => tracks().find(isSelectedTrack);
+  const weakObservation = track => track?.observation_strength === 'weak';
+  const weakBodyHint = '人体检测暂时较弱，正在续接原目标';
+  const profiles = () => Array.isArray(state?.profiles) ? state.profiles : [];
+  const supplementProfile = () => {
+    const person = selected(), identity = person?.identity;
+    const profileId = identity?.state === 'matched' ? identity.id :
+      finite(person?.recent_face_age_s) && person.recent_face_age_s <= 5 ? person.recent_face_profile_id : null;
+    return profileId ? profiles().find(profile => String(profile.id) === String(profileId)) : null;
+  };
+  const enrollmentPoses = enrollment => enrollment?.mode === 'supplement'
+    ? ['正对镜头确认', '慢慢向左转20°', '向左转40°', '向左转60°', '向左转75°', '回到正面',
+       '慢慢向右转20°', '向右转40°', '向右转60°', '向右转75°', '轻微抬头', '轻微低头']
+    : ['正对镜头', '向左转约20°', '向左转约40°', '回到正脸', '向右转约20°', '向右转约40°', '轻微抬头', '轻微低头'];
+  const inMonitor = () => state?.mode === 'monitor' && state?.motion_enabled === false;
+  function cameraAge() {
+    if (!state) return Infinity;
+    if (finite(state.camera_age)) return Math.max(0, state.camera_age) + secondsSince(receivedAt);
+    const stamp = finite(state.frame_at) ? state.frame_at * (state.frame_at < 1e12 ? 1000 : 1) : Date.parse(state.frame_at || '');
+    return Number.isFinite(stamp) ? Math.max(0, (Date.now() - stamp) / 1000) : Infinity;
+  }
+  const fresh = () => !disconnected && secondsSince(receivedAt) < STALE_SECONDS && cameraAge() < STALE_SECONDS;
+  const displayFresh = () => !disconnected && secondsSince(receivedAt) < DISPLAY_GRACE_SECONDS &&
+    cameraAge() < DISPLAY_GRACE_SECONDS;
+  const usable = () => state?.active === true && !state.loading && !state.error && inMonitor() && fresh();
+  // A frame can be too old for a new selection (the worker enforces 0.7 s)
+  // while its existing tracking status is still valid (the worker expires at
+  // 1.0 s). Do not make the displayed lock blink with the action buttons.
+  const viewUsable = () => state?.active === true && !state.loading && !state.error &&
+    inMonitor() && displayFresh() && secondsSince(receivedAt) < STALE_SECONDS &&
+    finite(state.camera_age) && state.camera_age < 1.0;
+  const imageAge = () => frameSourceAge + secondsSince(frameReceivedAt);
+  const activeTargetSession = () => viewUsable() && state?.target_session?.active === true &&
+    state.target_session.motion_enabled === false && state.target_session.track_id != null;
+  const waitingState = () => ['waiting_detection', 'waiting_occlusion'].includes(state?.target_session?.state);
+  function waitingForTarget() {
+    const session = state?.target_session;
+    const occluded = session?.state === 'waiting_occlusion';
+    return activeTargetSession() && waitingState() && session.visible === false &&
+      session.current_face_verified === false &&
+      String(state.selected_track_id) === String(session.track_id) &&
+      !tracks().some(track => trackKey(track) === String(session.track_id)) &&
+      (occluded || tracks().length === 0) &&
+      finite(session.hold_remaining_s) && session.hold_remaining_s <= (occluded ? 8 : .6) &&
+      session.hold_remaining_s > secondsSince(receivedAt);
+  }
+  function waitingCaption() {
+    if (state?.target_session?.state === 'waiting_occlusion') {
+      const remaining = Math.max(0, state.target_session.hold_remaining_s - secondsSince(receivedAt));
+      return '目标被遮挡，正在核对原目标 · 剩余 ' + remaining.toFixed(1) + ' 秒（不会行驶）';
+    }
+    return '短暂漏检，等待同一目标恢复（不会行驶）';
+  }
+  const canUnlockTarget = () => usable() && !busy && state?.enrollment?.active !== true &&
+    (!!selected() || activeTargetSession());
+  const depthReasons = {
+    person_upper_body_clipped: '上半身被画面边缘截断，暂不估算人体距离。',
+    insufficient_torso_depth: '躯干部位的有效深度太少，暂时无法测距。',
+    insufficient_stereo_body_depth: '双目人体区域有效像素不足，暂不显示距离。',
+    incoherent_stereo_body_depth: '双目人体区域深度不连续，暂不显示距离。',
+    stereo_depth_spread_too_large: '双目人体区域距离分散，暂不显示距离。',
+    person_mask_missing: '人体轮廓暂不可用，等待下一帧。',
+    pose_not_matched: '人体轮廓与姿态未能对应，暂不估算距离。',
+    pose_association_ambiguous: '多人重叠，人体轮廓与姿态对应不明确。',
+    torso_keypoints_unreliable: '肩部或髋部关键点不清晰，暂不采用该距离。',
+    torso_pose_geometry_unreliable: '人体姿态受遮挡，暂不采用该距离。',
+    insufficient_pose_torso_depth: '躯干区域双目深度不足，暂不采用该距离。',
+    ambiguous_pose_torso_layers: '躯干区域存在多层距离，暂不采用该距离。',
+    pose_torso_depth_spread_too_large: '躯干区域距离分散，暂不采用该距离。',
+    pose_mask_range_conflict: '人体轮廓与姿态测距不一致，暂不采用该距离。',
+    incoherent_torso_depth: '躯干部位的深度不连续，暂时无法测距。',
+    ambiguous_depth_layers: '人体区域出现多层距离，无法可靠区分人体与背景。',
+    torso_depth_spread_too_large: '人体区域的深度差异过大，暂不采用该距离。',
+    rgb_depth_not_synchronized: '彩色与深度画面不同步，等待有效测距数据。',
+    invalid_geometry_inputs: '相机参数或人体框无效，暂时无法测距。',
+    depth_must_be_float_metres: '深度数据格式异常，暂时无法测距。',
+    invalid_depth: '尚无有效深度数据。'
+  };
+  const faceReasons = {
+    weak_body_detection: weakBodyHint,
+    no_face: '当前没有看到清晰人脸；转身或遮挡时会继续观察人体目标。',
+    body_crop_too_small: '人体框太小，无法取得清晰人脸。可手动确认本次目标；自动识别需要清晰人脸。',
+    face_too_small: '人脸框至少需 64×64 px 才能自动核对身份；也可在下方手动确认本次目标。',
+    face_clipped: '人脸被画面边缘截断。请调整位置，让整张脸进入画面。',
+    face_blurry: '人脸画面模糊，请保持片刻。',
+    blurred_face: '人脸画面模糊，请保持片刻。',
+    face_not_frontal: '人脸角度偏侧，请调整取景。',
+    face_tilted: '人脸倾斜较大，请保持头部端正。',
+    face_landmarks_unreliable: '人脸关键点不可靠，等待清晰画面。',
+    multiple_faces_in_body: '同一个人体框内出现多张脸。请分开站立，避免人脸重叠。',
+    multiple_faces: '同一个人体框内出现多张脸，暂不确认身份。',
+    face_assignment_ambiguous: '多人重叠，无法确定人脸属于哪个人体。',
+    invalid_face: '人脸数据无效，等待下一帧。',
+    invalid_embedding: '人脸特征无效，等待下一帧。',
+    low_quality: '人脸质量不足，等待清晰画面。',
+    no_profiles: '本机尚无人脸档案，可为选中目标登记。',
+    low_similarity: '人脸未匹配到已登记身份。',
+    ambiguous_identity: '与多个档案相近，暂不确认身份。',
+    confirming: '正在连续核对人脸身份，请保持片刻。'
+  };
+  function depthHint(track) {
+    if (!track || track.depth_valid === true && finite(track.distance_m) && track.distance_m > 0) return '';
+    return depthReasons[track.depth_reason] || '人体距离暂不可用，等待可靠深度数据。';
+  }
+  function faceHint(track) {
+    if (weakObservation(track)) return weakBodyHint;
+    if (!track || track.identity?.state === 'matched') return '';
+    if (track.identity?.reason === 'face_too_small') {
+      const box = track.face_bbox;
+      const measured = Array.isArray(box) && box.length === 4 && box.every(finite) && box[2] > box[0] && box[3] > box[1]
+        ? '当前人脸框约 ' + Math.round(box[2] - box[0]) + '×' + Math.round(box[3] - box[1]) + ' px；' : '';
+      return measured + faceReasons.face_too_small;
+    }
+    return faceReasons[track.identity?.reason] || '';
+  }
+  function voiceLinkHint(profile) {
+    const link = profile?.voice_link;
+    if (link?.state === 'linked') return '已关联声纹：' + String(link.name || '已登记人员');
+    if (link?.state === 'missing') return '原声纹已删除或未就绪，身份关联暂不可用';
+    if (link?.state === 'unavailable') return '暂时无法读取声纹，身份关联待核对';
+    return '';
+  }
+  function identityName(track) {
+    const identity = track?.identity;
+    if (weakObservation(track)) return '原目标续接中／人脸待核对';
+    if (identity?.state === 'matched' && typeof identity.name === 'string' && identity.name.trim()) return identity.name;
+    const session = state?.target_session;
+    if (viewUsable() && session?.active === true && session.visible === true &&
+        String(session.track_id) === trackKey(track) && session.profile_id &&
+        ['face_match', 'user_selection'].includes(session.confirmation_source) &&
+        typeof session.name === 'string' && session.name.trim())
+      return session.name + ' · 人体跟踪，当前人脸待核对';
+    if (['face_too_small', 'blurred_face', 'face_blurry', 'face_clipped', 'face_not_frontal', 'face_tilted', 'face_landmarks_unreliable', 'low_quality'].includes(identity?.reason)) return '人脸未达识别要求';
+    if (['no_face', 'not_visible', 'face_not_visible'].includes(identity?.state)) return identity.reason && identity.reason !== 'no_face' ? '人脸待确认' : '未看到人脸';
+    return '未登记／身份未确认';
+  }
+  function distance(track) {
+    return track.depth_valid === true && finite(track.distance_m) && track.distance_m > 0
+      ? (state?.camera_source === 'stereo_shared' ? '约 ' : '') + track.distance_m.toFixed(2) + ' m' : '距离未知';
+  }
+  function message(text) { el('Message').textContent = text || ''; }
+  function textNode(tag, text, className) {
+    const node = document.createElement(tag);
+    node.textContent = text;
+    if (className) node.className = className;
+    return node;
+  }
+  async function request(path, body) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), body === undefined ? 3500 : 20000);
+    try {
+      const response = await fetch('/api/people/' + path, {
+        method: body === undefined ? 'GET' : 'POST', cache: 'no-store', credentials: 'same-origin',
+        headers: body === undefined ? undefined : {'Content-Type': 'application/json'},
+        body: body === undefined ? undefined : JSON.stringify(body), signal: controller.signal
+      });
+      const data = await response.json();
+      if (!response.ok || data.ok === false) throw new Error(data.error || data.message || '请求未成功');
+      return data;
+    } finally { clearTimeout(timeout); }
+  }
+  async function action(path, body = {}) {
+    if (busy) return;
+    busy = true;
+    message('正在处理…'); render();
+    try {
+      const result = await request(path, body);
+      message(result.message || '已提交，请查看最新状态。');
+      if (path === 'stop') { frame = null; lastFrameStamp = null; }
+      if (path === 'delete-profile') pendingDelete = null;
+      await poll();
+    } catch (error) {
+      message(error.name === 'AbortError' ? '请求超时，尚不能确认结果，请先检查服务状态。' : '操作失败：' + error.message);
+    } finally { busy = false; render(); }
+  }
+  function validBox(track) {
+    return Array.isArray(track.bbox) && track.bbox.length === 4 && track.bbox.every(finite) && track.bbox[2] > track.bbox[0] && track.bbox[3] > track.bbox[1];
+  }
+  function displayTracks(incoming) {
+    const previous = new Map((frame?.peopleTracks || []).map(track => [trackKey(track), track]));
+    return incoming.filter(displayableTrack).map(track => {
+      if (!validBox(track)) return track;
+      const prior = previous.get(trackKey(track));
+      const a = prior?.display_bbox || prior?.bbox, b = track.bbox;
+      if (!Array.isArray(a) || a.length !== 4 || !a.every(finite)) return track;
+      const overlapWidth = Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0]));
+      const overlapHeight = Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1]));
+      const intersection = overlapWidth * overlapHeight;
+      const areaA = (a[2] - a[0]) * (a[3] - a[1]);
+      const areaB = (b[2] - b[0]) * (b[3] - b[1]);
+      if (areaA <= 0 || areaB <= 0 || intersection / (areaA + areaB - intersection) < .4)
+        return track;
+      // Smooth only a proven same-track box, never bridge missing detections
+      // or associate a new person by image proximity alone.
+      return {...track, display_bbox: b.map((value, i) => .55 * a[i] + .45 * value)};
+    });
+  }
+  function draw() {
+    if (!ctx) return;
+    const width = finite(state?.frame_width) && state.frame_width > 0 ? state.frame_width : 640;
+    const height = finite(state?.frame_height) && state.frame_height > 0 ? state.frame_height : 480;
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width; canvas.height = height;
+      canvas.parentElement.style.aspectRatio = width + '/' + height;
+    }
+    ctx.clearRect(0, 0, width, height);
+    drawnTracks = [];
+    if (!frame) return;
+    ctx.drawImage(frame, 0, 0, width, height);
+    const enrollment = state?.enrollment;
+    if (enrollment?.active === true) {
+      const poses = enrollmentPoses(enrollment);
+      const count = finite(enrollment.samples) ? enrollment.samples : 0;
+      const retry = ['low_quality', 'duplicate_sample', 'angle_jump', 'face_blurry', 'face_too_small', 'face_clipped'].includes(enrollment.reason);
+      const prompt = retry ? '动作未采清，请重试：' + poses[Math.min(count, poses.length - 1)]
+        : count >= poses.length ? '动作采集完成，请保持脸部入镜' : '请跟着做：' + poses[Math.min(count, poses.length - 1)];
+      ctx.fillStyle = '#071321e8'; ctx.fillRect(12, 12, width - 24, 52);
+      ctx.fillStyle = retry ? '#ffcf70' : '#91efd0'; ctx.font = 'bold 20px sans-serif';
+      ctx.fillText(prompt, 28, 45, width - 56);
+      // A simple Face ID style guide; the server still decides whether a
+      // sample is valid, so the overlay never claims a successful capture.
+      ctx.save(); ctx.strokeStyle = retry ? '#ffcf70' : '#91efd0'; ctx.lineWidth = 3;
+      ctx.setLineDash([10, 8]); ctx.beginPath();
+      ctx.ellipse(width * .5, height * .36, width * .16, height * .24, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+    }
+    if (!state?.active || !inMonitor() || !displayFresh() || frameError || imageAge() >= FRAME_STALE_SECONDS) return;
+    // Capture the boxes with the displayed frame, so clicks never use newer boxes.
+    for (const track of frame.peopleTracks) {
+      if (!validBox(track)) continue;
+      const [x1, y1, x2, y2] = track.display_bbox || track.bbox;
+      const isSelected = isSelectedTrack(track);
+      const session = state?.target_session;
+      const confirmedName = isSelected && session?.active === true &&
+        String(session.track_id) === trackKey(track) && session.profile_id &&
+        ['face_match', 'user_selection'].includes(session.confirmation_source) &&
+        typeof session.name === 'string' && session.name.trim() ? session.name : null;
+      const label = (confirmedName || identityName(track)) +
+        (isSelected ? ' · 已锁定' : ' · 临时目标 #' + trackKey(track)) + ' · ' + distance(track);
+      ctx.strokeStyle = isSelected ? '#91efd0' : '#79b9f0'; ctx.lineWidth = isSelected ? 4 : 2;
+      ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+      ctx.font = '14px sans-serif';
+      const labelWidth = Math.min(width, ctx.measureText(label).width + 14);
+      const labelX = Math.max(0, Math.min(x1, width - labelWidth));
+      const labelY = Math.max(0, Math.min(y1 - 26, height - 26));
+      ctx.fillStyle = '#0a1724e8'; ctx.fillRect(labelX, labelY, labelWidth, 26);
+      ctx.fillStyle = isSelected ? '#91efd0' : '#e6edf3'; ctx.fillText(label, labelX + 7, labelY + 18, labelWidth - 14);
+      drawnTracks.push({...track, bbox: track.display_bbox || track.bbox});
+    }
+  }
+  function renderTracks() {
+    const shown = tracks().filter(displayableTrack);
+    const currentKeys = new Set(shown.map(trackKey));
+    for (const key of trackRows.keys()) if (!currentKeys.has(key)) trackRows.delete(key);
+    const setText = (node, value) => { if (node.textContent !== value) node.textContent = value; };
+    const nodes = shown.map(track => {
+      const key = trackKey(track);
+      let row = trackRows.get(key);
+      if (!row) {
+        const button = textNode('button', '', 'np-track');
+        button.type = 'button'; button.dataset.trackId = key;
+        row = {button, title: textNode('span', ''), details: textNode('span', '', 'np-muted'),
+          depth: textNode('span', '', 'np-detail'), face: textNode('span', '', 'np-detail')};
+        button.append(row.title, row.details, row.depth, row.face);
+        button.addEventListener('click', () => {
+          // Only the stable ID is captured; every action revalidates the latest
+          // row and freshness, not the observation that created this button.
+          const current = tracks().find(item => trackKey(item) === key);
+          if (usable() && !busy && !state?.enrollment?.active && current && !current.association_ambiguous && !weakObservation(current))
+            action('select', {track_id: current.track_id});
+        });
+        trackRows.set(key, row);
+      }
+      const disabled = !usable() || busy || state?.enrollment?.active === true || track.association_ambiguous === true || weakObservation(track);
+      if (row.button.disabled !== disabled) row.button.disabled = disabled;
+      const pressed = String(isSelectedTrack(track));
+      if (row.button.getAttribute('aria-pressed') !== pressed) row.button.setAttribute('aria-pressed', pressed);
+      const selectedRow = isSelectedTrack(track);
+      const session = state?.target_session;
+      const confirmedTarget = selectedRow && viewUsable() && session?.active === true &&
+        String(session.track_id) === key && session.profile_id &&
+        ['face_match', 'user_selection'].includes(session.confirmation_source) &&
+        typeof session.name === 'string' && session.name.trim();
+      // The selection card identifies the tracked body. Per-frame face matches
+      // belong in the diagnostic/status panel; changing them here made this
+      // button grow and shrink several times per second on a side view.
+      setText(row.title, selectedRow ? (confirmedTarget ? session.name : '当前观察目标') + ' · 已锁定' : identityName(track));
+      setText(row.details, '临时追踪号 #' + key + '（重新找到目标时可能变化） · ' + distance(track));
+      const depth = depthHint(track), face = faceHint(track);
+      row.depth.hidden = selectedRow || !depth;
+      row.face.hidden = !selectedRow && !face;
+      setText(row.depth, selectedRow || !depth ? '' : '测距：' + depth);
+      setText(row.face, selectedRow
+        ? confirmedTarget ? '身份：本次目标已关联 ' + session.name + '；实时人脸状态见右侧'
+          : '身份：本次目标尚未确认；实时人脸状态见右侧'
+        : face ? '身份：' + face : '');
+      return row.button;
+    });
+    if (!emptyTracksNode) emptyTracksNode = textNode('span', '', 'np-muted');
+    setText(emptyTracksNode, state?.active ? (tracks().length ? '检测到短暂人体候选，等待连续确认' : '当前未发现人体') : '启动后显示人体目标');
+    const orderSignature = JSON.stringify(shown.map(trackKey));
+    if (orderSignature !== trackOrderSignature) {
+      trackOrderSignature = orderSignature;
+      el('Tracks').replaceChildren(...(nodes.length ? nodes : [emptyTracksNode]));
+    }
+  }
+  function renderProfiles() {
+    const profiles = Array.isArray(state?.profiles) ? state.profiles : [];
+    const signature = JSON.stringify([profiles, disconnected, busy, state?.active, state?.loading, state?.enrollment?.active]);
+    if (signature !== profileSignature) {
+      profileSignature = signature;
+      const nodes = profiles.map(profile => {
+        const row = textNode('div', '', 'np-profile');
+        const samples = finite(profile.samples) ? profile.samples : finite(profile.sample_count) ? profile.sample_count : 0;
+        const label = textNode('span', String(profile.name || '未命名') + ' · ' + samples + ' 份特征');
+        const voiceLink = voiceLinkHint(profile);
+        if (voiceLink) label.append(textNode('span', voiceLink, 'np-detail np-link'));
+        row.append(label);
+        const button = textNode('button', '删除'); button.type = 'button';
+        button.disabled = busy || disconnected || state?.loading || state?.enrollment?.active === true;
+        button.addEventListener('click', () => { pendingDelete = {id: profile.id, name: profile.name}; render(); });
+        row.append(button); return row;
+      });
+      el('Profiles').replaceChildren(...(nodes.length ? nodes : [textNode('span', '暂无已登记身份', 'np-muted')]));
+    }
+    if (pendingDelete && !profiles.some(profile => String(profile.id) === String(pendingDelete.id))) pendingDelete = null;
+    el('DeleteConfirm').hidden = !pendingDelete;
+    el('DeleteText').textContent = pendingDelete ? '删除“' + pendingDelete.name + '”的本机人脸特征？再次识别该身份前需要重新登记。' : '';
+    el('DeleteYes').disabled = busy || disconnected || state?.loading || state?.enrollment?.active === true;
+  }
+  function renderEnrollmentControls() {
+    // A name is a local draft. Camera freshness must gate the submission, never
+    // disable or recreate the focused input (which interrupts Chinese IME).
+    el('Enroll').disabled = !usable() || busy || !selected() || weakObservation(selected()) || waitingState() ||
+      state?.enrollment?.active === true || composingName || !el('Name').value.trim();
+    el('Supplement').disabled = !usable() || busy || !selected() || weakObservation(selected()) ||
+      waitingState() || state?.enrollment?.active === true || !supplementProfile() ||
+      supplementProfile().sample_count + 12 > (state?.face_sample_limit || 60);
+  }
+  function canConfirmTarget() {
+    const person = selected(), profileId = el('TargetProfile').value, session = state?.target_session;
+    return usable() && !busy && !state?.enrollment?.active && person && !weakObservation(person) && !waitingState() &&
+      person.association_ambiguous !== true && session?.active === true && session.motion_enabled === false &&
+      String(session.track_id) === trackKey(person) && (!session.profile_id || String(session.profile_id) === profileId) &&
+      profiles().some(profile => String(profile.id) === profileId);
+  }
+  function renderTargetSession() {
+    const dropdown = el('TargetProfile');
+    // Keep the select node, focus and chosen profile stable across camera polls.
+    const signature = JSON.stringify(profiles().map(profile => [String(profile.id), String(profile.name || '未命名')]));
+    if (signature !== targetProfileSignature) {
+      targetProfileSignature = signature;
+      const previous = dropdown.value;
+      const placeholder = textNode('option', profiles().length ? '请选择已登记人员' : '暂无已登记人员');
+      placeholder.value = '';
+      const options = profiles().map(profile => {
+        const option = textNode('option', String(profile.name || '未命名'));
+        option.value = String(profile.id); return option;
+      });
+      dropdown.replaceChildren(placeholder, ...options);
+      dropdown.value = profiles().some(profile => String(profile.id) === previous) ? previous : '';
+    }
+    el('ConfirmTarget').disabled = !canConfirmTarget();
+    const session = state?.target_session, person = selected();
+    let text = !viewUsable() ? '当前画面不可用，目标锁定待重新确认。' : !person ? '先在画面中选择人体。' : '已选择人体；可手动确认身份，无需靠近镜头。';
+    const profile = profiles().find(item => String(item.id) === String(session?.profile_id));
+    const valid = viewUsable() && session?.active === true && session.motion_enabled === false &&
+      person && !person.association_ambiguous && String(session.track_id) === trackKey(person);
+    if (waitingForTarget()) {
+      text = waitingCaption() + '。' +
+        (profile && ['face_match', 'user_selection'].includes(session.confirmation_source)
+          ? '上次确认的本次目标：' + String(profile.name || '未命名') + '；当前未看到目标，也未核对人脸。'
+          : '当前未看到目标，暂无有效的人体距离或人脸身份。');
+    } else if (activeTargetSession() && waitingState()) {
+      text = '短暂等待已结束，正在确认目标状态；当前不能确认身份或距离。';
+    } else if (valid && profile && ['face_match', 'user_selection'].includes(session.confirmation_source)) {
+      const currentFaceVerified = !weakObservation(person) && session.current_face_verified === true && person.identity?.state === 'matched' &&
+        String(person.identity.id) === String(profile.id);
+      const source = session.confirmation_source === 'user_selection' ? '由你确认' : '已通过人脸确认';
+      text = '本次目标：' + String(profile.name || '未命名') + ' · ' + source + ' · ' + (weakObservation(person) ? weakBodyHint + '。' : '持续追踪人体。') +
+        (currentFaceVerified ? '当前人脸已核对。' : '当前人脸未核对；保持的是本次目标关联。');
+    } else if (valid && session.profile_id && !profile) {
+      text = '目标身份档案已不可用，请重新选择人员并确认。';
+    } else if (valid && weakObservation(person)) {
+      text = weakBodyHint + '；检测恢复稳定后再确认身份或登记。';
+    } else if (viewUsable() && session?.active === false && state?.face_reacquire?.active === true) {
+      const remaining = state.face_reacquire.remaining_s;
+      text = '目标被遮挡或外观变化，锁定已暂停；正在等待同一登记人脸再次连续确认' +
+        (finite(remaining) ? '（剩余 ' + remaining.toFixed(1) + ' 秒）' : '') + '。此时不控制车轮。';
+    } else if (viewUsable() && session?.active === false && session.reason) {
+      const reasons = {
+        target_lost: '目标已丢失，请重新选择人体并确认。',
+        target_ambiguous: '目标对应不明确，已解除锁定，请重新选择。',
+        association_ambiguous: '多人交错，已解除目标锁定，请重新选择。',
+        identity_conflict: '当前人脸与本次目标不一致，已解除锁定，请重新选择。',
+        profile_deleted: '目标身份档案已删除，请重新选择人员。',
+        profile_missing: '目标身份档案已不可用，请重新选择人员。',
+        profile_catalog_unavailable: '身份档案暂不可用，请等待恢复后重新选择。',
+        camera_stale: '画面曾中断，已解除目标锁定，请重新选择。'
+      };
+      text = reasons[session.reason] || text;
+    }
+    el('Session').textContent = text;
+  }
+  function render() {
+    const ready = usable(), enrolling = state?.enrollment?.active === true;
+    el('Badge').dataset.ready = String(ready);
+    el('Badge').textContent = disconnected ? '连接中断' : !state?.active ? '已停止' : !inMonitor() ? '模式异常' : state.loading ? '模型加载中' : !displayFresh() || state.error ? '等待有效画面' : '静态识别中';
+    el('Start').disabled = disconnected || busy || state?.active === true;
+    el('Stop').disabled = disconnected || busy || state?.active !== true;
+    el('Unlock').disabled = !canUnlockTarget();
+    renderEnrollmentControls();
+    el('CancelEnroll').disabled = disconnected || busy || !state?.active || !enrolling;
+    el('State').textContent = disconnected ? '无法读取服务，请检查小车连接。' : state?.loading ? '正在加载本地模型，请稍候；目前不控制车轮。' : state?.error ? String(state.error) : !inMonitor() && state?.active ? '服务不是静态模式，已停用本页识别操作。' : state?.active ? '可选择人体并确认本次目标，也可登记人脸；目前不执行跟随。' : '识别未启动';
+    const person = selected();
+    el('Target').textContent = waitingForTarget() ? waitingCaption() : person ? identityName(person) + ' · 追踪 #' + trackKey(person) + ' · ' + distance(person) + (viewUsable() ? '' : '（等待有效画面）') : '未选择';
+    const identity = person?.identity;
+    const voiceContext = !weakObservation(person) && identity?.state === 'matched' && identity.person_id && identity.voice_profile_id
+      ? '已识别人脸，关联声纹：' + String(identity.voice_name || '已登记人员') : '';
+    const reid = state?.appearance_reid;
+    const recoveryHint = ready && person && !waitingState() && reid
+      ? reid.error ? '短时遮挡找回暂不可用' : reid.ready === true
+        ? reid.selected_recovery_ready === true ? '短时遮挡找回已就绪（最多' + (finite(reid.max_wait_s) ? reid.max_wait_s : 8) + '秒）' : '请保持身体清晰可见片刻，正在准备遮挡找回'
+        : '' : '';
+    const appearanceHint = ready && person && reid?.face_anchor?.ready === true
+      ? '已用人脸确认并记录本次衣着外观；多人接近或遮挡时仍会暂停核对。' : '';
+    const targetDetails = waitingForTarget() ? '当前没有目标检测框；不沿用上一次距离，也不显示当前人脸识别结果。' : [depthHint(person), faceHint(person), voiceContext, appearanceHint, recoveryHint].filter(Boolean).join('\n');
+    el('TargetDetails').hidden = !targetDetails;
+    el('TargetDetails').textContent = targetDetails;
+    const enrollment = state?.enrollment || {};
+    el('Enrollment').hidden = !enrolling && (!enrollment.reason || !enrollment.message);
+    const count = finite(enrollment.samples) ? enrollment.samples : 0, required = finite(enrollment.required) && enrollment.required > 0 ? enrollment.required : 1;
+    const target = finite(enrollment.target) && enrollment.target >= required ? enrollment.target : required;
+    el('FinishEnroll').disabled = !ready || busy || !enrolling || !selected() || weakObservation(selected()) || waitingState() || count < required;
+    const poses = enrollmentPoses(enrollment);
+    const pose = poses[Math.min(count, poses.length - 1)];
+    const retry = ['low_quality', 'duplicate_sample', 'angle_jump', 'sample_too_soon', 'face_blurry', 'face_too_small', 'face_clipped'].includes(enrollment.reason);
+    const stateText = enrolling ? (enrollment.mode === 'supplement' ? '正在补录侧脸 ' : '正在登记 ') + (enrollment.name || '') + '：已成功采集 ' + count + ' / ' + target + ' 组' : '';
+    const doneText = enrolling && count >= required ? '当前样本数已达最低要求，建议完成全部角度后再保存' : '';
+    el('EnrollState').textContent = [stateText, doneText, enrollment.message || ''].filter(Boolean).join(' · ');
+    const prompt = el('EnrollPrompt');
+    if (prompt) {
+      prompt.hidden = !enrolling;
+      prompt.textContent = !enrolling ? '' : retry
+        ? '本次动作采集不足，请保持脸部清晰并重试：' + pose
+        : count >= poses.length ? '动作采集完成，请保持脸部入镜后点击“完成录入”' : '请跟着提示做：' + pose + '，保持约1秒';
+    }
+    el('EnrollProgress').max = target; el('EnrollProgress').value = Math.min(count, target); el('EnrollProgress').hidden = !enrolling;
+    const age = cameraAge();
+    const cameraLabel = ['stereo_uvc', 'stereo_shared'].includes(state?.camera_source)
+      ? state?.full_fov_people === true ? '双目左目完整视角（中央区域测距）'
+        : state?.metric_depth_available === true ? '双目左目校正视角（已标定测距）'
+        : '双目相机左目（测距未标定）' : '奥比 RGB-D 相机';
+    el('Stats').textContent = cameraLabel + ' · 画面年龄：' + (Number.isFinite(age) ? age.toFixed(1) + ' s' : '未知') +
+      ' · 识别速度：' + (finite(state?.fps) ? state.fps.toFixed(1) + ' FPS' : '未知');
+    const memory = state?.memory;
+    el('Memory').textContent = memory && finite(memory.system_used_gib) && finite(memory.budget_gib)
+      ? '系统内存：' + memory.system_used_gib.toFixed(2) + ' / ' + memory.budget_gib.toFixed(2) + ' GiB（8GB 目标预算）' + (disconnected || secondsSince(receivedAt) > 3 ? ' · 数据已过期' : '')
+      : '系统内存：暂无数据';
+    let mask = disconnected ? '连接中断，画面不可用于判断当前状态' : !state?.active ? '静态识别尚未启动' : !inMonitor() ? '服务模式异常，已暂停本页操作' : state.loading ? '正在加载本地人体与人脸模型…' : state.error ? String(state.error) : !displayFresh() ? '相机画面已过期，请检查相机与识别服务' : frameError || (!frame ? '等待最新识别画面…' : imageAge() >= DISPLAY_GRACE_SECONDS ? '图像未更新，请检查连接' : '');
+    el('Mask').hidden = !mask; el('Mask').textContent = mask;
+    renderTracks(); renderProfiles(); renderTargetSession(); draw();
+  }
+  async function refreshFrame() {
+    if (loadingFrame || !state?.active || state.loading || state.error || !inMonitor() || !displayFresh() || document.hidden || stopped) return;
+    if (state.frame_at && state.frame_at === lastFrameStamp && frame && !frameError) return;
+    loadingFrame = true;
+    let snapshot = state;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    let url;
+    try {
+      if (Object.prototype.hasOwnProperty.call(snapshot, 'frame_jpeg_base64')) {
+        if (typeof snapshot.frame_jpeg_base64 !== 'string' || !snapshot.frame_jpeg_base64) {
+          frame = null; frameError = '等待可用识别画面…'; return;
+        }
+        const snapshotReceivedAt = receivedAt;
+        const image = new Image(); image.src = 'data:image/jpeg;base64,' + snapshot.frame_jpeg_base64;
+        await image.decode();
+        if (stopped || !state?.active || state.frame_at !== snapshot.frame_at) return;
+        image.peopleTracks = displayTracks(Array.isArray(snapshot.tracks) ? snapshot.tracks : []);
+        frame = image; frameReceivedAt = snapshotReceivedAt; frameSourceAge = snapshot.camera_age;
+        frameError = ''; lastFrameStamp = snapshot.frame_at;
+        return;
+      }
+      // Status and JPEG are separate endpoints. Accept only a JPEG bracketed by
+      // the same source stamp for compatibility with an older worker. Newer
+      // workers include JPEG and boxes atomically in status, handled above.
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const response = await fetch('/api/people/frame.jpg?t=' + Date.now(), {cache: 'no-store', credentials: 'same-origin', signal: controller.signal});
+        if (!response.ok || !(response.headers.get('Content-Type') || '').startsWith('image/')) throw new Error('相机图像暂不可用');
+        const blob = await response.blob();
+        const verified = await request('status');
+        const verifiedAt = performance.now();
+        if (!verified.active || verified.loading || verified.error || !finite(verified.camera_age) || verified.camera_age >= STALE_SECONDS) break;
+        if (!snapshot.frame_at || snapshot.frame_at !== verified.frame_at) { snapshot = verified; continue; }
+        url = URL.createObjectURL(blob);
+        const image = new Image(); image.src = url;
+        await image.decode();
+        if (state?.active !== true || stopped || !displayFresh()) return;
+        image.peopleTracks = displayTracks(Array.isArray(snapshot.tracks) ? snapshot.tracks : []);
+        frame = image; frameReceivedAt = verifiedAt; frameSourceAge = verified.camera_age;
+        frameError = ''; lastFrameStamp = snapshot.frame_at;
+        return;
+      }
+      frameError = '正在同步画面与人体框，请稍候…';
+    } catch (error) { frameError = error.name === 'AbortError' ? '图像读取超时，不能确认当前画面' : '图像读取失败，不能确认当前画面'; }
+    finally { clearTimeout(timeout); if (url) URL.revokeObjectURL(url); loadingFrame = false; render(); }
+  }
+  async function poll() {
+    if (polling || stopped || document.hidden) return;
+    polling = true;
+    try {
+      const next = await request('status');
+      if (!next || typeof next.active !== 'boolean' || typeof next.mode !== 'string') throw new Error('状态格式异常');
+      state = next; receivedAt = performance.now(); disconnected = false;
+      if (!state.active) { frame = null; lastFrameStamp = null; frameError = ''; }
+      await refreshFrame();
+    } catch (_) { disconnected = true; }
+    finally { polling = false; render(); }
+  }
+  el('Start').addEventListener('click', () => action('start'));
+  el('Stop').addEventListener('click', () => action('stop'));
+  el('Unlock').addEventListener('click', () => { if (canUnlockTarget()) action('unlock'); });
+  el('TargetProfile').addEventListener('change', () => { el('ConfirmTarget').disabled = !canConfirmTarget(); });
+  el('ConfirmTarget').addEventListener('click', () => {
+    if (!canConfirmTarget()) return;
+    action('confirm-target', {track_id: selected().track_id, profile_id: el('TargetProfile').value});
+  });
+  el('Name').addEventListener('input', renderEnrollmentControls);
+  el('Name').addEventListener('compositionstart', () => { composingName = true; renderEnrollmentControls(); });
+  el('Name').addEventListener('compositionend', () => { composingName = false; renderEnrollmentControls(); });
+  el('EnrollForm').addEventListener('submit', event => {
+    event.preventDefault(); const person = selected(), name = el('Name').value.trim();
+    if (composingName || event.isComposing || !usable() || busy || !person || weakObservation(person) || !name || state?.enrollment?.active || waitingState()) return;
+    action('enroll', {name, track_id: person.track_id});
+  });
+  el('Supplement').addEventListener('click', () => {
+    const person = selected(), profile = supplementProfile();
+    if (usable() && !busy && person && profile && !weakObservation(person) && !waitingState() && !state?.enrollment?.active)
+      action('supplement', {track_id: person.track_id, profile_id: profile.id});
+  });
+  el('CancelEnroll').addEventListener('click', () => action('cancel-enrollment'));
+  el('FinishEnroll').addEventListener('click', () => {
+    const enrollment = state?.enrollment;
+    if (usable() && !busy && selected() && !weakObservation(selected()) && !waitingState() && enrollment?.active && finite(enrollment.samples) && finite(enrollment.required) && enrollment.samples >= enrollment.required) action('finish-enrollment');
+  });
+  el('DeleteNo').addEventListener('click', () => { pendingDelete = null; render(); });
+  el('DeleteYes').addEventListener('click', () => { if (pendingDelete) action('delete-profile', {id: pendingDelete.id}); });
+  canvas.addEventListener('click', event => {
+    if (!usable() || busy || frameError || imageAge() >= STALE_SECONDS || state?.enrollment?.active) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = (event.clientX - rect.left) * canvas.width / rect.width, y = (event.clientY - rect.top) * canvas.height / rect.height;
+    const candidates = drawnTracks.filter(track => !weakObservation(track) && x >= track.bbox[0] && x <= track.bbox[2] && y >= track.bbox[1] && y <= track.bbox[3])
+      .sort((a, b) => (a.bbox[2] - a.bbox[0]) * (a.bbox[3] - a.bbox[1]) - (b.bbox[2] - b.bbox[0]) * (b.bbox[3] - b.bbox[1]));
+    if (candidates.length && tracks().some(track => trackKey(track) === trackKey(candidates[0]) && !track.association_ambiguous && !weakObservation(track))) action('select', {track_id: candidates[0].track_id});
+  });
+  let statusTimer = setInterval(poll, STATUS_INTERVAL_MS);
+  let freshnessTimer = setInterval(() => { if (!document.hidden) render(); }, 250);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); poll(); } });
+  window.addEventListener('pagehide', () => { stopped = true; clearInterval(statusTimer); clearInterval(freshnessTimer); });
+  window.addEventListener('pageshow', event => {
+    if (!event.persisted || !stopped) return;
+    stopped = false; disconnected = true; frame = null; lastFrameStamp = null;
+    statusTimer = setInterval(poll, STATUS_INTERVAL_MS);
+    freshnessTimer = setInterval(() => { if (!document.hidden) render(); }, 250);
+    render(); poll();
+  });
+  poll();
+})();

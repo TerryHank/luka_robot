@@ -1,0 +1,34 @@
+# /etc/systemd/system/luka-ws-people.service
+[Unit]
+Description=Luka S100 person and face monitor (requires connected camera)
+After=luka-ws-vision.service
+Requires=luka-ws-vision.service
+
+[Service]
+UnsetEnvironment=NX_STEREO_CALIBRATION_JSON
+Type=simple
+User=sunrise
+Group=sunrise
+WorkingDirectory=/home/sunrise/luka_ws/perception/person_follow
+Environment=NX_PEOPLE_CAMERA=stereo_shared
+Environment=NX_PERSON_DETECTOR=yolo26_seg
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/sunrise/luka_ws/perception/person_follow/yolo26_venv/bin/python /home/sunrise/luka_ws/perception/person_follow/server.py
+Restart=on-failure
+RestartSec=5
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
+
+# /etc/systemd/system/luka-ws-people.service.d/autostart.conf
+[Service]
+ExecStartPost=/usr/bin/python3 /home/sunrise/luka_ws/system/helpers/luka-ws-start-people-worker
+
+# /etc/systemd/system/luka-ws-people.service.d/detection.conf
+[Service]
+Environment=NX_PEOPLE_ZOOM_DETECTION=0
+
+# /etc/systemd/system/luka-ws-people.service.d/segmentation.conf
+[Service]
+Environment=NX_PERSON_DETECTOR=yolo26_seg

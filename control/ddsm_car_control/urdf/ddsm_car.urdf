@@ -1,0 +1,92 @@
+<?xml version="1.0"?>
+<robot name="ddsm_car">
+
+  <!-- ===== Materials ===== -->
+  <material name="dark_grey">
+    <color rgba="0.3 0.3 0.4 1.0"/>
+  </material>
+  <material name="red">
+    <color rgba="1.0 0.1 0.1 1.0"/>
+  </material>
+
+  <!-- ===== Base Footprint ===== -->
+  <link name="base_footprint"/>
+
+  <joint name="base_footprint_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="base_footprint"/>
+    <origin xyz="0 0 -0.12" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ===== Base Link (chassis body) ===== -->
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="-1.5707963267948966 0 0"/>
+      <geometry>
+        <mesh filename="package://ddsm_car_control/meshes/foxglove_mecanum_560x380x450_full_m.stl" scale="1 1 1"/>
+      </geometry>
+      <material name="dark_grey"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.56 0.38 0.20"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ===== Front Left Wheel ===== -->
+  <joint name="front_left_wheel_joint" type="continuous">
+    <origin xyz="0.1775 0.155 -0.051" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="front_left_wheel"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+  <link name="front_left_wheel">
+  </link>
+
+  <!-- ===== Front Right Wheel ===== -->
+  <joint name="front_right_wheel_joint" type="continuous">
+    <origin xyz="-0.1775 0.155 -0.051" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="front_right_wheel"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+  <link name="front_right_wheel">
+  </link>
+
+  <!-- ===== Rear Left Wheel ===== -->
+  <joint name="rear_left_wheel_joint" type="continuous">
+    <origin xyz="0.1775 -0.155 -0.051" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="rear_left_wheel"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+  <link name="rear_left_wheel">
+  </link>
+
+  <!-- ===== Rear Right Wheel ===== -->
+  <joint name="rear_right_wheel_joint" type="continuous">
+    <origin xyz="-0.1775 -0.155 -0.051" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="rear_right_wheel"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+  <link name="rear_right_wheel">
+  </link>
+
+  <!-- ===== Laser ===== -->
+  <joint name="laser_visual_joint" type="fixed">
+    <origin xyz="-0.065 0.0 0.42" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="laser_visual"/>
+  </joint>
+  <link name="laser_visual">
+    <visual>
+      <geometry>
+        <cylinder radius="0.04" length="0.06"/>
+      </geometry>
+      <material name="red"/>
+    </visual>
+  </link>
+
+</robot>

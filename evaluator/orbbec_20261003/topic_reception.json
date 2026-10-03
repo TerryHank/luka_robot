@@ -1,0 +1,80 @@
+{
+  "/camera/depth/camera_info": {
+    "messages": 451,
+    "frame_id": "camera_color_optical_frame",
+    "width": 640,
+    "height": 480,
+    "age_seconds": 0.007063473074462867,
+    "k": [
+      541.964599609375,
+      0.0,
+      320.5293273925781,
+      0.0,
+      541.964599609375,
+      243.3502197265625,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "distortion": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "hz": 29.994880307859017
+  },
+  "/camera/color/camera_info": {
+    "messages": 450,
+    "frame_id": "camera_color_optical_frame",
+    "width": 640,
+    "height": 480,
+    "age_seconds": 0.04986198438122558,
+    "k": [
+      541.964599609375,
+      0.0,
+      320.5293273925781,
+      0.0,
+      541.964599609375,
+      243.3502197265625,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "distortion": [
+      0.11044521629810333,
+      -0.16643781960010529,
+      0.002469005063176155,
+      -0.00020301775657571852,
+      -0.04666997492313385,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "hz": 29.995639345516405
+  },
+  "/camera/color/image_raw": {
+    "messages": 450,
+    "frame_id": "camera_color_optical_frame",
+    "width": 640,
+    "height": 480,
+    "age_seconds": 0.05394537938549804,
+    "encoding": "rgb8",
+    "hz": 29.990724823973313
+  },
+  "/camera/depth/image_raw": {
+    "messages": 450,
+    "frame_id": "camera_color_optical_frame",
+    "width": 640,
+    "height": 480,
+    "age_seconds": 0.00920243427990719,
+    "encoding": "16UC1",
+    "valid_fraction": 0.6510221354166666,
+    "median_depth_m": 2.457,
+    "hz": 29.997818557967022
+  }
+}

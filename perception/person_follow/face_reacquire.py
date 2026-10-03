@@ -1,0 +1,148 @@
+"""Bounded, face-verified recovery after a body track is lost.
+
+This is deliberately not body re-identification. It never authorizes motion,
+and a face must be freshly examined on each confirming frame. Unknown faces,
+multiple people, ambiguity and expiry cannot renew the old target.
+"""
+from __future__ import annotations
+
+import math
+
+
+def _box(row):
+    try:
+        values = [float(value) for value in row['bbox']]
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return None
+    if len(values) != 4 or not all(math.isfinite(v) for v in values):
+        return None
+    return values if values[2] > values[0] and values[3] > values[1] else None
+
+
+def _overlap(a, b):
+    width = max(0., min(a[2], b[2]) - max(a[0], b[0]))
+    height = max(0., min(a[3], b[3]) - max(a[1], b[1]))
+    intersection = width * height
+    area_a = (a[2] - a[0]) * (a[3] - a[1])
+    area_b = (b[2] - b[0]) * (b[3] - b[1])
+    return intersection / max(1e-8, area_a + area_b - intersection)
+
+
+class FaceReacquire:
+    def __init__(self, window_s=8.0, required=2, min_similarity=.50,
+                 max_confirm_gap_s=1.2):
+        self.window_s = float(window_s)
+        self.required = int(required)
+        self.min_similarity = float(min_similarity)
+        self.max_confirm_gap_s = float(max_confirm_gap_s)
+        self.cancel()
+
+    def cancel(self):
+        self.profile_id = None
+        self.deadline = None
+        self.candidate_id = None
+        self.count = 0
+        self.last_confirm_at = None
+        self.wait_reason = None
+
+    def start(self, profile_id, now):
+        if not isinstance(profile_id, str) or not profile_id or not math.isfinite(float(now)):
+            raise ValueError('Invalid face recovery request')
+        self.profile_id = profile_id
+        self.deadline = float(now) + self.window_s
+        self.candidate_id = None
+        self.count = 0
+        self.last_confirm_at = None
+        self.wait_reason = 'awaiting_face'
+
+    def status(self, now):
+        if self.profile_id is None or not math.isfinite(float(now)) or now > self.deadline:
+            self.cancel()
+            return dict(active=False, motion_enabled=False)
+        return dict(active=True, motion_enabled=False,
+                    remaining_s=round(max(0., self.deadline - now), 2),
+                    wait_reason=self.wait_reason, confirmation_count=self.count)
+
+    def observe(self, tracks, examined_ids, now):
+        if not self.status(now)['active']:
+            return None
+        # Other people may be present. Require exactly one freshly examined
+        # matching face on an unambiguous, spatially separate body. This never
+        # treats a matching name or an old face result as fresh evidence.
+        candidates = [track for track in tracks if
+                      track.get('track_id') in examined_ids and
+                      track.get('observation_strength') == 'strong' and
+                      not track.get('association_ambiguous') and
+                      (track.get('identity') or {}).get('state') == 'matched' and
+                      (track.get('identity') or {}).get('id') == self.profile_id and
+                      isinstance((track.get('identity') or {}).get('similarity'), (float, int)) and
+                      math.isfinite((track.get('identity') or {})['similarity']) and
+                      (track.get('identity') or {})['similarity'] >= self.min_similarity]
+        # A skipped face frame supplies no new identity evidence. Keep a
+        # pending first match only for its original visible body and only
+        # within the existing short confirmation gap.
+        if (len(tracks) > 1 and not candidates and self.candidate_id is not None and
+                self.candidate_id not in examined_ids):
+            pending = [track for track in tracks if track.get('track_id') == self.candidate_id and
+                       track.get('observation_strength') == 'strong' and
+                       not track.get('association_ambiguous')]
+            if len(pending) == 1:
+                candidates = pending
+        if len(tracks) > 1 and (len(candidates) != 1 or
+                any(track.get('association_ambiguous') for track in tracks)):
+            self.candidate_id, self.count = None, 0
+            self.last_confirm_at = None
+            self.wait_reason = 'multi_body_face_ambiguous'
+            return None
+        if len(tracks) > 1:
+            target_box = _box(candidates[0])
+            if target_box is None or any((other_box := _box(other)) is None or
+                    _overlap(target_box, other_box) > .15
+                    for other in tracks if other is not candidates[0]):
+                self.candidate_id, self.count = None, 0
+                self.last_confirm_at = None
+                self.wait_reason = 'multi_body_overlap'
+                return None
+        if not tracks:
+            self.candidate_id, self.count, self.last_confirm_at = None, 0, None
+            self.wait_reason = 'body_count_0'
+            return None
+        track = candidates[0] if candidates else tracks[0]
+        ident = track.get('track_id')
+        identity = track.get('identity') or {}
+        score = identity.get('similarity')
+        if ident not in examined_ids:
+            # Face detection is intentionally skipped on some video frames.
+            # Such a frame contains no new negative evidence. Keep the first
+            # confirmation only until the bounded next-face deadline.
+            if self.last_confirm_at is not None and now-self.last_confirm_at > self.max_confirm_gap_s:
+                self.candidate_id, self.count, self.last_confirm_at = None, 0, None
+            self.wait_reason = 'face_not_examined'
+            return None
+        valid = (track.get('observation_strength') == 'strong' and
+                 not track.get('association_ambiguous') and identity.get('state') == 'matched' and
+                 identity.get('id') == self.profile_id and
+                 isinstance(score, (float, int)) and math.isfinite(score) and
+                 score >= self.min_similarity)
+        if not valid:
+            self.candidate_id, self.count = None, 0
+            self.last_confirm_at = None
+            if track.get('observation_strength') != 'strong' or track.get('association_ambiguous'):
+                self.wait_reason = 'body_ambiguous'
+            elif identity.get('state') != 'matched':
+                self.wait_reason = 'face_not_matched'
+            elif identity.get('id') != self.profile_id:
+                self.wait_reason = 'different_identity'
+            else:
+                self.wait_reason = 'face_similarity_low'
+            return None
+        same_recent = (ident == self.candidate_id and self.last_confirm_at is not None and
+                       0 <= now-self.last_confirm_at <= self.max_confirm_gap_s)
+        self.count = self.count + 1 if same_recent else 1
+        self.candidate_id = ident
+        self.last_confirm_at = now
+        self.wait_reason = 'confirming_face'
+        if self.count < self.required:
+            return None
+        self.cancel()
+        return ident

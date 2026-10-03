@@ -1,0 +1,5 @@
+{
+  "exit_code": 0,
+  "stdout": "Oct 03 19:32:20 ubuntu python3[48089]: person monitor startup: {'ok': True, 'message': '正在加载人体与人脸识别；不会控制车轮'}\n",
+  "stderr": ""
+}

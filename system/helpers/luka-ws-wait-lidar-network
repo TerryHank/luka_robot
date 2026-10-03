@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -eu
+
+for _ in $(seq 1 45); do
+  if ip -4 addr show dev eth0 2>/dev/null | grep -q '192.168.11.10/24' \
+    && ip -4 addr show dev eth1 2>/dev/null | grep -q '192.168.11.11/24' \
+    && [[ "$(cat /sys/class/net/eth0/carrier 2>/dev/null)" == 1 ]] \
+    && [[ "$(cat /sys/class/net/eth1/carrier 2>/dev/null)" == 1 ]]; then
+    exit 0
+  fi
+  sleep 1
+done
+
+echo 'Lidar Ethernet links or static addresses are not ready' >&2
+exit 1

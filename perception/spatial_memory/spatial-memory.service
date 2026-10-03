@@ -1,0 +1,23 @@
+[Unit]
+Description=Fixed-camera RGB-D object spatial memory
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=120
+StartLimitBurst=10
+
+[Service]
+Type=simple
+User=nvidia
+Group=nvidia
+SupplementaryGroups=video
+WorkingDirectory=/home/nvidia/spatial_memory
+Environment=PYTHONUNBUFFERED=1
+Environment=LD_LIBRARY_PATH=/usr/lib/aarch64-linux-gnu/nvidia:/usr/local/cuda/lib64
+ExecStart=/home/nvidia/spatial_memory/.venv/bin/python /home/nvidia/spatial_memory/app.py serve --backend gpu
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=15
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,189 @@
+{
+  "backup": "/home/sunrise/luka_migration_backups/20261003_183526",
+  "copied_files": 8183,
+  "rewritten_files": 164,
+  "comparison": [
+    {
+      "source": "ddsm_car_ws/src/ddsm_car_control",
+      "destination": "control/ddsm_car_control",
+      "same_before": 109,
+      "different_before": 0,
+      "missing_before": 6
+    },
+    {
+      "source": "ddsm_car_ws/src/teleop_twist_keyboard",
+      "destination": "control/teleop_twist_keyboard",
+      "same_before": 13,
+      "different_before": 0,
+      "missing_before": 0
+    },
+    {
+      "source": "ddsm_car_ws/src/hotel_semantic_map",
+      "destination": "map/hotel_semantic_map",
+      "same_before": 18,
+      "different_before": 0,
+      "missing_before": 0
+    },
+    {
+      "source": "ddsm_car_ws/src/hotel_semantic_map_msgs",
+      "destination": "map/hotel_semantic_map_msgs",
+      "same_before": 9,
+      "different_before": 0,
+      "missing_before": 0
+    },
+    {
+      "source": "ddsm_car_ws/src/waterplus_map_tools",
+      "destination": "map/waterplus_map_tools",
+      "same_before": 9,
+      "different_before": 0,
+      "missing_before": 0
+    },
+    {
+      "source": "ddsm_car_ws/src/m-explore-ros2/explore",
+      "destination": "planning/explore",
+      "same_before": 17,
+      "different_before": 0,
+      "missing_before": 0
+    },
+    {
+      "source": "ddsm_car_ws/src/m-explore-ros2/explore_lite_msgs",
+      "destination": "planning/explore_lite_msgs",
+      "same_before": 3,
+      "different_before": 0,
+      "missing_before": 0
+    },
+    {
+      "source": "ddsm_car_ws/src/m-explore-ros2/map_merge",
+      "destination": "map/map_merge",
+      "same_before": 32,
+      "different_before": 0,
+      "missing_before": 0
+    },
+    {
+      "source": "ddsm_car_ws/src/nav2_bringup",
+      "destination": "system/nav2_bringup",
+      "same_before": 4,
+      "different_before": 0,
+      "missing_before": 0
+    },
+    {
+      "source": "ddsm_car_ws/src/nav_llm_agent",
+      "destination": "system/nav_llm_agent",
+      "same_before": 44,
+      "different_before": 1,
+      "missing_before": 7
+    },
+    {
+      "source": "ddsm_car_ws/src/odin_ros_driver",
+      "destination": "sensing/odin_ros_driver",
+      "same_before": 51,
+      "different_before": 0,
+      "missing_before": 0,
+      "status_after": "excluded; removed from new workspace"
+    },
+    {
+      "source": "ddsm_car_ws/src/OrbbecSDK_ROS2",
+      "destination": "sensing/OrbbecSDK_ROS2",
+      "same_before": 219,
+      "different_before": 0,
+      "missing_before": 0
+    },
+    {
+      "source": "ddsm_car_ws/src/rplidar_ros",
+      "destination": "sensing/rplidar_ros",
+      "same_before": 110,
+      "different_before": 0,
+      "missing_before": 0
+    },
+    {
+      "source": "ddsm_car_ws/src/vision_opencv",
+      "destination": "perception/vision_opencv",
+      "same_before": 30,
+      "different_before": 0,
+      "missing_before": 0
+    },
+    {
+      "source": "ddsm_car_ws/tools",
+      "destination": "system/runtime/tools",
+      "existed_before": false
+    },
+    {
+      "source": "ddsm_car_ws/config",
+      "destination": "common/config",
+      "existed_before": false
+    },
+    {
+      "source": "ddsm_car_ws/maps",
+      "destination": "map/maps",
+      "existed_before": false
+    },
+    {
+      "source": "ddsm_car_ws/models",
+      "destination": "common/models",
+      "existed_before": false
+    },
+    {
+      "source": "ddsm_car_ws/vendor",
+      "destination": "common/vendor",
+      "existed_before": false
+    },
+    {
+      "source": "ddsm_car_ws/product",
+      "destination": "system/product",
+      "existed_before": false
+    },
+    {
+      "source": "ddsm_car_ws/music",
+      "destination": "system/music",
+      "existed_before": false
+    },
+    {
+      "source": "ddsm_car_ws/runtime",
+      "destination": "common/runtime",
+      "existed_before": false
+    },
+    {
+      "source": "ddsm_car_ws/scripts",
+      "destination": "system/scripts",
+      "existed_before": false
+    },
+    {
+      "source": "ddsm_car_ws/voice_tests",
+      "destination": "e2e/voice_tests",
+      "existed_before": false
+    },
+    {
+      "source": "nx_chat",
+      "destination": "system/nx_chat",
+      "existed_before": false
+    },
+    {
+      "source": "person_follow",
+      "destination": "perception/person_follow",
+      "existed_before": false
+    },
+    {
+      "source": "spatial_memory",
+      "destination": "perception/spatial_memory",
+      "existed_before": false
+    },
+    {
+      "source": "locateanything_trial_20260907",
+      "destination": "perception/locateanything_trial_20260907",
+      "existed_before": false
+    },
+    {
+      "source": "yoloe26_live",
+      "destination": "perception/yoloe26_live",
+      "existed_before": false
+    },
+    {
+      "source": "stereo_calibration",
+      "destination": "sensing/stereo_calibration",
+      "existed_before": false
+    }
+  ],
+  "excluded_by_user": [
+    "odin_ros_driver"
+  ]
+}

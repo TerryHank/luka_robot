@@ -1,0 +1,42 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "floor_2_unassigned",
+        "display_name": "Floor 2",
+        "area_type": "general",
+        "floor_id": "floor_2",
+        "priority": 0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -8.56,
+              -3.47
+            ],
+            [
+              3.6400000000000006,
+              -3.47
+            ],
+            [
+              3.6400000000000006,
+              3.1300000000000003
+            ],
+            [
+              -8.56,
+              3.1300000000000003
+            ],
+            [
+              -8.56,
+              -3.47
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

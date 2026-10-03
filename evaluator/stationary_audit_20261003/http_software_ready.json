@@ -1,0 +1,82 @@
+{
+  "/": {
+    "status": 200,
+    "bytes": 123269
+  },
+  "/user": {
+    "status": 200,
+    "bytes": 39199
+  },
+  "/product": {
+    "status": 200,
+    "bytes": 39199
+  },
+  "/help": {
+    "status": 200,
+    "bytes": 20476
+  },
+  "/assistant-help": {
+    "status": 200,
+    "bytes": 2710
+  },
+  "/api/functions/status": {
+    "status": 200,
+    "bytes": 2699
+  },
+  "/api/assistant/tools": {
+    "status": 200,
+    "bytes": 2253
+  },
+  "/api/patrol/route": {
+    "status": 200,
+    "bytes": 1972
+  },
+  "/api/patrol/status": {
+    "status": 200,
+    "bytes": 637
+  },
+  "/api/patrol/target": {
+    "status": 200,
+    "bytes": 67
+  },
+  "/api/localization/candidate": {
+    "status": 200,
+    "bytes": 553
+  },
+  "/api/localization/status": {
+    "status": 200,
+    "bytes": 583
+  },
+  "/api/nav/state": {
+    "status": 200,
+    "bytes": 26
+  },
+  "/api/follow/status": {
+    "status": 200,
+    "bytes": 818
+  },
+  "/api/voice/destinations": {
+    "status": 200,
+    "bytes": 1325
+  },
+  "/api/sonar/status": {
+    "status": 200,
+    "bytes": 186
+  },
+  "/api/music": {
+    "status": 200,
+    "bytes": 49
+  },
+  "/music-ui.js": {
+    "status": 200,
+    "bytes": 2380
+  },
+  "/voiceprint-ui.js": {
+    "status": 200,
+    "bytes": 3357
+  },
+  "/patrol-route.js": {
+    "status": 200,
+    "bytes": 5821
+  }
+}

@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <RecoveryNode number_of_retries="2" name="NavigateRecovery">
+      <PipelineSequence name="NavigateWithReplanning">
+        <ControllerSelector selected_controller="{selected_controller}" default_controller="FollowPath" topic_name="controller_selector" />
+        <PlannerSelector selected_planner="{selected_planner}" default_planner="GridBased" topic_name="planner_selector" />
+        <RateController hz="1.0">
+          <RecoveryNode number_of_retries="1" name="ComputePathToPose">
+            <ComputePathToPose goal="{goal}" path="{path}" planner_id="{selected_planner}" />
+            <Sequence name="ClearAndRetryPlanning">
+              <ClearEntireCostmap name="ClearLocalCostmap-Planning" service_name="local_costmap/clear_entirely_local_costmap" />
+              <ClearEntireCostmap name="ClearGlobalCostmap-Planning" service_name="global_costmap/clear_entirely_global_costmap" />
+            </Sequence>
+          </RecoveryNode>
+        </RateController>
+        <FollowPath path="{path}" controller_id="{selected_controller}" />
+      </PipelineSequence>
+      <Sequence>
+        <ReactiveFallback name="RecoveryFallback">
+          <GoalUpdated />
+          <RoundRobin name="RecoveryActions">
+            <Sequence name="WaitAndReplanFirst">
+              <Wait wait_duration="0.5" />
+              <ClearEntireCostmap name="ClearLocalBeforeReplan" service_name="local_costmap/clear_entirely_local_costmap" />
+              <ClearEntireCostmap name="ClearGlobalBeforeReplan" service_name="global_costmap/clear_entirely_global_costmap" />
+            </Sequence>
+            <Sequence name="PersistentBlockageBackup">
+              <Wait wait_duration="0.5" />
+              <BackUp backup_dist="0.06" backup_speed="0.12" />
+            </Sequence>
+            <Wait wait_duration="0.5" />
+          </RoundRobin>
+        </ReactiveFallback>
+      </Sequence>
+    </RecoveryNode>
+  </BehaviorTree>
+</root>

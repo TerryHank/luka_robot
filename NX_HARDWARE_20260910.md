@@ -1,0 +1,1 @@
+docs/legacy/NX_HARDWARE_20260910.md

@@ -1,0 +1,33 @@
+Starting >>> orbbec_camera_msgs
+--- stderr: orbbec_camera_msgs
+CMake Warning:
+  Manually-specified variables were not used by the project:
+
+    INSTALL_UDEV_RULES
+
+
+---
+[Processing: orbbec_camera_msgs]
+Finished <<< orbbec_camera_msgs [36.6s]
+Starting >>> orbbec_description
+--- stderr: orbbec_description
+CMake Warning:
+  Manually-specified variables were not used by the project:
+
+    INSTALL_UDEV_RULES
+
+
+---
+Finished <<< orbbec_description [1.54s]
+Starting >>> orbbec_camera
+[Processing: orbbec_camera]
+[Processing: orbbec_camera]
+[Processing: orbbec_camera]
+[Processing: orbbec_camera]
+[Processing: orbbec_camera]
+[Processing: orbbec_camera]
+[Processing: orbbec_camera]
+Finished <<< orbbec_camera [3min 39s]
+
+Summary: 3 packages finished [4min 18s]
+  2 packages had stderr output: orbbec_camera_msgs orbbec_description
