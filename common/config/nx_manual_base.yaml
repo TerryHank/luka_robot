@@ -4,9 +4,12 @@
     protocol: free
     firmware: x
     free_ack_writes: false
-    serial_timeout: 0.03
+    serial_timeout: 0.01
     cmd_freq: 20.0
-    feedback_freq: 10.0
+    feedback_freq: 20.0
+    odom_publish_freq: 30.0
+    feedback_stale_warn: 0.1
+    feedback_stale_error: 0.3
     feedback_enabled: true
     read_speed_feedback: false
     manual_cmd_vel_topic: /nx/gamepad_unverified_cmd_vel

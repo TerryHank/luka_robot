@@ -4,10 +4,13 @@ import math
 import time
 from dataclasses import dataclass
 from typing import Dict, Optional
+from threading import Event, Lock, Thread
 
 import rclpy
 from geometry_msgs.msg import Quaternion, TransformStamped, Twist
 from nav_msgs.msg import Odometry
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
 from std_msgs.msg import String
@@ -206,6 +209,9 @@ class ZDTMecanumRS485Bridge(Node):
         self.declare_parameter("motor_gear_ratio", 1.0)
         self.declare_parameter("cmd_freq", 20.0)
         self.declare_parameter("feedback_freq", 20.0)
+        self.declare_parameter("odom_publish_freq", 30.0)
+        self.declare_parameter("feedback_stale_warn", 0.1)
+        self.declare_parameter("feedback_stale_error", 0.3)
         self.declare_parameter("timeout", 0.4)
         self.declare_parameter("manual_override_timeout", 0.5)
         self.declare_parameter("manual_cmd_vel_topic", "cmd_vel")
@@ -280,6 +286,9 @@ class ZDTMecanumRS485Bridge(Node):
 
         cmd_freq = float(self.get_parameter("cmd_freq").value)
         feedback_freq = float(self.get_parameter("feedback_freq").value)
+        odom_publish_freq = float(self.get_parameter("odom_publish_freq").value)
+        self.feedback_stale_warn = float(self.get_parameter("feedback_stale_warn").value)
+        self.feedback_stale_error = float(self.get_parameter("feedback_stale_error").value)
         self.timeout = float(self.get_parameter("timeout").value)
         self.manual_override_timeout = float(
             self.get_parameter("manual_override_timeout").value
@@ -366,6 +375,17 @@ class ZDTMecanumRS485Bridge(Node):
         self.previous_motor_positions: Optional[Dict[int, float]] = None
         self.current_motor_rpm = {corner: 0 for corner in (1, 2, 3, 4)}
         self.latest_feedback_by_corner: Dict[int, ZDTMotorFeedback] = {}
+        self.feedback_lock = Lock()
+        self.feedback_stop = Event()
+        self.feedback_thread: Optional[Thread] = None
+        self.feedback_seq = 0
+        self.processed_feedback_seq = 0
+        self.latest_feedback_time: Optional[float] = None
+        self.last_feedback_cycle_s = 0.0
+        self.feedback_cache: Dict[int, ZDTMotorFeedback] = {}
+        self.feedback_cache_time: Dict[int, float] = {}
+        self.feedback_period_s = 1.0 / max(feedback_freq, 1.0)
+        self.last_odom_publish_monotonic: Optional[float] = None
         self.last_send_error = ""
         self.last_feedback_error = ""
         self.last_command_source = "no_cmd"
@@ -385,31 +405,43 @@ class ZDTMecanumRS485Bridge(Node):
         self.last_heading_pid_time = None
         self.last_heading_pid_diag = self._make_heading_pid_diag(False, "startup")
 
+        self.command_group = MutuallyExclusiveCallbackGroup()
+        self.odom_group = MutuallyExclusiveCallbackGroup()
+        self.sensor_group = MutuallyExclusiveCallbackGroup()
         self.manual_cmd_sub = self.create_subscription(
-            Twist, self.manual_cmd_vel_topic, self.on_manual_cmd_vel, 10
+            Twist, self.manual_cmd_vel_topic, self.on_manual_cmd_vel, 10,
+            callback_group=self.command_group,
         )
         self.nav_cmd_sub = self.create_subscription(
-            Twist, self.nav_cmd_vel_topic, self.on_nav_cmd_vel, 10
+            Twist, self.nav_cmd_vel_topic, self.on_nav_cmd_vel, 10,
+            callback_group=self.command_group,
         )
-        self.imu_sub = self.create_subscription(Imu, self.imu_topic, self.on_imu, 50)
+        self.imu_sub = self.create_subscription(
+            Imu, self.imu_topic, self.on_imu, 50, callback_group=self.sensor_group
+        )
         self.odom_pub = self.create_publisher(Odometry, "odom", 10)
         self.data_chain_pub = self.create_publisher(String, self.data_chain_topic, 10)
         self.tf_broadcaster = TransformBroadcaster(self) if self.publish_tf else None
         self.command_timer = self.create_timer(
-            1.0 / max(cmd_freq, 1.0),
-            self.on_command_timer,
+            1.0 / max(cmd_freq, 1.0), self.on_command_timer,
+            callback_group=self.command_group,
         )
-        self.feedback_timer = None
+        self.odom_timer = self.create_timer(
+            1.0 / max(odom_publish_freq, 1.0), self.on_odom_timer,
+            callback_group=self.odom_group,
+        )
         if self.feedback_enabled:
-            self.feedback_timer = self.create_timer(
-                1.0 / max(feedback_freq, 1.0),
-                self.on_feedback_timer,
+            self.feedback_thread = Thread(
+                target=self.feedback_worker, name="zdt-feedback", daemon=True
             )
+            self.feedback_thread.start()
         self.base_pause_srv = self.create_service(
-            EmptySrv, "/base_control/pause_now", self.on_base_pause
+            EmptySrv, "/base_control/pause_now", self.on_base_pause,
+            callback_group=self.command_group,
         )
         self.base_resume_srv = self.create_service(
-            EmptySrv, "/base_control/resume_now", self.on_base_resume
+            EmptySrv, "/base_control/resume_now", self.on_base_resume,
+            callback_group=self.command_group,
         )
 
         self.get_logger().info(
@@ -763,85 +795,104 @@ class ZDTMecanumRS485Bridge(Node):
             integrate_body_twist(self.odom, vx, vy, wz, dt)
         self.publish_odom_msg(now)
 
-    def on_feedback_timer(self) -> None:
-        if not self._ensure_bus():
-            return
-        feedback_by_corner: Dict[int, ZDTMotorFeedback] = {}
-        try:
-            assert self.bus is not None
-            for corner, address in self.id_by_corner.items():
-                feedback_by_corner[corner] = self.bus.read_feedback(
-                    address,
-                    read_speed=self.read_speed_feedback,
-                )
-        except Exception as exc:
-            self.get_logger().warn(
-                f"failed to read motor feedback: {exc}",
-                throttle_duration_sec=2.0,
-            )
-            self._mark_bus_failed(exc, "feedback")
-            return
+    def on_feedback_cycle(self, feedback_by_corner: Dict[int, ZDTMotorFeedback]) -> None:
+        """Hook for wrappers that need a fresh encoder watchdog timestamp."""
 
-        self.latest_feedback_by_corner = feedback_by_corner
-        invalid = [
-            f"{corner}:{feedback.error}"
-            for corner, feedback in feedback_by_corner.items()
-            if not feedback.valid or feedback.position_degrees is None
-        ]
-        if invalid:
-            self.last_feedback_error = "; ".join(invalid)
-            self.get_logger().warn(
-                f"invalid motor feedback: {self.last_feedback_error}",
-                throttle_duration_sec=2.0,
-            )
-            self.previous_motor_positions = None
-            now = self.get_clock().now()
-            self.publish_command_integrated_odom(
-                now,
-                self.last_odom_vx,
-                self.last_odom_vy,
-                self.last_odom_wz,
-            )
-            self.publish_data_chain_msg()
-            return
-        self.last_feedback_error = ""
+    def feedback_worker(self) -> None:
+        """Read the blocking RS485 bus without delaying the ROS odom timer."""
+        while not self.feedback_stop.is_set():
+            cycle_started = time.monotonic()
+            if not self._ensure_bus():
+                self.feedback_stop.wait(min(self.feedback_period_s, 0.1))
+                continue
+            readings: Dict[int, ZDTMotorFeedback] = {}
+            try:
+                bus = self.bus
+                if bus is None:
+                    continue
+                for corner, address in self.id_by_corner.items():
+                    readings[corner] = bus.read_feedback(
+                        address, read_speed=self.read_speed_feedback
+                    )
+            except Exception as exc:
+                self.last_feedback_error = str(exc)
+                self._mark_bus_failed(exc, "feedback")
+                self.feedback_stop.wait(min(self.feedback_period_s, 0.1))
+                continue
 
+            now_mono = time.monotonic()
+            invalid = []
+            combined: Dict[int, ZDTMotorFeedback] = {}
+            with self.feedback_lock:
+                for corner in (1, 2, 3, 4):
+                    feedback = readings.get(
+                        corner,
+                        ZDTMotorFeedback(
+                            address=self.id_by_corner[corner],
+                            valid=False, error="no_feedback", stamp=now_mono,
+                        ),
+                    )
+                    if feedback.valid and feedback.position_degrees is not None:
+                        self.feedback_cache[corner] = feedback
+                        self.feedback_cache_time[corner] = now_mono
+                        combined[corner] = feedback
+                        continue
+                    cached = self.feedback_cache.get(corner)
+                    cached_at = self.feedback_cache_time.get(corner, 0.0)
+                    if (cached is not None and
+                            0.0 <= now_mono - cached_at < self.feedback_stale_error):
+                        combined[corner] = ZDTMotorFeedback(
+                            address=cached.address,
+                            position_degrees=cached.position_degrees,
+                            speed_rpm=cached.speed_rpm,
+                            valid=True, error="cached_last_valid", stamp=cached_at,
+                        )
+                    else:
+                        combined[corner] = feedback
+                        invalid.append(f"{corner}:{feedback.error or 'invalid'}")
+                self.latest_feedback_by_corner = combined
+                self.latest_feedback_time = now_mono
+                self.feedback_seq += 1
+                self.last_feedback_cycle_s = now_mono - cycle_started
+                self.last_feedback_error = "; ".join(invalid)
+            self.on_feedback_cycle(combined)
+
+            self.feedback_stop.wait(
+                max(0.0, self.feedback_period_s - (time.monotonic() - cycle_started))
+            )
+
+    def _integrate_feedback(self, now, feedback_by_corner: Dict[int, ZDTMotorFeedback]) -> bool:
+        if any(
+            corner not in feedback_by_corner
+            or not feedback_by_corner[corner].valid
+            or feedback_by_corner[corner].position_degrees is None
+            for corner in (1, 2, 3, 4)
+        ):
+            return False
         current_positions = {
-            corner: float(feedback.position_degrees)
-            for corner, feedback in feedback_by_corner.items()
+            corner: float(feedback_by_corner[corner].position_degrees)
+            for corner in (1, 2, 3, 4)
         }
-        now = self.get_clock().now()
         if self.previous_motor_positions is None:
             self.previous_motor_positions = current_positions
             self.latest_odom_time = now
-            self.publish_odom_msg(now)
-            self.publish_data_chain_msg()
-            return
-
-        if self.latest_odom_time is None:
-            dt = 1e-3
-        else:
-            dt = max((now - self.latest_odom_time).nanoseconds / 1e9, 1e-3)
+            return True
+        dt = (
+            max((now - self.latest_odom_time).nanoseconds / 1e9, 1e-3)
+            if self.latest_odom_time is not None else 1e-3
+        )
         self.latest_odom_time = now
-
         motor_delta = {}
         for corner in (1, 2, 3, 4):
             previous = self.previous_motor_positions[corner]
             current = current_positions[corner]
-            if self.position_wrap_degrees > 0.0:
-                motor_delta[corner] = unwrap_degrees(
-                    previous,
-                    current,
-                    period_degrees=self.position_wrap_degrees,
-                )
-            else:
-                motor_delta[corner] = current - previous
+            motor_delta[corner] = (
+                unwrap_degrees(previous, current, period_degrees=self.position_wrap_degrees)
+                if self.position_wrap_degrees > 0.0 else current - previous
+            )
         self.previous_motor_positions = current_positions
-
         dx_body, dy_body, dyaw = motor_delta_degrees_to_body_delta(
-            motor_delta,
-            self.geometry,
-            self.motor_directions,
+            motor_delta, self.geometry, self.motor_directions
         )
         dyaw *= self.mecanum_angular_direction
         yaw_mid = self.odom.yaw + 0.5 * dyaw
@@ -852,7 +903,42 @@ class ZDTMecanumRS485Bridge(Node):
         self.odom.vy = dy_body / dt
         self.odom.wz = dyaw / dt
         self.odom.seq += 1
+        return True
 
+    def on_odom_timer(self) -> None:
+        """Publish odom/TF at a fixed rate, independent of serial read latency."""
+        now = self.get_clock().now()
+        now_mono = time.monotonic()
+        with self.feedback_lock:
+            feedback_by_corner = dict(self.latest_feedback_by_corner)
+            feedback_seq = self.feedback_seq
+        processed = feedback_seq != self.processed_feedback_seq
+        if processed:
+            self._integrate_feedback(now, feedback_by_corner)
+            self.processed_feedback_seq = feedback_seq
+            self.last_odom_publish_monotonic = now_mono
+        else:
+            valid_stamps = [
+                feedback.stamp for feedback in feedback_by_corner.values()
+                if feedback.valid and feedback.stamp > 0.0
+            ]
+            age_s = now_mono - min(valid_stamps) if valid_stamps else float("inf")
+            if valid_stamps and age_s < self.feedback_stale_error:
+                if (age_s >= self.feedback_stale_warn and
+                        self.last_odom_publish_monotonic is not None):
+                    dt = max(now_mono - self.last_odom_publish_monotonic, 0.0)
+                    integrate_body_twist(
+                        self.odom, self.last_odom_vx, self.last_odom_vy,
+                        self.last_odom_wz, dt,
+                    )
+                    self.latest_odom_time = now
+            else:
+                self.previous_motor_positions = None
+                self.last_feedback_error = (
+                    f"feedback_stale:{age_s:.3f}s" if math.isfinite(age_s)
+                    else "feedback_unavailable"
+                )
+            self.last_odom_publish_monotonic = now_mono
         self.publish_odom_msg(now)
         self.publish_data_chain_msg()
 
@@ -892,8 +978,10 @@ class ZDTMecanumRS485Bridge(Node):
 
     def _feedback_payload(self) -> list[dict]:
         payload = []
+        with self.feedback_lock:
+            feedback_by_corner = dict(self.latest_feedback_by_corner)
         for corner in (1, 2, 3, 4):
-            feedback = self.latest_feedback_by_corner.get(corner)
+            feedback = feedback_by_corner.get(corner)
             if feedback is None:
                 payload.append(
                     {
@@ -1022,6 +1110,9 @@ class ZDTMecanumRS485Bridge(Node):
 
     def destroy_node(self) -> None:
         self.get_logger().info("Stopping ZDT motors and closing RS485 bus...")
+        self.feedback_stop.set()
+        if self.feedback_thread is not None:
+            self.feedback_thread.join(timeout=1.0)
         if self.bus is not None:
             try:
                 for _ in range(3):
@@ -1039,7 +1130,9 @@ def main(args=None) -> None:
     node = None
     try:
         node = ZDTMecanumRS485Bridge()
-        rclpy.spin(node)
+        executor = MultiThreadedExecutor(num_threads=4)
+        executor.add_node(node)
+        executor.spin()
     except KeyboardInterrupt:
         pass
     finally:

@@ -24,6 +24,6 @@ def selected_observation(state, request_age=0.0):
             or len(xyz) != 3 or not all(math.isfinite(v) for v in xyz + sizes)
             or min(xyz[2], *sizes) <= 0):
         return None, 'invalid_seg_depth'
-    if row.get('confidence', 0) < .7 or sizes[0] < .3 or sizes[1] < .5:
+    if row.get('confidence', 0) < .5 or sizes[0] < .3 or sizes[1] < .5:
         return None, 'official_target_filter'
     return row, 'selected_seg_depth_valid'

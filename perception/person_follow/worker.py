@@ -270,6 +270,7 @@ class Monitor:
         # The V1 following pipeline deliberately does not use appearance ReID.
         # Keep this opt-in so the default path cannot load or run OSNet.
         self.appearance_reid_enabled = os.getenv('NX_APPEARANCE_REID_ENABLED', '0') == '1'
+        self.auto_select_first_person = os.getenv('NX_AUTO_SELECT_FIRST_PERSON', '0') == '1'
         self.tracker = ConservativeTracker(occlusion_reid=self.appearance_reid_enabled)
         self.target_session = TargetSession()
         # Keep an enrolled follower parked while its face is briefly out of
@@ -487,6 +488,15 @@ class Monitor:
                 tracks = self.tracker.update(detections, time.monotonic(),
                                              appearance_embeddings=appearance_embeddings)
             ids = {row['track_id'] for row in tracks}
+            if self.auto_select_first_person and self.tracker.selected_track_id is None:
+                candidates = [row for row in tracks
+                              if row.get('class', 'person') == 'person'
+                              and row.get('visible') is not False
+                              and not row.get('association_ambiguous')
+                              and row.get('observation_strength') == 'strong']
+                if candidates:
+                    self.tracker.select(candidates[0]['track_id'])
+                    self.target_session.reset('auto_selected')
             self.recognizer.prune(ids)
             self.recent_face_confirmed = {ident: proof for ident, proof in self.recent_face_confirmed.items()
                                           if ident in ids and time.monotonic() - proof[1] <= 5.0}

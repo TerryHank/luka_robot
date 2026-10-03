@@ -292,10 +292,9 @@ class ManualBase(ZDTMecanumRS485Bridge):
         # Do not turn failed encoder reads into apparently measured movement.
         self.feedback_at=0.
 
-    def on_feedback_timer(self):
-        super().on_feedback_timer()
+    def on_feedback_cycle(self, feedback_by_corner):
         if self.bus is not None and not self.last_feedback_error and not self.last_send_error:
-            if self.latest_feedback_by_corner and all(f.valid for f in self.latest_feedback_by_corner.values()):
+            if feedback_by_corner and all(f.valid for f in feedback_by_corner.values()):
                 self.feedback_at=time.monotonic()
 
     def checkpoint(self):

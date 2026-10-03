@@ -20,7 +20,7 @@ def generate_launch_description():
     )
     serial_timeout_arg = DeclareLaunchArgument(
         "serial_timeout",
-        default_value="0.03",
+        default_value="0.01",
         description="Serial read timeout in seconds",
     )
     protocol_arg = DeclareLaunchArgument(
@@ -97,6 +97,21 @@ def generate_launch_description():
         "feedback_freq",
         default_value="20.0",
         description="Motor position polling frequency in Hz",
+    )
+    odom_publish_freq_arg = DeclareLaunchArgument(
+        "odom_publish_freq",
+        default_value="30.0",
+        description="Independent odometry and odom TF publication frequency in Hz",
+    )
+    feedback_stale_warn_arg = DeclareLaunchArgument(
+        "feedback_stale_warn",
+        default_value="0.1",
+        description="Warn/predict threshold for stale motor feedback in seconds",
+    )
+    feedback_stale_error_arg = DeclareLaunchArgument(
+        "feedback_stale_error",
+        default_value="0.3",
+        description="Error threshold for stale motor feedback in seconds",
     )
     timeout_arg = DeclareLaunchArgument(
         "timeout",
@@ -302,6 +317,15 @@ def generate_launch_description():
                 "feedback_freq": ParameterValue(
                     LaunchConfiguration("feedback_freq"), value_type=float
                 ),
+                "odom_publish_freq": ParameterValue(
+                    LaunchConfiguration("odom_publish_freq"), value_type=float
+                ),
+                "feedback_stale_warn": ParameterValue(
+                    LaunchConfiguration("feedback_stale_warn"), value_type=float
+                ),
+                "feedback_stale_error": ParameterValue(
+                    LaunchConfiguration("feedback_stale_error"), value_type=float
+                ),
                 "timeout": ParameterValue(
                     LaunchConfiguration("timeout"), value_type=float
                 ),
@@ -425,6 +449,9 @@ def generate_launch_description():
             motor_gear_ratio_arg,
             cmd_freq_arg,
             feedback_freq_arg,
+            odom_publish_freq_arg,
+            feedback_stale_warn_arg,
+            feedback_stale_error_arg,
             timeout_arg,
             manual_override_timeout_arg,
             max_linear_speed_arg,

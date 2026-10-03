@@ -10,6 +10,7 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('dry_run', default_value='true', choices=['true', 'false']),
         DeclareLaunchArgument('status_url', default_value='http://127.0.0.1:8098/api/people/follow-state'),
+        DeclareLaunchArgument('auto_select_first_person', default_value='true', choices=['true', 'false']),
         DeclareLaunchArgument('publish_camera_mount', default_value='true', choices=['true', 'false']),
         # The installed planar odometry publishes base_link at ground height (z=0).
         Node(package='tf2_ros', executable='static_transform_publisher', name='body_ground_projection',
@@ -22,7 +23,8 @@ def generate_launch_description():
              arguments=['--x','0','--y','0','--z','0.70','--roll','0','--pitch','0','--yaw','0',
                         '--frame-id','base_footprint','--child-frame-id','camera_link']),
         Node(package='luka_person_following', executable='selected_bridge', output='screen',
-             parameters=[{'status_url': LaunchConfiguration('status_url')}]),
+             parameters=[{'status_url': LaunchConfiguration('status_url'),
+                           'auto_select_first_person': LaunchConfiguration('auto_select_first_person')}]),
         Node(package='tros_person_following', executable='tros_person_following',
              namespace='luka_person_following/official', output='screen',
              parameters=[{'detect_result_topic_name': '/luka/selected_seg_targets',
