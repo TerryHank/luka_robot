@@ -1,4 +1,5 @@
 """Adapt existing BPU/GUI observations; never perform a second inference."""
+import copy
 import json
 import time
 from urllib.request import urlopen
@@ -38,6 +39,14 @@ class SelectedBridge(Node):
         self.robot_tf_ready = False
         self.reason = 'starting'
         self.disarm_reason = None
+        self.current_block_reason = None
+        self.last_disarm_reason = None
+        self.last_disarm_time = None
+        self.last_valid_row = None
+        self.last_valid_track_id = None
+        self.last_valid_mono = None
+        self.depth_invalid_grace_sec = float(self.declare_parameter('depth_invalid_grace_sec', .25).value)
+        self.max_depth_jump_m = float(self.declare_parameter('max_depth_jump_m', .6).value)
         self.create_timer(.125, self.poll)
 
     def camera_info(self, msg):
@@ -49,7 +58,8 @@ class SelectedBridge(Node):
             response.message = 'Cannot enable: ' + (self.reason if not self.valid else 'map/base/camera TF or controller unavailable')
         else:
             self.desired = request.data
-            self.disarm_reason = None if request.data else 'manual_disable'
+            self.current_block_reason = None if request.data else 'manual_disable'
+            self.disarm_reason = self.current_block_reason
             response.success = True
             response.message = 'Enable requested' if request.data else 'Disable requested'
         return response
@@ -81,9 +91,34 @@ class SelectedBridge(Node):
             with urlopen(self.url, timeout=.25) as response:
                 state = json.load(response)
             row, self.reason = selected_observation(state, time.monotonic() - started)
+            held = False
+            state_selected_id = state.get('selected_track_id')
+            if (row is None and self.reason in ('invalid_seg_depth', 'depth_jump_rejected')
+                    and self.last_valid_row is not None
+                    and state_selected_id == self.last_valid_track_id
+                    and self.last_valid_mono is not None
+                    and time.monotonic() - self.last_valid_mono <= self.depth_invalid_grace_sec):
+                row = copy.deepcopy(self.last_valid_row)
+                self.reason = 'selected_seg_depth_held'
+                held = True
             auto_single_person = (self.auto_select_first_person and
                                   len([item for item in state.get('tracks', [])
                                        if item.get('class', 'person') == 'person']) == 1)
+            if row is not None and not held and self.last_valid_row is not None:
+                old_geo = self.last_valid_row.get('depth_diagnostic') or {}
+                new_geo = row.get('depth_diagnostic') or {}
+                old_xyz, new_xyz = old_geo.get('position_optical_m'), new_geo.get('position_optical_m')
+                if (isinstance(old_xyz, list) and len(old_xyz) == 3 and
+                        isinstance(new_xyz, list) and len(new_xyz) == 3 and
+                        abs(float(new_xyz[2]) - float(old_xyz[2])) > self.max_depth_jump_m):
+                    row = None
+                    self.reason = 'depth_jump_rejected'
+                    if (state_selected_id == self.last_valid_track_id and
+                            self.last_valid_mono is not None and
+                            time.monotonic() - self.last_valid_mono <= self.depth_invalid_grace_sec):
+                        row = copy.deepcopy(self.last_valid_row)
+                        self.reason = 'selected_seg_depth_held'
+                        held = True
             if row is not None:
                 point = PointStamped()
                 point.header.frame_id = self.optical_frame or ''
@@ -93,6 +128,10 @@ class SelectedBridge(Node):
                 p = do_transform_point(point, transform).point
                 if not (.1 <= p.x <= 4.0 and -3.0 <= p.y <= 3.0):
                     raise ValueError('Selected point outside official following range')
+                if not held:
+                    self.last_valid_row = copy.deepcopy(row)
+                    self.last_valid_track_id = int(row['track_id'])
+                    self.last_valid_mono = time.monotonic()
                 target = Target()
                 target.type, target.track_id = 'person', int(row['track_id'])
                 roi = Roi()
@@ -129,7 +168,14 @@ class SelectedBridge(Node):
             disarm_reason = 'track_id_changed'
         if disarm_reason is not None:
             self.desired = False
+            self.current_block_reason = disarm_reason
             self.disarm_reason = disarm_reason
+            if disarm_reason != self.last_disarm_reason:
+                self.last_disarm_reason = disarm_reason
+                self.last_disarm_time = time.time()
+        elif self.desired:
+            self.current_block_reason = None
+            self.disarm_reason = None
         self.last_id = current_id
         self.sync_enable()
         # Finish cancellation before delivering a changed ID or empty frame to
@@ -140,7 +186,11 @@ class SelectedBridge(Node):
                       enabled_requested=self.desired, enabled_applied=self.applied,
                       robot_tf_ready=self.robot_tf_ready,
                       depth_method='seg_valid_trimmed_mean', optical_frame=self.optical_frame,
-                      disarm_reason=self.disarm_reason)
+                      disarm_reason=self.current_block_reason,
+                      current_block_reason=self.current_block_reason,
+                      last_disarm_reason=self.last_disarm_reason,
+                      last_disarm_time=self.last_disarm_time,
+                      depth_hold=(self.reason == 'selected_seg_depth_held'))
         self.diag.publish(String(data=json.dumps(status)))
 
 

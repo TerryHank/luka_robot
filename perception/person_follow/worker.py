@@ -698,6 +698,7 @@ class Monitor:
                     raise RuntimeError('设备内存接近上限，已停止人体识别并释放模型')
                 try:
                     zoom_image = None
+                    camera_depth_reason = 'rgbd_sync_valid'
                     if stereo is not None:
                         sample = stereo.newest(after=last_frame)
                         if sample is None:
@@ -713,6 +714,7 @@ class Monitor:
                         skew = None
                         intrinsics = None
                         metric_depth_available = False
+                        camera_depth_reason = 'stereo_not_calibrated'
                         full_fov_people = False
                     else:
                         raw, _ = fetch('/api/people/camera?zoom=0', timeout=.8)
@@ -734,6 +736,10 @@ class Monitor:
                             depth = packet['depth'].astype(np.float32) / 1000
                             metric_depth_available = (bool(packet['metric_depth_available'])
                                 if 'metric_depth_available' in packet else self.camera_source == 'orbbec')
+                            if 'depth_reason' in packet:
+                                camera_depth_reason = str(packet['depth_reason'].item())
+                            elif not metric_depth_available:
+                                camera_depth_reason = 'camera_not_calibrated'
                             full_fov_people = (bool(packet['full_fov_people'])
                                 if 'full_fov_people' in packet else False)
                             values, skew = packet['intrinsic'].copy(), float(packet['skew'])
@@ -781,7 +787,7 @@ class Monitor:
                                                    intrinsics['fx'])
                                         if intrinsics and intrinsics['fx'] > 0 else None)
                         if not metric_depth_available:
-                            geo = {'valid': False, 'reason': 'stereo_not_calibrated'}
+                            geo = {'valid': False, 'reason': camera_depth_reason or 'camera_not_calibrated'}
                         elif requested == 'yolo26_seg':
                             geo = seg_mean_geometry(depth, row['bbox'], row.get('person_mask'), intrinsics, skew, trim_ratio=.15, min_depth_m=.3, max_depth_m=6.0)
                         elif self.camera_source == 'orbbec':

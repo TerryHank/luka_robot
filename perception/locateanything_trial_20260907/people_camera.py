@@ -17,6 +17,10 @@ def camera_packet(camera, include_zoom=True):
     if sample is None:
         raise ValueError('相机尚无画面')
     stamp, monotonic_stamp, rgb, depth, skew = sample
+    rgb_stamp = getattr(camera, 'rgb_stamp', stamp)
+    depth_stamp = getattr(camera, 'depth_stamp', stamp)
+    rgbd_dt_ms = getattr(camera, 'rgbd_dt_ms', skew * 1000.0)
+    depth_reason = getattr(camera, 'depth_reason', 'rgbd_sync_valid')
     age = time.monotonic() - monotonic_stamp
     # Passive stereo rectification runs before this packet is available. The
     # source timestamp remains the capture time; allow bounded processing
@@ -55,7 +59,9 @@ def camera_packet(camera, include_zoom=True):
         np.savez(buffer, jpeg=jpeg, face_jpeg=high_jpeg, zoom_jpeg=zoom_jpeg,
                  depth=depth.astype(np.uint16, copy=False),
                  stamp=np.float64(stamp), monotonic_stamp=np.float64(monotonic_stamp),
-                 skew=np.float64(skew), intrinsic=np.asarray(
+                 skew=np.float64(skew), rgb_stamp=np.float64(rgb_stamp),
+                 depth_stamp=np.float64(depth_stamp), rgbd_dt_ms=np.float64(rgbd_dt_ms),
+                 depth_reason=np.asarray(depth_reason), intrinsic=np.asarray(
                      getattr(camera, 'people_calibration', camera.calibration)['color']),
                  distortion=np.asarray(
                      getattr(camera, 'people_calibration', camera.calibration)['color_dist']),
