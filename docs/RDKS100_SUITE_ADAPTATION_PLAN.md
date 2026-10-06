@@ -1252,8 +1252,8 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 [x] P2 抽象 YOLO26 runtime
 [x] P2 接入 rdk_model_zoo_s runtime
 [ ] P2 完成 legacy/drobotics parity test
-[ ] P3 ROS 原生发布 ai_msgs/PerceptionTargets
-[ ] P3 将 HTTP follow-state 改为只读镜像
+[x] P3 ROS 原生发布 ai_msgs/PerceptionTargets
+[x] P3 将 HTTP follow-state 改为只读镜像
 [ ] P4 重构 luka_person_following 为 Target Gate
 [ ] P4 完成 fail-close 单测
 [ ] P5 接入 official MOT automatic 模式
@@ -1333,3 +1333,16 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 - Seg Depth、person filter、Target/Identity 等 Luka 产品逻辑均未迁入 vendor runtime。
 - 已新增 `evaluator/suite/test_yolo_runtime_parity.py`；纯几何 helper 已做静态/语法验证，实际 BPU 双后端同帧 parity 必须在物理 S100 上执行后才能勾选对应 checklist。
 - P2 未允许真实运动。
+
+
+### P3 — 人体观测 ROS 原生化
+
+状态：**代码完成；板端 ROS topic 实测待物理 S100。**
+
+- 人体 worker 直接发布 `/luka/perception/person_targets`、`/luka/perception/selected_track_id`、`/luka/perception/person_diagnostics`。
+- `person_targets` 使用官方 `ai_msgs/msg/PerceptionTargets`，携带 bbox、track ID、optical XYZ、投影尺寸及质量状态。
+- 通用感知消息不携带姓名、人脸特征、声纹或产品账号信息。
+- 相机/推理失效发布空 targets，保持 fail-closed。
+- `/api/people/follow-state` 保留为兼容视图；P4 切断 follow bridge 对它的轮询依赖。
+- ROS publisher 失败不会触发运动，也不会移除 legacy 路径。
+- P3 未允许真实运动。
