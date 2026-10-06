@@ -1259,7 +1259,7 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 [x] P5 接入 official MOT automatic 模式
 [x] P5 保留 selected 模式
 [ ] P6 完成 official follow dry-run
-[ ] P6 确认所有速度经过 Luka safety chain
+[x] P6 确认所有速度经过 Luka safety chain
 [ ] P7 增加 sensevoice_ros2 backend
 [ ] P7 增加 hobot_tts backend
 [ ] P8 抽象 LLMBackend
@@ -1372,3 +1372,17 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 - official MOT track ID 明确只作为轨迹 ID，不宣称永久身份或 ReID。
 - 任意 ID 变化仍 fail-closed。
 - P5 未允许真实运动。
+
+
+### P6 — 官方跟随与安全链
+
+状态：**代码与静态安全契约完成；ROS_DOMAIN_ID=88 的 official follow dry-run 待物理 S100/完整 ROS 环境执行。**
+
+- 官方 `tros_person_following` 保持唯一跟随状态机。
+- real 模式的官方 direct turn/stop `cmd_vel_topic` 已从危险的 `/cmd_vel` 改为 `/nx/nav_smoothed`，之后继续经过 heading guard、collision monitor、`/nx/nav_safe` 才进入 DDSM 底盘。
+- Nav2 路径保持原 Luka Nav2 安全链。
+- 跟随距离、goal rate/deadzone、LOST timeout 显式锁定；selected 默认关闭 IDLE 自转搜索。
+- dry-run 默认仍为 true，fake action/cmd_vel 端点保持隔离。
+- 已增加静态安全契约测试，防止后续回归为 real `/cmd_vel` 直出。
+- 当前无板端 shell，因此没有伪造 official follow ROS dry-run 结果；计划中的 `P6 完成 official follow dry-run` 保持未勾选，必须在 S100 上执行后补录。
+- P6 未允许真实运动。

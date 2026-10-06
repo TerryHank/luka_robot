@@ -98,6 +98,13 @@ def generate_launch_description():
                 'target_filter_range_y_max': 3.0,
                 'follow_distance_min': 1.8,
                 'follow_distance_max': 2.0,
+                'follow_hysteresis': 0.1,
+                'follow_min_safe_distance': 0.5,
+                'follow_goal_pub_rate': 2.5,
+                'follow_goal_dist_deadzone': 0.3,
+                'follow_goal_yaw_deadzone': 0.6,
+                'tracking_to_lost_timeout_sec': 1.0,
+                'lost_to_idle_timeout_sec': 5.0,
                 'idle_search_total_timeout_sec': 0.0,
                 'navigate_to_pose_action_name': PythonExpression([
                     "'/luka_follow_dryrun/navigate_to_pose' if '",
@@ -107,7 +114,7 @@ def generate_launch_description():
                 'cmd_vel_topic': PythonExpression([
                     "'/luka_follow_dryrun/cmd_vel' if '",
                     dry,
-                    "' == 'true' else '/cmd_vel'"
+                    "' == 'true' else '/nx/nav_smoothed'"
                 ]),
             }],
             remappings=[
