@@ -1265,7 +1265,7 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 [x] P8 抽象 LLMBackend
 [x] P8 接入 hobot_xlm
 [x] P8 接入 hobot_llamacpp fallback
-[ ] P9 保持 YOLOE/LocateAnything 能力不降级
+[x] P9 保持 YOLOE/LocateAnything 能力不降级
 [ ] P10 轮子悬空测试
 [ ] P10 地面低速测试
 [ ] P10 多人交叉测试
@@ -1414,3 +1414,17 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 - 任一 provider crash/timeout 只进入下一 backend；全失败只返回 LLM error，不执行动作。
 - 新增 fallback 顺序、prompt 格式和“backend 层不得包含运动 API”测试。
 - P8 未允许真实运动。
+
+
+### P9 — Object / YOLOE / Spatial Memory
+
+状态：**能力保护与 adapter 边界完成；未做能力降级替换。**
+
+- 保留 `perception/yoloe26_live`、`perception/locateanything_trial_20260907`、`perception/spatial_memory` 和现有 Object API。
+- S100 person Object API 继续保持 `/health`、`/model/unload`、`/infer_image` 外部契约；内部已通过 P2 的 `Yolo26PersonSegmenter` facade 支持 runtime adapter。
+- Object API 新增 requested/active runtime 诊断，不删除或重命名兼容字段。
+- 新增 capability promotion gate：官方 provider 只有同时满足 S100、API 兼容、产品所需能力、现场精度不下降、实时性能合格时才允许替换现有实现。
+- person-only YOLO26 不具备文本开放词汇、动态多类、录像检索或空间记忆语义，因此明确禁止用它冒充 YOLOE/LocateAnything/Spatial Memory 的等价替代。
+- 在没有经过现场验收的官方等价实现前，旧能力继续保留并可回滚。
+- 新增静态/纯逻辑回归测试，验证关键模块和 HTTP endpoint 保留以及不等价 provider 无法 promotion。
+- P9 未允许、未执行任何真实运动。
