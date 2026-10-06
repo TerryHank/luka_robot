@@ -37,6 +37,7 @@ from nav_llm_agent.floor_transfer import (
     state_from_target,
 )
 from nav_llm_agent.llm_client import OllamaClient
+from nav_llm_agent.llm import create_llm_backend
 from nav_llm_agent.waypoint_store import default_waypoints_path, load_waypoints
 from nav_llm_agent.workflow_engine import WorkflowEngine
 
@@ -277,6 +278,9 @@ class NavLlmAgent(Node):
         self.declare_parameter("ollama_url", "http://127.0.0.1:8080")
         self.declare_parameter("model", "qwen2.5-1.5b")
         self.declare_parameter("llm_api", "openai")
+        self.declare_parameter("llm_backend", "ollama")
+        self.declare_parameter("llm_fallbacks", "")
+        self.declare_parameter("llm_backend_timeout_sec", 12.0)
         self.declare_parameter("temperature", 0.1)
         self.declare_parameter("num_ctx", 3072)
         self.declare_parameter("max_tokens", 160)
@@ -343,7 +347,7 @@ class NavLlmAgent(Node):
         self._transfer_state = load_transfer_state(self._transfer_state_file)
         self._resume_checked = False
 
-        self._client = OllamaClient(
+        self._legacy_client = OllamaClient(
             base_url=str(self.get_parameter("ollama_url").value),
             model=str(self.get_parameter("model").value),
             temperature=float(self.get_parameter("temperature").value),
@@ -353,9 +357,19 @@ class NavLlmAgent(Node):
             api=str(self.get_parameter("llm_api").value),
             max_tokens=int(self.get_parameter("max_tokens").value),
         )
+        self._client = create_llm_backend(
+            self,
+            primary=str(self.get_parameter("llm_backend").value),
+            fallbacks=str(self.get_parameter("llm_fallbacks").value),
+            ollama_client=self._legacy_client,
+            timeout_sec=float(self.get_parameter("llm_backend_timeout_sec").value),
+        )
         chat_key_name = str(self.get_parameter("chat_api_key_env").value)
         chat_api_key = load_chat_api_key(chat_key_name)
-        self._chat_provider = "qwen3.6-flash" if chat_api_key else "local"
+        self._chat_provider = (
+            "qwen3.6-flash" if chat_api_key
+            else getattr(self._client, "name", "local")
+        )
         self._chat_client = OllamaClient(
             base_url=str(self.get_parameter("chat_url").value),
             model=str(self.get_parameter("chat_model").value),

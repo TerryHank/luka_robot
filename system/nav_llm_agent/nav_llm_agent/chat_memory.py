@@ -4,6 +4,7 @@ import json
 import re
 import urllib.request
 
+
 class ChatMemory:
     def __init__(self):
         self.turns=[]
@@ -24,14 +25,18 @@ class ChatMemory:
         return result
 
     def add(self,user,answer):
-        # Keep enough of a turn for natural follow-up questions.  This is a
-        # bounded conversation buffer, not a speech-length limit.
         self.turns.append((user[:800],answer[:2400]))
         while len(self.turns)>8 or sum(len(u)+len(a) for u,a in self.turns)>7200:
             self.turns.pop(0)
         self.updated=time.monotonic()
 
+
 def chat_with_messages(client,messages):
+    if hasattr(client, 'generate'):
+        answer=client.generate(messages)
+        if not isinstance(answer,str) or not answer.strip():
+            raise ValueError('empty chat response')
+        return answer
     if client.api=='openai':
         path='/chat/completions' if client.base_url.endswith('/v1') else '/v1/chat/completions'
         body=client._post(path,{'model':client.model,'messages':messages,'stream':False,
@@ -45,8 +50,17 @@ def chat_with_messages(client,messages):
     if not isinstance(answer,str) or not answer.strip():raise ValueError('empty chat response')
     return answer
 
+
 def stream_chat_with_messages(client, messages, on_sentence):
-    """Emit an early first clause, then stream complete sentences without truncation."""
+    """Emit early clauses when supported; otherwise preserve backend output."""
+    if hasattr(client, 'stream_generate'):
+        return client.stream_generate(messages, on_sentence)
+    if hasattr(client, 'generate'):
+        answer=client.generate(messages)
+        if not isinstance(answer,str) or not answer.strip():
+            raise ValueError('empty chat response')
+        on_sentence(answer.strip())
+        return answer.strip()
     if client.api != 'openai':
         return chat_with_messages(client, messages)
     path = '/chat/completions' if client.base_url.endswith('/v1') else '/v1/chat/completions'
@@ -78,9 +92,6 @@ def stream_chat_with_messages(client, messages, on_sentence):
             pending += choices[0].get('delta', {}).get('content') or ''
             while True:
                 match = re.search(r'[。！？!?]', pending)
-                # Start speaking at a natural clause boundary instead of waiting
-                # for a long first sentence. Later sentences stay grouped so the
-                # voice queue does not fill with tiny audio fragments.
                 if not spoken:
                     clause = next((m for m in re.finditer(r'[，；：;:]', pending)
                                    if len(pending[:m.start()].strip()) >= 8), None)
@@ -89,7 +100,6 @@ def stream_chat_with_messages(client, messages, on_sentence):
                 if not match: break
                 emit(pending[:match.end()])
                 pending = pending[match.end():]
-            # Continue to EOS; splitting for playback never limits answer length.
     emit(pending)
     if not spoken: raise ValueError('empty chat response')
     return ''.join(spoken)

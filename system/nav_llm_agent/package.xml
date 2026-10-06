@@ -10,6 +10,7 @@
   <depend>rclpy</depend>
   <depend>ament_index_python</depend>
   <depend>std_msgs</depend>
+  <depend>audio_msg</depend>
   <depend>std_srvs</depend>
   <depend>geometry_msgs</depend>
   <depend>nav2_msgs</depend>
@@ -19,6 +20,10 @@
   <exec_depend>python3-yaml</exec_depend>
   <exec_depend>python3-numpy</exec_depend>
   <exec_depend>alsa-utils</exec_depend>
+  <exec_depend>sensevoice_ros2</exec_depend>
+  <exec_depend>hobot_tts</exec_depend>
+  <exec_depend>hobot_xlm</exec_depend>
+  <exec_depend>hobot_llamacpp</exec_depend>
 
   <export>
     <build_type>ament_python</build_type>

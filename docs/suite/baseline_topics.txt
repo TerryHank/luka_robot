@@ -1,0 +1,11 @@
+/camera/color/image_raw sensor_msgs/msg/Image
+/camera/depth/image_raw sensor_msgs/msg/Image
+/camera/color/camera_info sensor_msgs/msg/CameraInfo
+/camera/depth/camera_info sensor_msgs/msg/CameraInfo
+/luka/selected_seg_targets ai_msgs/msg/PerceptionTargets
+/luka_person_following/adapter_status std_msgs/msg/String
+/nx/nav_guarded geometry_msgs/msg/Twist
+/nx/nav_safe geometry_msgs/msg/Twist
+/voice/recognized_text std_msgs/msg/String
+/voice/status std_msgs/msg/String
+/llm_command std_msgs/msg/String

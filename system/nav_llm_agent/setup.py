@@ -30,6 +30,7 @@ setup(
         'console_scripts': [
             'agent_node = nav_llm_agent.agent_node:main',
             'voice_gateway = nav_llm_agent.voice_gateway:main',
+            'voice_suite_bridge = nav_llm_agent.voice_suite_bridge:main',
             'waypoint_overlay = nav_llm_agent.waypoint_overlay:main',
             'save_waypoint = nav_llm_agent.save_waypoint:main',
         ],
