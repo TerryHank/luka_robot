@@ -296,8 +296,10 @@ class Monitor:
         self.appearance_ready = False
         self.appearance_error = None if self.appearance_reid_enabled else 'disabled_by_config'
         self.appearance_s = None
-        self.person_detector = dict(requested=os.getenv('NX_PERSON_DETECTOR', 'yolo').lower(),
-                                    active=None, fallback_reason=None, monitor_only=True)
+        self.person_detector = dict(
+            requested=os.getenv('NX_PERSON_DETECTOR', 'yolo').lower(),
+            runtime_backend_requested=os.getenv('NX_YOLO26_RUNTIME_BACKEND', 'legacy').lower(),
+            active=None, fallback_reason=None, monitor_only=True)
         self.camera_source = os.getenv('NX_PEOPLE_CAMERA', 'orbbec').lower()
         self.metric_depth_available = self.camera_source == 'orbbec'
         self.full_fov_people = False
@@ -643,8 +645,16 @@ class Monitor:
                 from s100_bpu_person_pose import BpuPersonPose
                 detector = Yolo26PersonSegmenter(confidence=.35)
                 pose_model = BpuPersonPose(confidence=.35)
-                self.person_detector.update(active='yolo26m_objv1_seg_bpu', confidence=.35,
-                                            model=MODEL, runtime_model=str(HBM), classes=['person'], depth_method='seg_valid_trimmed_mean', trim_ratio=.15)
+                self.person_detector.update(
+                    active='yolo26m_objv1_seg_bpu',
+                    confidence=.35,
+                    model=MODEL,
+                    runtime_model=str(HBM),
+                    runtime_backend=getattr(detector, 'backend_name', 'legacy'),
+                    fallback_reason=getattr(detector, 'fallback_reason', None),
+                    classes=['person'],
+                    depth_method='seg_valid_trimmed_mean',
+                    trim_ratio=.15)
             elif requested == 'bpu_seg':
                 from s100_bpu_person_seg import BpuPersonSegmenter
                 from s100_bpu_person_pose import BpuPersonPose
@@ -762,7 +772,8 @@ class Monitor:
                         self.full_fov_people = full_fov_people
                     detections = detector.detect(image)
                     if requested == 'yolo26_seg':
-                        self.person_detector['timings_ms'] = dict(detector.model.last_timings_ms)
+                        self.person_detector['timings_ms'] = dict(
+                            getattr(detector, 'timings_ms', {}) or {})
                     poses = []
                     if pose_model is not None:
                         try:

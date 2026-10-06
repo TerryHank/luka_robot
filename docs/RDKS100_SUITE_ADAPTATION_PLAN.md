@@ -1249,8 +1249,8 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 [x] P1 创建 vendor/drobotics/rdks100-suite.repos
 [x] P1 锁定 D-Robotics upstream SHA
 [x] P1 记录 tros_person_following 本地 patch
-[ ] P2 抽象 YOLO26 runtime
-[ ] P2 接入 rdk_model_zoo_s runtime
+[x] P2 抽象 YOLO26 runtime
+[x] P2 接入 rdk_model_zoo_s runtime
 [ ] P2 完成 legacy/drobotics parity test
 [ ] P3 ROS 原生发布 ai_msgs/PerceptionTargets
 [ ] P3 将 HTTP follow-state 改为只读镜像
@@ -1320,3 +1320,16 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 - 已记录 `tros_person_following` 的 `navigate_to_pose_action_name` Luka patch。
 - 当前环境未运行 `vcs import`；manifest 使用标准 vcstool YAML，板端导入验证待现场补录。
 - P1 未修改运行代码，未允许真实运动。
+
+
+### P2 — YOLO26 Runtime 后端抽象
+
+状态：**代码接入完成；真实 S100 parity/性能门槛待板端执行，因此暂不切默认。**
+
+- 新增 `runtime/` 后端接口、`legacy` adapter 与 `drobotics` adapter。
+- 官方 adapter 直接加载锁定版 `rdk_model_zoo_s` 的 `YOLO26Seg/YOLO26SegConfig`，不复制官方源码。
+- 默认 `NX_YOLO26_RUNTIME_BACKEND=legacy`；官方后端必须显式选择。
+- 默认禁止 silent fallback；如需临时回退需显式设置 `NX_YOLO26_RUNTIME_ALLOW_FALLBACK=1`。
+- Seg Depth、person filter、Target/Identity 等 Luka 产品逻辑均未迁入 vendor runtime。
+- 已新增 `evaluator/suite/test_yolo_runtime_parity.py`；纯几何 helper 已做静态/语法验证，实际 BPU 双后端同帧 parity 必须在物理 S100 上执行后才能勾选对应 checklist。
+- P2 未允许真实运动。
