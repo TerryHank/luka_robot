@@ -22,6 +22,8 @@
   <exec_depend>alsa-utils</exec_depend>
   <exec_depend>sensevoice_ros2</exec_depend>
   <exec_depend>hobot_tts</exec_depend>
+  <exec_depend>hobot_xlm</exec_depend>
+  <exec_depend>hobot_llamacpp</exec_depend>
 
   <export>
     <build_type>ament_python</build_type>

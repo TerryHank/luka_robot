@@ -1262,9 +1262,9 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 [x] P6 确认所有速度经过 Luka safety chain
 [x] P7 增加 sensevoice_ros2 backend
 [x] P7 增加 hobot_tts backend
-[ ] P8 抽象 LLMBackend
-[ ] P8 接入 hobot_xlm
-[ ] P8 接入 hobot_llamacpp fallback
+[x] P8 抽象 LLMBackend
+[x] P8 接入 hobot_xlm
+[x] P8 接入 hobot_llamacpp fallback
 [ ] P9 保持 YOLOE/LocateAnything 能力不降级
 [ ] P10 轮子悬空测试
 [ ] P10 地面低速测试
@@ -1399,3 +1399,18 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 - bridge 不持有 Nav2 action、机器人 service 或 cmd_vel publisher。
 - 当前阶段不宣称已实现 AEC/barge-in；legacy 的播放保护保持不变。
 - P7 未允许真实运动。
+
+
+### P8 — LLM Runtime 官方化
+
+状态：**代码完成；官方模型文件/板端性能与输出 parity 待 S100。**
+
+- 新增 `nav_llm_agent.llm.LLMBackend` 抽象，接口只返回文本，不拥有任何运动 action/service/publisher。
+- 新增 `ollama`、`hobot_xlm`、`hobot_llamacpp` provider 与有序 fallback。
+- Agent 默认仍为 `ollama`，防止未验证模型直接改变产品行为；目标配置可设为 `hobot_xlm -> hobot_llamacpp -> ollama`。
+- 官方 ROS topic runtime 使用独立的 `/luka/llm/*` prompt/final/stream 话题；官方中间输出不直连 `/tts_text`。
+- capability registry、受控工具接口、hotel workflow、floor transfer、Nav2 cancel、产品短期记忆均保留在 Luka 层。
+- 当前生产工具选择仍保留现有受控 `nx_select/nx_assistant_tools` 路径，避免未做 parity 时强行让官方模型接管动作选择；backend 抽象先用于生成层。
+- 任一 provider crash/timeout 只进入下一 backend；全失败只返回 LLM error，不执行动作。
+- 新增 fallback 顺序、prompt 格式和“backend 层不得包含运动 API”测试。
+- P8 未允许真实运动。

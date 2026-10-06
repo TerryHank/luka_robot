@@ -25,6 +25,8 @@ def generate_launch_description():
         DeclareLaunchArgument('ollama_url', default_value='http://127.0.0.1:8080'),
         DeclareLaunchArgument('model', default_value='qwen2.5-1.5b'),
         DeclareLaunchArgument('llm_api', default_value='openai'),
+        DeclareLaunchArgument('llm_backend', default_value='ollama'),
+        DeclareLaunchArgument('llm_fallbacks', default_value=''),
         # Board/real robot: start_agent.sh passes false; sim can override true.
         DeclareLaunchArgument('use_sim_time', default_value='false'),
         DeclareLaunchArgument('dry_run', default_value='false'),
@@ -39,6 +41,8 @@ def generate_launch_description():
                 'ollama_url': LaunchConfiguration('ollama_url'),
                 'model': LaunchConfiguration('model'),
                 'llm_api': LaunchConfiguration('llm_api'),
+                'llm_backend': LaunchConfiguration('llm_backend'),
+                'llm_fallbacks': LaunchConfiguration('llm_fallbacks'),
                 'dry_run': ParameterValue(
                     LaunchConfiguration('dry_run'), value_type=bool),
                 'temperature': 0.1,
