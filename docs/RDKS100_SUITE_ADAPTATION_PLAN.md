@@ -1260,8 +1260,8 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 [x] P5 保留 selected 模式
 [ ] P6 完成 official follow dry-run
 [x] P6 确认所有速度经过 Luka safety chain
-[ ] P7 增加 sensevoice_ros2 backend
-[ ] P7 增加 hobot_tts backend
+[x] P7 增加 sensevoice_ros2 backend
+[x] P7 增加 hobot_tts backend
 [ ] P8 抽象 LLMBackend
 [ ] P8 接入 hobot_xlm
 [ ] P8 接入 hobot_llamacpp fallback
@@ -1386,3 +1386,16 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 - 已增加静态安全契约测试，防止后续回归为 real `/cmd_vel` 直出。
 - 当前无板端 shell，因此没有伪造 official follow ROS dry-run 结果；计划中的 `P6 完成 official follow dry-run` 保持未勾选，必须在 S100 上执行后补录。
 - P6 未允许真实运动。
+
+
+### P7 — Voice Suite 适配
+
+状态：**互斥 backend 代码完成；物理麦克风/扬声器体验验收待 S100。**
+
+- `LUKA_VOICE_BACKEND=legacy` 保持默认，现有 sherpa KWS、Silero VAD、SenseVoice、TTS、声纹、DOA 和产品命令路由不被删除。
+- 新增 `drobotics` backend：`sensevoice_ros2 + voice_suite_bridge + hobot_tts`。
+- 两个 backend 互斥，避免同时占用 ALSA capture/playback。
+- D-Robotics backend 的 ASR 必须先收到官方 wake event/唤醒命令才会转发给 Luka Agent；未唤醒 ASR 只记录并丢弃。
+- bridge 不持有 Nav2 action、机器人 service 或 cmd_vel publisher。
+- 当前阶段不宣称已实现 AEC/barge-in；legacy 的播放保护保持不变。
+- P7 未允许真实运动。
