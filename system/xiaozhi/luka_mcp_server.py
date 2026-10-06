@@ -127,4 +127,4 @@ def auto_relocalize(user_text: str) -> dict:
 
 
 if __name__ == "__main__":
-    mcp.run()
+    mcp.run(transport="stdio")

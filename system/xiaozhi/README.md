@@ -82,3 +82,14 @@ and existing grounding/safety checks.
 - The official YOLOv8 MCP server is not enabled by this config; Luka already has
   its own S100 perception/object pipeline and should not run a duplicate camera
   detector by default.
+
+
+## Motion environment precedence
+
+The MCP config deliberately does not set `LUKA_XIAOZHI_ALLOW_MOTION`.
+D-Robotics `mcp_pipe.py` copies the parent environment and then applies values
+from the MCP config, so putting a hard-coded `0` in the config would override
+an operator's later explicit `export LUKA_XIAOZHI_ALLOW_MOTION=1`.
+
+Safety remains default-off because `LukaAssistantClient` treats an absent
+variable as false. Only an explicit parent-shell value of `1` enables motion.

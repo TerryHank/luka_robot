@@ -24,10 +24,15 @@ class XiaozhiStaticSafetyTest(unittest.TestCase):
         for token in forbidden:
             self.assertNotIn(token, text)
 
-    def test_config_defaults_motion_off(self):
+    def test_config_does_not_override_motion_gate(self):
         text = (ROOT / "system/xiaozhi/mcp_config.luka.json").read_text(
             encoding="utf-8")
-        self.assertIn('"LUKA_XIAOZHI_ALLOW_MOTION": "0"', text)
+        self.assertNotIn("LUKA_XIAOZHI_ALLOW_MOTION", text)
+
+    def test_server_uses_explicit_stdio_transport(self):
+        text = (ROOT / "system/xiaozhi/luka_mcp_server.py").read_text(
+            encoding="utf-8")
+        self.assertIn('mcp.run(transport="stdio")', text)
 
     def test_follow_commands_are_grounded(self):
         tools.validate("follow_start", {}, "跟着我")
