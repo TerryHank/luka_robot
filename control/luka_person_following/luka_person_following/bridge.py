@@ -22,6 +22,7 @@ from tf2_geometry_msgs import do_transform_point
 from tf2_ros import Buffer, TransformListener
 
 from .target_gate import selected_target
+from .tracking_mode import normalize_tracking_mode, selection_policy
 
 
 def _attrs(target):
@@ -83,6 +84,8 @@ class SelectedBridge(Node):
             "output_topic", "/luka/follow/selected_target").value)
         self.legacy_output_topic = str(self.declare_parameter(
             "legacy_output_topic", "/luka/selected_seg_targets").value)
+        self.tracking_mode = normalize_tracking_mode(self.declare_parameter(
+            "tracking_mode", "selected").value)
         self.auto_select_first_person = bool(self.declare_parameter(
             "auto_select_first_person", False).value)
         self.depth_invalid_grace_sec = float(self.declare_parameter(
@@ -138,6 +141,9 @@ class SelectedBridge(Node):
         self.latest_received_mono = time.monotonic()
 
     def on_selection(self, msg):
+        if self.tracking_mode == "automatic":
+            self.selected_track_id = None
+            return
         self.selected_track_id = None if int(msg.data) < 0 else int(msg.data)
 
     def set_enabled(self, request, response):
@@ -209,11 +215,16 @@ class SelectedBridge(Node):
         held = False
         try:
             age = self._message_age()
+            requested_id, auto_select = selection_policy(
+                self.tracking_mode,
+                self.selected_track_id,
+                self.auto_select_first_person,
+            )
             row, self.reason, effective_id = selected_target(
                 self.latest_rows,
-                self.selected_track_id,
+                requested_id,
                 age,
-                auto_select_first_person=self.auto_select_first_person,
+                auto_select_first_person=auto_select,
             )
 
             if (
@@ -331,6 +342,7 @@ class SelectedBridge(Node):
             "valid": self.valid,
             "reason": self.reason,
             "source": "ros2",
+            "tracking_mode": self.tracking_mode,
             "input_topic": self.input_topic,
             "selected_track_id": current_id,
             "requested_track_id": self.selected_track_id,

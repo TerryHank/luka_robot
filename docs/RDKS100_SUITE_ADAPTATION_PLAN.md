@@ -1256,8 +1256,8 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 [x] P3 将 HTTP follow-state 改为只读镜像
 [x] P4 重构 luka_person_following 为 Target Gate
 [x] P4 完成 fail-close 单测
-[ ] P5 接入 official MOT automatic 模式
-[ ] P5 保留 selected 模式
+[x] P5 接入 official MOT automatic 模式
+[x] P5 保留 selected 模式
 [ ] P6 完成 official follow dry-run
 [ ] P6 确认所有速度经过 Luka safety chain
 [ ] P7 增加 sensevoice_ros2 backend
@@ -1360,3 +1360,15 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 - 已新增纯逻辑 fail-close 测试覆盖 stale、unselected、missing、weak、ambiguous、invalid depth、wrong depth method、尺寸/置信度过滤。
 - deprecated `status_url` 参数仍可传入但不再被读取，确保旧启动命令兼容。
 - P4 未允许真实运动。
+
+
+### P5 — MOT 双模式
+
+状态：**代码完成；板端 official MOT topic/ID 行为实测待物理 S100。**
+
+- `tracking_mode=selected` 为产品默认，不启动第二层 MOT，继续保留 Luka 目标选择/身份策略。
+- `tracking_mode=automatic` 才启动官方 `hobot_mot/tros_mot_node`，输入 `/luka/perception/person_targets`，输出 `/luka/perception/mot_targets`。
+- automatic 模式忽略 Luka selected-mode track ID，只在恰好一个合法人体时自动选人。
+- official MOT track ID 明确只作为轨迹 ID，不宣称永久身份或 ReID。
+- 任意 ID 变化仍 fail-closed。
+- P5 未允许真实运动。

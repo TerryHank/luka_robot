@@ -7,14 +7,22 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     dry = LaunchConfiguration('dry_run')
+    mode = LaunchConfiguration('tracking_mode')
+    mot_enabled = IfCondition(PythonExpression([
+        "'", mode, "' == 'automatic'"
+    ]))
+    gate_input = PythonExpression([
+        "'/luka/perception/mot_targets' if '", mode,
+        "' == 'automatic' else '/luka/perception/person_targets'"
+    ])
     return LaunchDescription([
         DeclareLaunchArgument('dry_run', default_value='true', choices=['true', 'false']),
-        # Compatibility only. selected_bridge no longer performs HTTP polling.
+        DeclareLaunchArgument(
+            'tracking_mode', default_value='selected',
+            choices=['selected', 'automatic']),
         DeclareLaunchArgument(
             'status_url',
             default_value='http://127.0.0.1:8098/api/people/follow-state'),
-        DeclareLaunchArgument(
-            'perception_topic', default_value='/luka/perception/person_targets'),
         DeclareLaunchArgument(
             'selection_topic', default_value='/luka/perception/selected_track_id'),
         DeclareLaunchArgument(
@@ -44,13 +52,30 @@ def generate_launch_description():
                 '--roll','0','--pitch','0','--yaw','0',
                 '--frame-id','base_footprint','--child-frame-id','camera_link']),
 
+        # Official MOT is intentionally exclusive to automatic/demo mode.
+        # selected mode keeps Luka's selected/identity tracker authoritative.
+        Node(
+            package='hobot_mot',
+            executable='tros_mot_node',
+            name='luka_automatic_mot',
+            condition=mot_enabled,
+            output='screen',
+            parameters=[{
+                'sub_topic': '/luka/perception/person_targets',
+                'pub_topic': '/luka/perception/mot_targets',
+                'mot_config_path': 'config/iou2_method_param.json',
+                'frame_width': 640,
+                'frame_height': 480,
+            }]),
+
         Node(
             package='luka_person_following',
             executable='selected_bridge',
             output='screen',
             parameters=[{
                 'status_url': LaunchConfiguration('status_url'),
-                'perception_topic': LaunchConfiguration('perception_topic'),
+                'tracking_mode': mode,
+                'perception_topic': gate_input,
                 'selection_topic': LaunchConfiguration('selection_topic'),
                 'output_topic': '/luka/follow/selected_target',
                 'legacy_output_topic': '/luka/selected_seg_targets',
