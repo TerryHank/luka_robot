@@ -371,9 +371,9 @@ def post(self):
             body=app.json.loads(self.rfile.read(size) or b'{}')
             tool=body.get('tool')
             def run():return execute_assistant(app.NODE,tool,body.get('arguments',{}),body.get('source',''),destination_catalog,send_nav,app.NODE.music)
-            if tool in ('navigate','patrol_start','object_bring','localization_auto','cancel_all','patrol_stop'):
+            if tool in ('navigate','patrol_start','object_bring','localization_auto','cancel_all','patrol_stop','follow_start','follow_stop'):
                 with app.NODE.assistant_lock:
-                    if tool in ('cancel_all','patrol_stop'):app.NODE.assistant_generation+=1
+                    if tool in ('cancel_all','patrol_stop','follow_stop'):app.NODE.assistant_generation+=1
                     elif body.get('generation')!=app.NODE.assistant_generation:raise ValueError('指令已因停车或接管失效，请重新发出指令')
                     message=run()
             else:message=run()

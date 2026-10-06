@@ -4,6 +4,9 @@ import json,re,urllib.request,urllib.error
 TOOLS={
  'robot_status':'查询小车服务、任务状态，参数{}',
  'destinations':'列出当前可导航航点，参数{}',
+ 'follow_status':'查询人体跟随状态，参数{}',
+ 'follow_start':'开始跟随当前已经选择并通过核验的人，参数{}',
+ 'follow_stop':'停止人体跟随并停车，参数{}',
  'navigate':'去、回到、带我回已有房间或航点，例如带我回卧室休息。参数{name:航点显示名称}',
  'cancel_all':'停止导航、巡航和找物，参数{}',
  'patrol_start':'按已保存路线巡航一遍，实时识别并保存物体记忆，参数{}',
@@ -32,8 +35,8 @@ TOOLS={
  'voice_volume':'调整说话音量，参数{direction:up或down}',
  'settings_help':'账号、配网、地图房间航点编辑、声纹录入、手动定位、启动重启等操作入口，参数{topic:功能名称}',
 }
-READ_ONLY={'robot_status','destinations','patrol_route','object_where','localization_status','voiceprint_status','music_search','music_status','settings_help','functions_status','record_status'}
-TRIGGERS={'functions_start':['启动','开启'], 'camera_find':['看','识别'], 'record_start':['录像','录制'], 'record_stop':['停止','结束'], 'voice_volume':['声音','音量'], 'navigate':['去','到','前往','导航','带我回','送我回'], 'cancel_all':['停止','停车','停下','取消','急停','别走'],
+READ_ONLY={'robot_status','destinations','follow_status','patrol_route','object_where','localization_status','voiceprint_status','music_search','music_status','settings_help','functions_status','record_status'}
+TRIGGERS={'functions_start':['启动','开启'], 'follow_start':['跟着','跟随','跟我'], 'follow_stop':['停止','别跟','不要跟','结束跟随'], 'camera_find':['看','识别'], 'record_start':['录像','录制'], 'record_stop':['停止','结束'], 'voice_volume':['声音','音量'], 'navigate':['去','到','前往','导航','带我回','送我回'], 'cancel_all':['停止','停车','停下','取消','急停','别走'],
  'patrol_start':['巡航','巡逻'], 'patrol_stop':['停止','结束','取消'], 'patrol_route_set':['路线','巡航','顺序'],
  'find_object':['找','查找'], 'object_bring':['带我','带路'], 'localization_auto':['重定位','重新定位'],
  'music_play':['播放','放歌','来首','来一首','听','放一首'], 'music_pause':['暂停'], 'music_resume':['继续','恢复'],
@@ -56,7 +59,7 @@ def polite_command(text):
 
 def candidate(text):
  if polite_command(text)!=text.strip():return True
- return any(w in text for w in ('启动','录像','录制','识别','音量','声音','音乐','放歌','播放','来首','听一首','找','带我','巡航','巡逻','导航','前往','重定位','声纹','谁在说话','航点','目的地','电梯','建图','配网','联网','注册','账号','房间','地图','功能','状态','音量'))
+ return any(w in text for w in ('启动','录像','录制','识别','音量','声音','音乐','放歌','播放','来首','听一首','找','带我','跟随','跟着','巡航','巡逻','导航','前往','重定位','声纹','谁在说话','航点','目的地','电梯','建图','配网','联网','注册','账号','房间','地图','功能','状态','音量'))
 
 def direct(text):
  text=polite_command(text)
@@ -75,7 +78,7 @@ def direct(text):
   return {'tool':'object_bring','arguments':{}}
  if t in ('继续','继续吧','去那里','去那儿','接着走'):
   return {'tool':'clarify','arguments':{}}
- for phrase,tool in [('暂停音乐','music_pause'),('暂停播放','music_pause'),('继续播放','music_resume'),('继续音乐','music_resume'),('恢复播放','music_resume'),('停止音乐','music_stop'),('关闭音乐','music_stop'),('停止播放','music_stop'),('现在放的什么歌','music_status'),('有哪些功能','settings_help'),('你能做什么','settings_help'),('查询小车状态','robot_status'),('小车现在怎么样','robot_status')]:
+ for phrase,tool in [('跟着我','follow_start'),('开始跟随','follow_start'),('开始跟着我','follow_start'),('停止跟随','follow_stop'),('别跟着我','follow_stop'),('不要跟着我','follow_stop'),('暂停音乐','music_pause'),('暂停播放','music_pause'),('继续播放','music_resume'),('继续音乐','music_resume'),('恢复播放','music_resume'),('停止音乐','music_stop'),('关闭音乐','music_stop'),('停止播放','music_stop'),('现在放的什么歌','music_status'),('有哪些功能','settings_help'),('你能做什么','settings_help'),('查询小车状态','robot_status'),('小车现在怎么样','robot_status')]:
   if t==phrase:return {'tool':tool,'arguments':{}}
  if t in ('调大声音','把声音调大','声音调大','声音大一点','音量大一点'):
   return {'tool':'voice_volume','arguments':{'direction':'up'}}
@@ -88,7 +91,7 @@ def direct(text):
  m=re.fullmatch(r'(?:我(?:要|想)?|请|帮我)?(?:播放|放歌|放一首|来首|来一首|听一首|听)(.{1,80})',t)
  if m and not any(mark in m[1] for mark in ('吗','？','?','怎么','如何')):
   return {'tool':'music_play','arguments':{'query':m[1]}}
- for phrase,tool in [('停止','cancel_all'),('停车','cancel_all'),('停下','cancel_all'),('急停','cancel_all'),('停止导航','cancel_all'),('取消导航','cancel_all'),('别走了','cancel_all'),('开始录像','record_start'),('停止录像','record_stop'),('查看录像状态','record_status'),('启动小车功能','functions_start'),('查询服务状态','functions_status')]:
+ for phrase,tool in [('停止','cancel_all'),('停车','cancel_all'),('停下','cancel_all'),('急停','cancel_all'),('停止导航','cancel_all'),('取消导航','cancel_all'),('别走了','cancel_all'),('停止跟随','follow_stop'),('结束跟随','follow_stop'),('开始录像','record_start'),('停止录像','record_stop'),('查看录像状态','record_status'),('启动小车功能','functions_start'),('查询服务状态','functions_status')]:
   if t==phrase:return {'tool':tool,'arguments':{}}
  from nx_voice_commands import route
  a=route(t)
@@ -135,12 +138,27 @@ def execute(node,tool,args,source,catalog,send_nav,music):
  validate(tool,args,source)
  mission=node.patrol_mission
  if tool=='destinations':return '可以前往：'+'、'.join(p['display_name'] for p in catalog(node))
+ if tool=='follow_status':
+  state=node.follow_controller.snapshot()
+  return ('人体跟随'+('已开启' if state.get('enabled') else '未开启')+
+          '；'+str(state.get('reason') or state.get('ready_reason') or '状态未知'))
+ if tool=='follow_start':
+  state=node.follow_controller.start()
+  return ('已开始人体跟随。'+str(state.get('reason') or '目标或障碍不确定时会自动停车'))
+ if tool=='follow_stop':
+  node.follow_acquisition.cancel()
+  state=node.follow_controller.stop('已通过助手停止跟随')
+  return '已停止人体跟随并请求停车。'+str(state.get('reason') or '')
  if tool=='navigate':
   name=args.get('name',args.get('waypoint',''));hits=[p for p in catalog(node) if p['display_name']==name or p['id']==name]
   if len(hits)!=1 or hits[0]['display_name'] not in source:raise ValueError('请明确说出一个已确认的航点名称')
   if mission.active():raise ValueError('请先停止当前巡航或找物任务')
   send_nav(node,hits[0]['id']);return '已提交前往'+hits[0]['display_name']+'的导航。'
- if tool in ('cancel_all','patrol_stop'):return mission.stop()['message']
+ if tool=='cancel_all':
+  node.follow_acquisition.cancel()
+  node.follow_controller.stop('已通过助手停止全部运动')
+  return mission.stop()['message']
+ if tool=='patrol_stop':return mission.stop()['message']
  if tool=='patrol_start':return mission.start()['message']
  if tool=='patrol_route':
   r=mission.route_snapshot()
