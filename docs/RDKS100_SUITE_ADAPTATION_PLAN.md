@@ -1428,3 +1428,17 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 - 在没有经过现场验收的官方等价实现前，旧能力继续保留并可回滚。
 - 新增静态/纯逻辑回归测试，验证关键模块和 HTTP endpoint 保留以及不等价 provider 无法 promotion。
 - P9 未允许、未执行任何真实运动。
+
+
+### P10 — 实车灰度验收闸门
+
+状态：**现场验收工具已准备；五个真实运动 Stage 均未执行、未勾选。**
+
+- 新增只读 `system/scripts/p10_preflight_readonly.sh`：采集节点/topic/service/action、TF、AMCL、LaserScan、collision monitor、follow 状态与静态 safety-chain 配置；脚本不发布 Twist、不发送 Nav2 goal、不调用 navigation/follow enable。
+- 新增只读 `system/scripts/p10_capture_metrics.sh`：采集 CPU、memory、thermal、可用的 BPU 状态工具、关键 topic Hz 和诊断状态。
+- 新增 `docs/suite/P10_REAL_ROBOT_ACCEPTANCE.md` 与 `P10_ACCEPTANCE_RECORD.md`，严格定义 Stage 1→5 顺序、人工 spotter、物理急停、轮子悬空和地面低速上限。
+- 新增静态 safety gate 测试，检查 real follow direct Twist 仍进入 `/nx/nav_smoothed`、collision monitor 输出 `/nx/nav_safe`、DDSM/base 只消费 `/nx/nav_safe`、real motion 不是默认启动。
+- 仓库中未发现可被可靠认定为独立电子 emergency-stop 的标准 ROS 接口；因此“物理急停/断电方式可达并实测”被列为 P10 人工前置条件，不能用软件假设代替。
+- 当前执行环境没有物理 S100 shell、现场操作员、spotter 和机械测试条件，因此没有伪造轮子悬空、地面低速、多人交叉、Nav2 场景或长稳结果。
+- P10 五项 master checklist 保持未勾选；只有真实证据写入验收记录后才允许勾选。
+- `main` 未修改；P10 代码本身没有触发任何真实运动。
