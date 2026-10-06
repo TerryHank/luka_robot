@@ -87,3 +87,47 @@ Opt-in motion (`LUKA_XIAOZHI_ALLOW_MOTION=1`):
   `FollowAcquisition`; no parallel follow controller is introduced.
 - Board test: first run MCP with motion disabled, verify tool listing/status,
   then explicitly arm motion in a controlled environment.
+
+
+## Implementation status
+
+Repository-side implementation:
+
+- [x] Pin official `xiaozhi-in-rdk` commit.
+- [x] Add Luka FastMCP stdio server.
+- [x] Reuse official D-Robotics `mcp_pipe.py`.
+- [x] Route all robot tools through localhost `/api/assistant/*`.
+- [x] Default Xiaozhi motion gate to OFF.
+- [x] Keep stop/cancel callable with motion gate OFF.
+- [x] Add follow status/start/stop to the existing Assistant allowlist.
+- [x] Include follow start/stop in Assistant generation invalidation.
+- [x] Keep elevator and duplicate official YOLO MCP disabled.
+- [x] Add read-only MCP/Dashboard preflight script.
+- [x] Match upstream FastMCP stdio transport explicitly.
+
+Physical S100 validation still required:
+
+- [ ] Install the pinned `xiaozhi-in-rdk` Python dependencies on the S100.
+- [ ] Configure the real `MCP_ENDPOINT` from the Xiaozhi service.
+- [ ] Run `bash system/scripts/test_xiaozhi_mcp_readonly.sh`.
+- [ ] Start `mcp_pipe.py` with `LUKA_XIAOZHI_ALLOW_MOTION=0`.
+- [ ] Confirm Xiaozhi can call read-only status/destination/follow-status tools.
+- [ ] Confirm motion tools are rejected while motion is disabled.
+- [ ] Confirm `stop_robot` and `stop_following` work while motion is disabled.
+- [ ] In a controlled test area, explicitly set
+      `LUKA_XIAOZHI_ALLOW_MOTION=1`.
+- [ ] With an already selected/verified person, test `start_following`.
+- [ ] Test target loss/ID change/obstacle causes the existing Luka follow
+      safety system to stop rather than switch targets.
+- [ ] Test one named-destination navigation command.
+- [ ] Confirm joystick/stop increments generation and invalidates a stale
+      Xiaozhi motion request.
+
+## Trust note
+
+The MCP `user_text` argument is supplied by the Xiaozhi Agent and therefore is
+not a cryptographic proof of the raw ASR transcript. The Dashboard still
+re-runs its normal grounding checks, but the hard safety boundary for remote
+motion remains the operator-controlled `LUKA_XIAOZHI_ALLOW_MOTION` gate plus
+the existing localization/lidar/follow/base safety layers. Keep motion disabled
+unless remote-Agent motion is intentionally being tested or used.
