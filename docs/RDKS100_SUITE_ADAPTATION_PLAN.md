@@ -1246,9 +1246,9 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 
 ```text
 [x] P0 生成 baseline inventory
-[ ] P1 创建 vendor/drobotics/rdks100-suite.repos
-[ ] P1 锁定 D-Robotics upstream SHA
-[ ] P1 记录 tros_person_following 本地 patch
+[x] P1 创建 vendor/drobotics/rdks100-suite.repos
+[x] P1 锁定 D-Robotics upstream SHA
+[x] P1 记录 tros_person_following 本地 patch
 [ ] P2 抽象 YOLO26 runtime
 [ ] P2 接入 rdk_model_zoo_s runtime
 [ ] P2 完成 legacy/drobotics parity test
@@ -1309,3 +1309,14 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 - 已新增只读 `system/scripts/capture_live_baseline.sh`，使用 `bash` 执行；不发布速度、不发送导航目标、不启用跟随。
 - 当前执行环境没有 RDK S100 shell，因此没有伪造新的板端 ROS 图谱或性能数据。
 - P0 未修改任何运行代码，未允许真实运动。
+
+
+### P1 — 官方依赖与版本锁定
+
+状态：**完成（仓库侧静态验证）。**
+
+- 根目录 `vendor` 是指向 `common/vendor` 的兼容链接，因此实际文件放在 `common/vendor/drobotics/`，工作区仍可通过 `vendor/drobotics/` 访问。
+- 已创建 SHA 锁定的 `rdks100-suite.repos`。
+- 已记录 `tros_person_following` 的 `navigate_to_pose_action_name` Luka patch。
+- 当前环境未运行 `vcs import`；manifest 使用标准 vcstool YAML，板端导入验证待现场补录。
+- P1 未修改运行代码，未允许真实运动。
