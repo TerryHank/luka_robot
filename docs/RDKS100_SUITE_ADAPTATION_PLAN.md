@@ -1271,7 +1271,7 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 [ ] P10 多人交叉测试
 [ ] P10 Nav2 场景测试
 [ ] P10 长稳测试
-[ ] 创建 Draft PR
+[x] 创建 Draft PR
 [ ] 完成人工 review 后合并 main
 ```
 
@@ -1442,3 +1442,11 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 - 当前执行环境没有物理 S100 shell、现场操作员、spotter 和机械测试条件，因此没有伪造轮子悬空、地面低速、多人交叉、Nav2 场景或长稳结果。
 - P10 五项 master checklist 保持未勾选；只有真实证据写入验收记录后才允许勾选。
 - `main` 未修改；P10 代码本身没有触发任何真实运动。
+
+
+### Draft PR — #1
+
+- 已创建 Draft PR：`TerryHank/luka_ws#1`，head=`feat/rdks100-suite-adaptation`，base=`main`。
+- PR 保持 Draft，未启用 auto-merge，未执行 merge。
+- PR 明确列出 P2 parity、P6 ROS dry-run、P7 实体音频、P8 官方模型以及 P10 五项实车验收为 merge blockers。
+- `[ ] 完成人工 review 后合并 main` 保持未勾选。
