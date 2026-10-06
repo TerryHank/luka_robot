@@ -1245,7 +1245,7 @@ evaluator/suite/
 Codex 从本文件开始后，严格按以下任务依次执行：
 
 ```text
-[ ] P0 生成 baseline inventory
+[x] P0 生成 baseline inventory
 [ ] P1 创建 vendor/drobotics/rdks100-suite.repos
 [ ] P1 锁定 D-Robotics upstream SHA
 [ ] P1 记录 tros_person_following 本地 patch
@@ -1294,3 +1294,18 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 11. Hotel / Memory / Product / Dashboard 功能无回归。
 12. 实车多人物遮挡不会在 ID 改变后自动误跟陌生目标。
 13. 有完整版本锁、回归测试、回滚路径和现场验收记录。
+
+
+---
+
+## 21. 分阶段执行记录
+
+### P0 — 基线冻结
+
+状态：**仓库侧完成，板端刷新待现场执行。**
+
+- 已冻结现有仓库中的 S100、RGB-D、YOLO26 BPU、Seg Depth、Nav2、跟随、语音、LLM 证据。
+- 已新增 `docs/suite/baseline_*`。
+- 已新增只读 `system/scripts/capture_live_baseline.sh`，使用 `bash` 执行；不发布速度、不发送导航目标、不启用跟随。
+- 当前执行环境没有 RDK S100 shell，因此没有伪造新的板端 ROS 图谱或性能数据。
+- P0 未修改任何运行代码，未允许真实运动。

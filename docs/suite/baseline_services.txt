@@ -1,0 +1,2 @@
+/luka_person_following/set_enabled std_srvs/srv/SetBool
+/nx/navigation_enable std_srvs/srv/SetBool
