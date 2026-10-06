@@ -35,3 +35,7 @@ repositories:
     type: git
     url: https://github.com/D-Robotics/rdk_model_zoo_s.git
     version: aeed911b157866e0e8a8efa6f134a8c93e731af0
+  xiaozhi_in_rdk:
+    type: git
+    url: https://github.com/D-Robotics/xiaozhi-in-rdk.git
+    version: ade6cd1cc25ee105dc7d0fee600c56b8dd8b4305

@@ -13,5 +13,6 @@ Captured 2026-10-07.
 | hobot_xlm | develop | `cd9901f51cd3107b118fe2f8783c7c45af83d33f` |
 | hobot_llamacpp | develop | `439f23f6c9b09eaebcf84027a0911c220fb4fb34` |
 | rdk_model_zoo_s | s100 | `aeed911b157866e0e8a8efa6f134a8c93e731af0` |
+| xiaozhi-in-rdk | main | `ade6cd1cc25ee105dc7d0fee600c56b8dd8b4305` |
 
 Production must never float on `develop`. An upstream bump requires an explicit SHA change plus regression evidence.
