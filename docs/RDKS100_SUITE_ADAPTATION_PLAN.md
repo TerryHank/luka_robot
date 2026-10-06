@@ -1254,8 +1254,8 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 [ ] P2 完成 legacy/drobotics parity test
 [x] P3 ROS 原生发布 ai_msgs/PerceptionTargets
 [x] P3 将 HTTP follow-state 改为只读镜像
-[ ] P4 重构 luka_person_following 为 Target Gate
-[ ] P4 完成 fail-close 单测
+[x] P4 重构 luka_person_following 为 Target Gate
+[x] P4 完成 fail-close 单测
 [ ] P5 接入 official MOT automatic 模式
 [ ] P5 保留 selected 模式
 [ ] P6 完成 official follow dry-run
@@ -1346,3 +1346,17 @@ Codex 从本文件开始后，严格按以下任务依次执行：
 - `/api/people/follow-state` 保留为兼容视图；P4 切断 follow bridge 对它的轮询依赖。
 - ROS publisher 失败不会触发运动，也不会移除 legacy 路径。
 - P3 未允许真实运动。
+
+
+### P4 — Luka Target Gate
+
+状态：**代码完成；ROS dry-run 集成执行留到 P6。**
+
+- `luka_person_following` 已从 HTTP polling bridge 重构为 ROS-native Target Gate。
+- 官方跟随输入切换到 `/luka/follow/selected_target`；旧 `/luka/selected_seg_targets` 继续作为兼容输出。
+- 默认需要显式选择目标；auto-first-person 仅保留为 opt-in demo/兼容模式。
+- 轨迹 ID 变化无论何种模式都不会被当成永久身份连续性，已启用跟随时会 fail-closed。
+- Target Gate 只接受带 `seg_depth_trimmed_mean` 证明的有效注册深度。
+- 已新增纯逻辑 fail-close 测试覆盖 stale、unselected、missing、weak、ambiguous、invalid depth、wrong depth method、尺寸/置信度过滤。
+- deprecated `status_url` 参数仍可传入但不再被读取，确保旧启动命令兼容。
+- P4 未允许真实运动。

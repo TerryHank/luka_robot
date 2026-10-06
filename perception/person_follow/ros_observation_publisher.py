@@ -46,6 +46,9 @@ def build_target_specs(snapshot):
         }
         diagnostic = row.get("depth_diagnostic")
         if isinstance(diagnostic, dict):
+            attrs["seg_depth_trimmed_mean"] = (
+                1.0 if diagnostic.get("method") == "seg_valid_trimmed_mean" else 0.0
+            )
             xyz = diagnostic.get("position_optical_m")
             if isinstance(xyz, (list, tuple)) and len(xyz) == 3:
                 for name, value in zip(("optical_x_m", "optical_y_m", "optical_z_m"), xyz):
