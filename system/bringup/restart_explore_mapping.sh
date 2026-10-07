@@ -33,4 +33,4 @@ exec env \
   SLAM_PARAMS_FILE="$SLAM_PARAMS_FILE" \
   USE_RESPAWN="$USE_RESPAWN" \
   NAV_PARAMS_FILE="$NAV_PARAMS_FILE" \
-  "$WS/restart_nav_reset.sh"
+  "$WS/system/bringup/restart_nav_reset.sh"

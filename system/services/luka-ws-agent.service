@@ -9,7 +9,7 @@ Type=simple
 User=sunrise
 Group=sunrise
 WorkingDirectory=/home/sunrise/luka_ws
-ExecStart=/bin/bash /home/sunrise/luka_ws/start_nx_agent.sh
+ExecStart=/bin/bash /home/sunrise/luka_ws/system/bringup/start_nx_agent.sh
 Restart=on-failure
 RestartSec=5
 

@@ -21,7 +21,7 @@ ssh sunrise@192.168.3.214 'systemctl --no-pager --type=service --state=running |
 ```
 
 `luka-ws-vision` 与 `luka-ws-people` 的服务文件已安装，但**保持 disabled / stopped**；双目相机接入并复核标定后再启动。
-底盘、双雷达、定位、导航、手柄、语音的 `luka-ws-hardware@{manual_base,sensors,localization,navigation,gamepad,voice}` 模板服务也已安装，全部 disabled；音频设备需要先写入本机 `/home/sunrise/luka_ws/audio.env` 的 `NX_MIC`、`NX_SPEAKER`。
+底盘、双雷达、定位、导航、手柄、语音的 `luka-ws-hardware@{manual_base,sensors,localization,navigation,gamepad,voice}` 模板服务也已安装，全部 disabled；音频设备需要先写入本机 `/home/sunrise/luka_ws/common/legacy/audio.env` 的 `NX_MIC`、`NX_SPEAKER`。
 音乐播放依赖的 `mpv` 已安装；NX 的 `asoundrc.NX.template` 仅作为参考保存，接好扬声器后需按 S100 上的声卡名称配置 `luka_mix`，当前未试听。
 
 ## 实测与限制

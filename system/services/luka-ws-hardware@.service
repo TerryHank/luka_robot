@@ -8,8 +8,8 @@ Type=simple
 User=sunrise
 Group=sunrise
 WorkingDirectory=/home/sunrise/luka_ws
-EnvironmentFile=-/home/sunrise/luka_ws/audio.env
-ExecStart=/bin/bash /home/sunrise/luka_ws/start_nx_%i.sh
+EnvironmentFile=-/home/sunrise/luka_ws/common/legacy/audio.env
+ExecStart=/bin/bash /home/sunrise/luka_ws/system/bringup/start_nx_%i.sh
 Restart=on-failure
 RestartSec=5
 

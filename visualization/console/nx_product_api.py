@@ -18,7 +18,7 @@ class ProductAPI:
     def sonar_status_archived(self):
         try:
             data=json.loads(Path('/run/nx-sonar/status.json').read_text())
-            try:data['stop_protection']=json.loads(Path('/home/sunrise/luka_ws/sonar_stop_status.json').read_text())
+            try:data['stop_protection']=json.loads(Path('/home/sunrise/luka_ws/common/state/sonar_stop_status.json').read_text())
             except (OSError,ValueError):data['stop_protection']=None
             data['protection_preview']=preview(data)
             now=time.time();data['stale']=not 0<=now-data['updated_at']<2

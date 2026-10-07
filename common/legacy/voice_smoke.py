@@ -8,8 +8,8 @@ import sys
 import sherpa_onnx
 
 ROOT = Path("/home/sunrise/luka_ws")
-MODELS = ROOT / "models/voice"
-sys.path.insert(0, str(ROOT / "tools"))
+MODELS = ROOT / "common/models/voice"
+sys.path.insert(0, str(ROOT / "system/runtime/tools"))
 from nx_tts_backend import create_tts
 
 

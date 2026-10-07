@@ -37,6 +37,10 @@ fi
 # so agent/scripts must use the same RMW as restart_nav_reset.sh.
 if [[ "$(uname -m)" == "aarch64" ]] || [[ "${ROS_WS:-}" == *ddsm_car_ws* ]]; then
   export RMW_IMPLEMENTATION="${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}"
+  if [[ "${ROS_WS:-}" == "/home/sunrise/luka_ws" ]]; then
+    export CYCLONEDDS_URI="${CYCLONEDDS_URI:-file://${ROS_WS}/common/config/cyclonedds_nav2.xml}"
+  else
   export CYCLONEDDS_URI="${CYCLONEDDS_URI:-file://${ROS_WS}/config/cyclonedds_nav2.xml}"
+  fi
 fi
 set -u

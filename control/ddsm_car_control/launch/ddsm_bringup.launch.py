@@ -2455,7 +2455,7 @@ def generate_launch_description():
                 "single_floor_goal_topic": "/hotel/goal_destination",
                 "mission_cancel_service": "/hotel/mission/cancel_now",
                 "initial_pose_topic": "/initialpose",
-                "restart_script": "/home/sunrise/luka_ws/restart_nav_reset.sh",
+                "restart_script": "/home/sunrise/luka_ws/system/bringup/restart_nav_reset.sh",
                 "restart_mode": "auto_nav",
                 "restart_foxglove": "0",
                 "current_floor_id": LaunchConfiguration("multifloor_current_floor_id"),
@@ -2509,7 +2509,7 @@ def generate_launch_description():
                     "multifloor_building_config_file"
                 ),
                 "transfer_state_file": "/home/sunrise/luka_ws/common/config/llm_floor_transfer_state.yaml",
-                "restart_script": "/home/sunrise/luka_ws/restart_nav_reset.sh",
+                "restart_script": "/home/sunrise/luka_ws/system/bringup/restart_nav_reset.sh",
                 "current_floor_id": LaunchConfiguration(
                     "multifloor_current_floor_id"
                 ),

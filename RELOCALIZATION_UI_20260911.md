@@ -1,1 +1,0 @@
-docs/legacy/RELOCALIZATION_UI_20260911.md

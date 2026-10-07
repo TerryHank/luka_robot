@@ -50,7 +50,7 @@ def init(self):
     self.music=Music()
     self.function_start=function_start
     self.runtime_health=RuntimeHealth(self)
-    self.patrol_mission.route_store=PatrolRoute('/home/sunrise/luka_ws/patrol_route.json',lambda:destination_catalog(self),lambda:self.current_floor_id)
+    self.patrol_mission.route_store=PatrolRoute('/home/sunrise/luka_ws/common/state/patrol_route.json',lambda:destination_catalog(self),lambda:self.current_floor_id)
     self.product.navigate=lambda target:send_nav(self,None,target)
     self.patrol_mission.send_observation=lambda target:send_nav(self,None,target)
     self.create_subscription(Joy,'/joy',lambda msg:setattr(self,'assistant_generation',self.assistant_generation+1) if len(msg.buttons)>4 and msg.buttons[4] else None,app.qos_profile_sensor_data)
@@ -229,7 +229,7 @@ def get(self):
         except (KeyError,ValueError) as exc:self.send_json({'error':str(exc)},400)
         return
     if self.path.split('?',1)[0]=='/help':
-        try:self.send_bytes(Path('/home/sunrise/luka_ws/NX使用说明.html').read_bytes(),'text/html; charset=utf-8')
+        try:self.send_bytes(Path('/home/sunrise/luka_ws/docs/legacy/NX使用说明.html').read_bytes(),'text/html; charset=utf-8')
         except OSError:self.send_json({'error':'说明文件暂不可用'},503)
         return
     if self.path.split('?',1)[0]=='/api/nav/state':

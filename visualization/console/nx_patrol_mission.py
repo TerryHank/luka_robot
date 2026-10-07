@@ -40,7 +40,7 @@ def vision(path,body=None):
 class PatrolMission:
     def __init__(self,node,send,stop,speak,root=None):
         self.node=node;self.send=send;self.stop_nav=stop;self.speak=speak
-        self.path=Path(root or '/home/sunrise/luka_ws/patrol_mission.json')
+        self.path=Path(root or '/home/sunrise/luka_ws/common/state/patrol_mission.json')
         self.lock=threading.RLock();self.cancel=threading.Event();self.thread=None;self.generation=0
         self.state={'mode':'idle','message':'巡航待命','route':[n for _,n in ROUTE], 'hits':[], 'source':'semantic'}
         interrupted=False

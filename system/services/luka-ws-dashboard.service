@@ -8,7 +8,7 @@ Type=simple
 User=sunrise
 Group=sunrise
 WorkingDirectory=/home/sunrise/luka_ws
-ExecStart=/home/sunrise/luka_ws/start_s100_dashboard.sh
+ExecStart=/home/sunrise/luka_ws/system/bringup/start_s100_dashboard.sh
 Restart=on-failure
 RestartSec=5
 

@@ -1,1 +1,0 @@
-system/bringup/start_s100_gamepad_wait.sh

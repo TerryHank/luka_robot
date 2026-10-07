@@ -337,7 +337,7 @@ class DDSMFloorMissionManager(Node):
         self.declare_parameter("mission_cancel_service", "/hotel/mission/cancel_now")
         self.declare_parameter("initial_pose_topic", "/initialpose")
         self.declare_parameter("map_frame", "map")
-        self.declare_parameter("restart_script", "/home/sunrise/luka_ws/restart_nav_reset.sh")
+        self.declare_parameter("restart_script", "/home/sunrise/luka_ws/system/bringup/restart_nav_reset.sh")
         self.declare_parameter("restart_mode", "auto_nav")
         self.declare_parameter("restart_foxglove", "0")
         self.declare_parameter("current_floor_id", "")

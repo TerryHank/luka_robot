@@ -8,7 +8,7 @@ _last=0.0
 def request(action,params):
  global _last
  if action not in ('search','url'):raise ValueError('不支持的音乐接口')
- try:token=json.loads(Path('/home/sunrise/luka_ws/alapi_music.json').read_text())['token']
+ try:token=json.loads(Path('/home/sunrise/luka_ws/common/state/alapi_music.json').read_text())['token']
  except (OSError,ValueError,KeyError):raise ValueError('音乐服务尚未配置 token') from None
  with _lock:
   for attempt in range(2):

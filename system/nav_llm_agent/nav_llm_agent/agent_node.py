@@ -305,7 +305,7 @@ class NavLlmAgent(Node):
             "/home/sunrise/luka_ws/common/config/llm_floor_transfer_state.yaml",
         )
         self.declare_parameter(
-            "restart_script", "/home/sunrise/luka_ws/restart_nav_reset.sh"
+            "restart_script", "/home/sunrise/luka_ws/system/bringup/restart_nav_reset.sh"
         )
         self.declare_parameter("current_floor_id", "")
         self.declare_parameter("exit_waypoint", "wp_006")

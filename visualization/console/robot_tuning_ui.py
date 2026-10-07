@@ -20,7 +20,7 @@ from mapping_bundle import save_bundle
 
 
 WS = Path(os.environ.get("DDSM_WS", "/home/sunrise/luka_ws"))
-ENV_FILE = WS / "config/runtime_tuning.env"
+ENV_FILE = WS / "common/config/runtime_tuning.env"
 NAV_FILE = (
     WS
     / "src/ddsm_car_control/config/nav2_mecanum_mppi_params.yaml"
@@ -30,16 +30,16 @@ OMNI_NAV_FILE = (
     / "src/ddsm_car_control/config/nav2_mecanum_mppi_omni_params.yaml"
 )
 GAMEPAD_FILE = WS / "src/ddsm_car_control/config/flydigi_vader4pro.yaml"
-RESTART_SCRIPT = WS / "restart_nav_reset.sh"
-LIGHT_DASHBOARD_SCRIPT = WS / "tools/start_lightweight_dashboard.sh"
-EXPLORE_SCRIPT = WS / "restart_explore_mapping.sh"
-BUILDING_FILE = WS / "config/multifloor_building.yaml"
-ACTIVE_FLOOR_CONTEXT_FILE = WS / "config/active_floor_context.json"
-NAVIGATION_MOTION_MODE_FILE = WS / "config/navigation_motion_mode.txt"
-MAPS_DIR = WS / "maps"
+RESTART_SCRIPT = WS / "system/bringup/restart_nav_reset.sh"
+LIGHT_DASHBOARD_SCRIPT = WS / "system/runtime/tools/start_lightweight_dashboard.sh"
+EXPLORE_SCRIPT = WS / "system/bringup/restart_explore_mapping.sh"
+BUILDING_FILE = WS / "common/config/multifloor_building.yaml"
+ACTIVE_FLOOR_CONTEXT_FILE = WS / "common/config/active_floor_context.json"
+NAVIGATION_MOTION_MODE_FILE = WS / "common/config/navigation_motion_mode.txt"
+MAPS_DIR = WS / "map/maps"
 UI_LOG = WS / "log/robot_tuning_ui_restart.log"
 MAP_SAVE_LOG = WS / "log/robot_tuning_ui_map_save.log"
-VISION_BRIDGE_SCRIPT = WS / "tools/vision_frontend_bridge.py"
+VISION_BRIDGE_SCRIPT = WS / "system/runtime/tools/vision_frontend_bridge.py"
 VISION_FRAME_FILE = Path("/tmp/ddsm_semantic_annotated.jpg")
 VISION_STATUS_FILE = Path("/tmp/ddsm_semantic_status.json")
 VISION_PID_FILE = Path("/tmp/ddsm_vision_frontend_bridge.pid")
@@ -112,7 +112,7 @@ def ensure_vision_bridge() -> tuple[bool, str]:
             "source /opt/ros/humble/setup.bash; "
             f"source {shlex.quote(str(WS / 'install/setup.bash'))}; "
             "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp; "
-            f"export CYCLONEDDS_URI=file://{shlex.quote(str(WS / 'config/cyclonedds_nav2.xml'))}; "
+            f"export CYCLONEDDS_URI=file://{shlex.quote(str(WS / 'common/config/cyclonedds_nav2.xml'))}; "
             "set -u; "
             f"exec /usr/bin/python3 {shlex.quote(str(VISION_BRIDGE_SCRIPT))}"
         )
@@ -275,7 +275,7 @@ def available_maps() -> list[Path]:
 
 def available_floor_ids(building: dict) -> list[str]:
     floor_ids = list((building.get("floors") or {}).keys())
-    semantic_dir = WS / "config/semantic"
+    semantic_dir = WS / "common/config/semantic"
     if semantic_dir.exists():
         floor_ids.extend(
             path.name for path in semantic_dir.iterdir() if path.is_dir()
@@ -308,7 +308,7 @@ def floor_default_map(building: dict, floor_id: str, maps: list[Path]) -> Path |
 
 
 def floor_pois(floor_id: str) -> list[dict]:
-    poi_file = WS / f"config/semantic/{floor_id}/pois.yaml"
+    poi_file = WS / f"common/config/semantic/{floor_id}/pois.yaml"
     data = load_yaml_file(poi_file)
     return [
         dict(item)
@@ -323,7 +323,7 @@ def ros_command(arguments: list[str], timeout: float = 12.0) -> tuple[bool, str]
         "unset ROS_LOCALHOST_ONLY; "
         "export ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET; "
         "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp; "
-        f"export CYCLONEDDS_URI=file://{shlex.quote(str(WS / 'config/cyclonedds_nav2.xml'))}; "
+        f"export CYCLONEDDS_URI=file://{shlex.quote(str(WS / 'common/config/cyclonedds_nav2.xml'))}; "
         "export FASTDDS_BUILTIN_TRANSPORTS=UDPv4; "
         "set +u; "
         "source /opt/ros/humble/setup.bash; "
@@ -463,7 +463,7 @@ def restart_navigation(
         "ENABLE_SEMANTIC_MAPPING": "true",
         "SEMANTIC_FLOOR_ID": visual_floor,
         "SEMANTIC_OUTPUT_FILE": str(
-            WS / "config/semantic_auto" / visual_floor / "detections.yaml"
+            WS / "common/config/semantic_auto" / visual_floor / "detections.yaml"
         ),
     }
     if map_path is not None:
@@ -514,7 +514,7 @@ def start_explore_mapping(floor_id: str) -> None:
             "ENABLE_SEMANTIC_MAPPING": "true",
             "SEMANTIC_FLOOR_ID": floor_id,
             "SEMANTIC_OUTPUT_FILE": str(
-                WS / "config/semantic_auto" / floor_id / "detections.yaml"
+                WS / "common/config/semantic_auto" / floor_id / "detections.yaml"
             ),
         },
     )
@@ -811,8 +811,8 @@ with tab_control:
 
         st.divider()
         st.subheader("任务运行控制")
-        mission_state = load_yaml_file(WS / "config/mission_state.yaml")
-        floor_state = load_yaml_file(WS / "config/floor_mission_state.yaml")
+        mission_state = load_yaml_file(WS / "common/config/mission_state.yaml")
+        floor_state = load_yaml_file(WS / "common/config/floor_mission_state.yaml")
         current_state = str(mission_state.get("state", "未知"))
         floor_task_state = str(floor_state.get("state", "idle"))
         floor_task_active = floor_task_state not in {
@@ -958,7 +958,7 @@ with tab_control:
                     )
 
         with st.expander("多地图任务状态与配置"):
-            state_file = WS / "config/floor_mission_state.yaml"
+            state_file = WS / "common/config/floor_mission_state.yaml"
             if state_file.exists():
                 st.code(state_file.read_text(encoding="utf-8"), language="yaml")
             st.caption(f"多楼层配置：{BUILDING_FILE}")
@@ -968,7 +968,7 @@ with tab_control:
         st.caption("不启动自主探索。用手柄慢速带车；先松开手柄停稳，再保存。旧地图不会被覆盖。")
         mapping_safe = st.checkbox("我在现场，已确认周围安全，手柄可随时停止小车", key="manual_mapping_safe")
         if st.button("启动手动建图", disabled=not mapping_safe, use_container_width=True):
-            start_background(WS / "tools/start_manual_mapping.sh", {})
+            start_background(WS / "system/runtime/tools/start_manual_mapping.sh", {})
             st.info("已提交启动请求，并非已经就绪。请查看实时地图和启动日志后再操作手柄。")
         st.link_button("查看实时地图", "http://192.168.3.150:8503", use_container_width=True)
         if st.button("检查建图节点状态", use_container_width=True):

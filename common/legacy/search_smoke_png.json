@@ -1,1 +1,1 @@
-{"image": "/home/sunrise/luka_ws/search_smoke_png.png", "prompt": "沙发", "backend": "s100-bpu-yolo11n-coco80", "inference_seconds": 0.0085, "top_scores": [0.4166], "detections": [{"label": "sofa", "score": 0.4166, "box": [2, 41, 440, 446]}]}
+{"image": "/home/sunrise/luka_ws/common/legacy/search_smoke_png.png", "prompt": "沙发", "backend": "s100-bpu-yolo11n-coco80", "inference_seconds": 0.0085, "top_scores": [0.4166], "detections": [{"label": "sofa", "score": 0.4166, "box": [2, 41, 440, 446]}]}
