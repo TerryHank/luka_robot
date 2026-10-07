@@ -30,3 +30,6 @@ __pycache__/
 **/*.so
 **/*.so.*
 **/*.zip
+
+# Standalone Orbbec SDK archive lives outside the workspace
+/sensing/orbbec_sdk_v1/

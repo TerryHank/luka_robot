@@ -6,7 +6,7 @@
 
 ## 安装内容
 
-- Orbbec SDK v1.10.37 官方 Linux ARM64 ZIP；发布资产当前没有所引用的 `OrbbecSDK_v1.10.37_arm64.deb`。SDK 位于 `sensing/orbbec_sdk_v1/OrbbecSDK_v1.10.37`，已恢复 ZIP 中的 Unix 库软链接。
+- Orbbec SDK v1.10.37 官方 Linux ARM64 ZIP；发布资产当前没有所引用的 `OrbbecSDK_v1.10.37_arm64.deb`。独立下载包、示例及文档现归档于 `/home/sunrise/orbbec_sdk_v1/OrbbecSDK_v1.10.37`（2026-10-07 从工作区移出），Unix 库软链接已保留。
 - ROS 驱动版本 1.5.21，位于 `sensing/OrbbecSDK_ROS2`。已移出其 COLCON_IGNORE 并构建 `orbbec_camera`、`orbbec_camera_msgs`、`orbbec_description`，当前共13个ROS包；驱动使用的核心库与官方下载库 SHA256 一致。
 - 新增 ROS 依赖 backward_ros、camera_info_manager、camera_calibration_parsers、image_publisher；没有全量升级系统。
 - USB 规则 `/etc/udev/rules.d/99-luka-orbbec-astra.rules` 仅匹配 2bc5:060f 与 2bc5:050f，权限0660、video组；sunrise已在video组。
@@ -15,6 +15,19 @@
 官方来源：[Release v1.10.37](https://github.com/orbbec/OrbbecSDK/releases/tag/v1.10.37)，[发布资产清单](https://api.github.com/repos/orbbec/OrbbecSDK/releases/tags/v1.10.37)，[v1设备兼容表](https://github.com/orbbec/OrbbecSDK/blob/v1.10.37/README.md)。Astra Pro Plus 在 v1 为有限维护，在 v2 不支持。
 
 下载 ZIP SHA256：`3c269b7eac354dbb69a6d4519cc587b21b6390baaacce7ce79331593c97489a0`。
+
+## 当前 SDK 目录布局（2026-10-07）
+
+工作区中的相机集成为 `sensing/OrbbecSDK_ROS2`，保留 `orbbec_camera`、
+`orbbec_camera_msgs` 和 `orbbec_description`。驱动从自身的
+`orbbec_camera/SDK/include` 和 `orbbec_camera/SDK/lib/arm64` 构建，
+运行时使用 `install/orbbec_camera/lib` 内的 SDK 库。
+这些库与独立 v1.10.37 SDK 的核心库哈希一致。
+
+独立 `orbbec_sdk_v1` 已移至 `/home/sunrise/orbbec_sdk_v1`；
+相机服务、构建脚本及库加载路径均无需依赖该归档位置。
+USB 规则源文件保存在 `system/udev/99-luka-orbbec-astra.rules`，已作为独立文件安装到 `/etc/udev/rules.d/99-luka-orbbec-astra.rules`。
+`system/scripts/start_orbbec_camera.sh` 继续使用 `ros2 launch orbbec_camera astra_pro_plus.launch.py`。
 
 ## 实际话题接收
 

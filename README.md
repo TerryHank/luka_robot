@@ -4,6 +4,7 @@ ROS 2 source is grouped by function. Root-level compatibility symlinks are remov
 
 - Configuration and local state: `common/config/`, `common/state/`
 - Maps: `map/maps/`
+- Orbbec ROS 2 camera: `sensing/OrbbecSDK_ROS2/` (includes the driver SDK)
 - Startup and reset scripts: `system/bringup/`
 - Service units: `system/services/`
 - Command entrypoint: `system/luka.sh`
@@ -20,3 +21,5 @@ Models, credentials, and runtime state remain in their existing categorized dire
 removing a root shortcut does not delete its target.
 
 Historical snapshots may record old paths. Current executable paths use the categorized directories.
+
+The standalone Orbbec SDK download and examples are archived at `/home/sunrise/orbbec_sdk_v1/`.
