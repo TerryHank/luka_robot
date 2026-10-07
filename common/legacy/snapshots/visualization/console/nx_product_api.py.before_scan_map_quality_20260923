@@ -1,0 +1,195 @@
+"""Customer product API, distinct from the engineering console."""
+import json,time,threading,subprocess,urllib.request,hashlib
+from http.cookies import SimpleCookie
+from urllib.parse import urlparse
+from pathlib import Path
+from rclpy.time import Time
+from nx_product_store import ProductStore,validate_regions
+from nx_room_proposals import propose
+from nx_sonar_policy import preview
+from nx_voiceprint import VoiceprintStore
+
+ROOT=Path('/home/nvidia/ddsm_car_ws/product')
+class ProductAPI:
+    def __init__(self,node):
+        self.node=node;self.store=ProductStore(ROOT);self.rate={};self.rate_lock=threading.Lock();self.network_job={'state':'idle'}
+    def sonar_status(self):
+        return {'enabled':False,'mode':'disabled','motion_control':False,'stale':False,'channels':[],'stop_protection':None,'message':'超声波功能已关闭，激光雷达避障保留'}
+    def sonar_status_archived(self):
+        try:
+            data=json.loads(Path('/run/nx-sonar/status.json').read_text())
+            try:data['stop_protection']=json.loads(Path('/home/nvidia/ddsm_car_ws/sonar_stop_status.json').read_text())
+            except (OSError,ValueError):data['stop_protection']=None
+            data['protection_preview']=preview(data)
+            now=time.time();data['stale']=not 0<=now-data['updated_at']<2
+            for item in data['channels']:
+                item['age_s']=round(now-item['sample_at'],2)
+                item['stale']=data['stale'] or not 0<=item['age_s']<2
+                if item['stale']:item.update(distance_m=None,clearance_along_axis_m=None,hint='数据过期，状态未知')
+            return data
+        except (OSError,ValueError,KeyError):return {'mode':'monitor_only','motion_control':False,'stale':True,'channels':[]}
+    def localization_status(self):
+        result=self.node.relocalization.snapshot()
+        result.update(ready=False,reason='请先定位，再核对地图位置',pose=None)
+        if result['running']:
+            result['reason']='正在重定位，请等待并核对结果';return result
+        covariance_status=result.get('covariance_status')
+        if covariance_status and covariance_status not in ('valid','roundoff_clamped'):
+            result['reason']='等待有效的定位更新' if covariance_status=='unavailable' else '定位协方差无效，请重新定位并核对地图'
+            return result
+        try:
+            tf=self.node.object_pose_context.buffer.lookup_transform('map','base_link',Time())
+            age=time.time()-tf.header.stamp.sec-tf.header.stamp.nanosec/1e9
+            if not -.5<=age<1.5:
+                result['reason']='定位数据已过期，请检查雷达与定位服务';return result
+            if not self.node.last['scan'] or time.monotonic()-self.node.last['scan']>1:
+                result['reason']='雷达数据未就绪';return result
+            t=tf.transform.translation;q=tf.transform.rotation
+            import math
+            result.update(ready=True,reason='已获得位置估计；请核对箭头位置、朝向及雷达与墙体',pose={'x':t.x,'y':t.y,'yaw':math.atan2(2*(q.w*q.z+q.x*q.y),1-2*(q.y*q.y+q.z*q.z))})
+        except Exception:
+            if not self.node.relocalization.pose_at:result['reason']='尚未获得初始定位，请在地图上设置当前位置和朝向'
+        return result
+    def reply(self,h,body,status=200,cookie=None):
+        data=json.dumps(body,ensure_ascii=False).encode();h.send_response(status)
+        h.send_header('Content-Type','application/json; charset=utf-8');h.send_header('Cache-Control','no-store')
+        h.send_header('Content-Length',str(len(data)));h.send_header('X-Content-Type-Options','nosniff')
+        if cookie:h.send_header('Set-Cookie',cookie)
+        h.end_headers();h.wfile.write(data)
+    def token(self,h):
+        try:c=SimpleCookie();c.load(h.headers.get('Cookie',''));return c['luka_session'].value if 'luka_session' in c else ''
+        except Exception:return ''
+    def limited(self,h):
+        ip=h.client_address[0];now=time.monotonic()
+        with self.rate_lock:
+            values=[v for v in self.rate.get(ip,[]) if now-v<60]
+            if len(values)>=8:raise ValueError('尝试次数过多，请一分钟后重试')
+            values.append(now);self.rate[ip]=values
+    def handle(self,h,post=False):
+        path=urlparse(h.path).path.removeprefix('/product/api')
+        try:
+            body={}
+            if post:
+                origin=h.headers.get('Origin')
+                if origin and urlparse(origin).netloc!=h.headers.get('Host'):return self.reply(h,{'error':'来源校验失败'},403)
+                size=int(h.headers.get('Content-Length',0))
+                if not 0<=size<=100000:raise ValueError('请求过大')
+                body=json.loads(h.rfile.read(size) or b'{}')
+                if not isinstance(body,dict):raise ValueError('请求格式错误')
+            token=self.token(h);user=self.store.user(token)
+            if path=='/bootstrap' and not post:return self.reply(h,{'claimed':self.store.claimed(),'user':user,'device':'LUKA NX','account_mode':'local','transport':'http_local_development'})
+            if path in ('/register','/login') and post:
+                self.limited(h)
+                token=self.store.register(body.get('username'),body.get('password'),body.get('pairing_code')) if path=='/register' else self.store.login(body.get('username'),body.get('password'))
+                return self.reply(h,{'ok':True,'user':self.store.user(token)},cookie='luka_session='+token+'; HttpOnly; SameSite=Strict; Path=/product; Max-Age=43200')
+            if not user:return self.reply(h,{'error':'请先登录'},401)
+            if path=='/music':
+                action=body.get('action','status') if post else 'status'
+                if action not in ('search','play','pause','resume','stop','status','volume'):raise ValueError('不支持的音乐操作')
+                return self.reply(h,{'ok':True,'message':self.node.music.action(action,body),'volume':self.node.music.volume})
+            if path=='/voiceprints':
+                store=VoiceprintStore()
+                if post:
+                    action=body.get('action')
+                    if action=='enroll':
+                        if self.node.nx_voice_pub.get_subscription_count()==0:raise ValueError('语音服务未就绪，请先启动语音功能')
+                        if self.node.patrol_mission.active() or self.node.nx_handle is not None:raise ValueError('请先停止导航和巡航再录入声纹')
+                        store.begin(body.get('name'),user['id'])
+                    elif action=='delete':store.delete(body.get('id'),user['id'])
+                    else:raise ValueError('不支持的声纹操作')
+                    self.store.audit(user['id'],'voiceprint:'+action)
+                return self.reply(h,store.status())
+            if path=='/patrol-route':
+                result=self.node.patrol_mission.save_route(body) if post else self.node.patrol_mission.route_snapshot()
+                if post:self.store.audit(user['id'],'patrol-route:save')
+                return self.reply(h,result)
+            if path=='/logout' and post:
+                self.store.logout(token);return self.reply(h,{'ok':True},cookie='luka_session=; HttpOnly; SameSite=Strict; Path=/product; Max-Age=0')
+            if path=='/camera' and not post:
+                with urllib.request.urlopen('http://127.0.0.1:8503/camera.jpg',timeout=4) as r:return h.send_bytes(r.read(),'image/jpeg')
+            if path=='/localization' and not post:return self.reply(h,self.localization_status())
+            if path=='/localization' and post:
+                mode=body.get('mode')
+                if mode not in ('manual','auto'):raise ValueError('定位方式无效')
+                if self.node.patrol_mission.active():raise ValueError('请先停止当前任务')
+                with self.node.nx_lock:result=self.node.relocalization.start(mode,body)
+                self.store.audit(user['id'],'localization:'+mode)
+                return self.reply(h,result,202)
+            if path=='/action' and post:
+                name=body.get('action');allowed={'wake':'/api/voice/wake','stop':'/api/nav/stop','find':'/api/patrol/find','patrol':'/api/patrol/start','bring':'/api/patrol/bring'}
+                if name in ('navigate','patrol','bring'):
+                    loc=self.localization_status()
+                    if not loc['ready']:raise ValueError(loc['reason'])
+                if name=='navigate':
+                    if self.node.patrol_mission.active():raise ValueError('请先停止现有任务')
+                    doc=self.store.get('map:'+self.node.current_floor_id)['data'] or {}
+                    target=next((p for p in doc.get('pois',[]) if p['id']==body.get('poi_id') and p.get('confirmed')),None)
+                    if not target:raise ValueError('请先确认这个航点')
+                    if target['kind'].startswith('elevator'):raise ValueError('电梯协议尚未对接，不能执行电梯任务')
+                    result=self.navigate(dict(id=target['id'],display_name=target['name'],x=target['position'][0],y=target['position'][1],yaw=target.get('yaw',0)))
+                    self.store.audit(user['id'],'navigate',target['id']);return self.reply(h,result)
+                if name not in allowed:raise ValueError('不支持的操作')
+                payload={'query':body.get('query')} if name=='find' else {'job_id':body.get('job_id'),'session':body.get('session')} if name=='bring' else {'revision':body['revision']} if name=='patrol' and 'revision' in body else {}
+                req=urllib.request.Request('http://127.0.0.1:8503'+allowed[name],data=json.dumps(payload).encode(),headers={'Content-Type':'application/json'})
+                with urllib.request.urlopen(req,timeout=20) as r:result=json.load(r)
+                self.store.audit(user['id'],'action:'+name);return self.reply(h,result)
+            if path=='/status' and not post:
+                state=self.node.snapshot()
+                return self.reply(h,{'user':user,'setup':self.store.get('setup',{'step':'network','complete':False}),'device':{'name':'露卡','id':'NX-1921683251'},'network':self.network_status(),'network_job':self.network_job,'sonar':self.sonar_status(),'localization':self.localization_status(),'map':state['map'],'pose':state['pose'],'scan':state['scan'],'age':state['age'],'floor':state['floor_id'],'task':self.node.patrol_mission.snapshot(),'capabilities':{'local_account':True,'wifi_provisioning':True,'room_edit':True,'room_proposals':True,'autonomous_mapping':False,'elevator':False},'todos':['首次自主建图的 NX 导航联调与验收','电梯蓝牙/局域网协议适配（按用户要求暂缓）','出厂配对标签、首次联网入口和 HTTPS 加固']})
+            if path=='/setup' and post:
+                data=body.get('data',{})
+                if data.get('step') not in ('network','mapping','rooms','waypoints','ready'):raise ValueError('安装阶段无效')
+                if data.get('complete'):
+                    doc=self.store.get('map:'+self.node.current_floor_id)['data'] or {}
+                    if not doc.get('rooms') or not all(r.get('confirmed') for r in doc['rooms']):raise ValueError('请先确认房间划分')
+                    if any(not p.get('confirmed') for p in doc.get('pois',[])):raise ValueError('请确认或移除未审核航点')
+                    data['complete']=True
+                return self.reply(h,self.store.put('setup',data,body.get('revision'),user['id']))
+            if path=='/network' and not post:return self.reply(h,dict(self.network_status(),job=self.network_job))
+            if path=='/network/scan' and post:
+                result=self.network_helper({'action':'scan'});return self.reply(h,result)
+            if path=='/network/connect' and post:
+                if self.network_job['state']=='connecting':raise ValueError('正在连接网络')
+                if self.node.nx_handle is not None or self.node.patrol_mission.active():raise ValueError('请先停止小车任务再配置网络')
+                if not isinstance(body.get('ssid'),str) or not isinstance(body.get('password',''),str):raise ValueError('网络参数无效')
+                self.network_job={'state':'connecting','message':'正在连接新网络，页面可能断开；失败会尝试恢复原连接。'}
+                threading.Thread(target=self.connect_network,args=(body,user['id']),daemon=True).start()
+                return self.reply(h,dict(ok=True,**self.network_job),202)
+            if path=='/map/image' and not post:
+                return h.send_bytes(self.node.map_png,'image/png')
+            if path=='/map' and not post:return self.reply(h,self.store.get('map:'+self.node.current_floor_id,{'rooms':[],'pois':[]}))
+            if path=='/map/propose' and post:
+                info=dict(self.node.map_info);info.pop('version',None)
+                result=propose(self.node.map_png,info,self.node.load_waypoints());result['floor']=self.node.current_floor_id
+                return self.reply(h,{'proposal':result,'note':'仅生成待审核草稿，尚未保存或改变导航'})
+            if path=='/map' and post:
+                data=validate_regions(body.get('data'),self.node.map_info)
+                data['floor']=self.node.current_floor_id
+                return self.reply(h,self.store.put('map:'+self.node.current_floor_id,data,body.get('revision'),user['id']))
+            if path=='/elevator' and not post:return self.reply(h,self.store.get('elevator',{'status':'todo','transport':'lan','vendor':'','note':'协议对接已列为待办，不执行呼梯。'}))
+            if path=='/elevator' and post:
+                data=body.get('data',{})
+                if data.get('transport') not in ('lan','bluetooth'):raise ValueError('请选择局域网或蓝牙')
+                data={k:str(data.get(k,''))[:300] for k in ('transport','vendor','note')};data['status']='todo'
+                return self.reply(h,self.store.put('elevator',data,body.get('revision'),user['id']))
+            return self.reply(h,{'error':'功能尚未接入'},404)
+        except (ValueError,TypeError,KeyError) as exc:return self.reply(h,{'error':str(exc)},400)
+        except Exception as exc:
+            self.node.get_logger().error('product API failure: '+type(exc).__name__)
+            return self.reply(h,{'error':'设备暂时无法完成操作，请稍后重试'},503)
+    def network_helper(self,body):
+        result=subprocess.run(['sudo','-n','/usr/local/sbin/nx-product-network'],input=json.dumps(body),capture_output=True,text=True,timeout=55)
+        try:payload=json.loads(result.stdout)
+        except ValueError:raise ValueError('网络配置服务未就绪')
+        if not payload.get('ok'):raise ValueError(payload.get('error','网络操作失败'))
+        return payload
+    def connect_network(self,body,user):
+        time.sleep(2)
+        try:
+            result=self.network_helper(dict(action='connect',ssid=body['ssid'],password=body.get('password','')))
+            self.network_job=dict(state='connected',message=result['message'],addresses=result.get('addresses'))
+            self.store.audit(user,'wifi_connected')
+        except Exception as exc:self.network_job=dict(state='failed',message=str(exc))
+    def network_status(self):
+        p=subprocess.run(['nmcli','-t','-f','GENERAL.STATE,GENERAL.CONNECTION,IP4.ADDRESS','device','show','wlP1p1s0'],capture_output=True,text=True,timeout=3)
+        return {'connected':'100 (connected)' in p.stdout,'details':p.stdout.strip(),'hostname':'nvidia-desktop.local'}

@@ -1,0 +1,58 @@
+<section style="padding:14px;background:#182c24;color:#e6edf3">
+<b>巡航实时记忆与找物</b>
+<p>使用下方保存的巡航路线，只走一遍。启动前请核对定位；点击开始后小车会行驶。</p>
+<button id="nxPatrolStart">开始巡航记忆（小车将行驶）</button>
+<button id="nxPatrolStop">停止巡航／查找</button>
+<input id="nxFindQuery" placeholder="要找的物品，例如冰箱" style="width:210px">
+<button id="nxFindStart">查询物体记忆</button>
+<button id="nxObjectBring" disabled>带我去观察位置（小车将行驶）</button><span id="nxObjectTarget"></span>
+<p>语音：露卡 → 开始巡航／停止巡航／帮我找冰箱。巡航时连续识别并去重保存，查找直接查询物体数据库。移动时保存观察点，停稳且深度可靠时估算物体位置；未检出不代表物品不存在。</p>
+<p id="nxPatrolState">正在读取巡航状态…</p><div id="nxPatrolHits"></div>
+<a href="http://192.168.3.251:8091/memory" target="_blank">查看实时物体记忆</a> · <a href="http://192.168.3.251:8091/view" target="_blank">历史录像工具</a>
+</section>
+<script>
+async function nxPatrolAction(action){
+ const query=document.getElementById('nxFindQuery').value.trim();
+ if(action==='find'&&!query){document.getElementById('nxPatrolState').textContent='请输入物品名称';return;}
+ try{const r=await fetch('/api/patrol/'+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query})});const d=await r.json();document.getElementById('nxPatrolState').textContent=d.error||d.message;}
+ catch(e){document.getElementById('nxPatrolState').textContent='未能确认请求，请检查任务状态，不要重复点击启动';}
+}
+document.getElementById('nxPatrolStart').onclick=()=>nxPatrolAction('start');
+document.getElementById('nxPatrolStop').onclick=()=>nxPatrolAction('stop');
+document.getElementById('nxFindStart').onclick=()=>nxPatrolAction('find');
+let nxHitsVersion='';
+let nxBringTarget=null;
+document.getElementById('nxObjectBring').onclick=async()=>{
+ if(!nxBringTarget)return;
+ const target=nxBringTarget;document.getElementById('nxObjectBring').disabled=true;
+ try{const r=await fetch('/api/patrol/bring',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(target.object_id?{object_id:target.object_id,query:target.query,map_id:target.map_id}:{job_id:target.job_id,session:target.session})});const d=await r.json();document.getElementById('nxPatrolState').textContent=d.error||d.message;}catch(e){document.getElementById('nxPatrolState').textContent='未能确认带路状态，请检查任务状态';}
+};
+async function nxBringRefresh(){try{const d=await(await fetch('/api/patrol/target')).json();nxBringTarget=d.ok?d.target:null;
+ document.getElementById('nxObjectBring').disabled=!d.ok;
+ document.getElementById('nxObjectTarget').textContent=d.ok?'目标：'+d.target.query+'，最近看到它的观察点，到达后再确认。':d.error;
+}catch(e){document.getElementById('nxObjectBring').disabled=true;}}
+setInterval(nxBringRefresh,3000);nxBringRefresh();
+async function nxPatrolRefresh(){
+ try{const d=await(await fetch('/api/patrol/status')).json();document.getElementById('nxPatrolState').textContent=d.message;
+ document.getElementById('nxPatrolStart').disabled=['patrolling','searching','stopping','bringing','verifying'].includes(d.mode);
+ const hits=d.hits||[],key=JSON.stringify(hits);if(key===nxHitsVersion)return;nxHitsVersion=key;
+ const box=document.getElementById('nxPatrolHits');box.replaceChildren();
+ for(const h of hits.slice(0,12)){const card=document.createElement('div'),p=document.createElement('p'),img=document.createElement('img'),link=document.createElement('a');
+ if(h.source==='semantic'){
+   p.textContent=(h.description||h.name_zh||h.label)+' · 最近看到 '+new Date(h.last_seen*1000).toLocaleString()+(h.area_hint?' · '+h.area_hint:'')+(h.map_xyz_m?' · 有物体表面估计坐标':' · 仅记录观察点')+(h.identity_uncertain?' · 身份待核对':'');
+   if(/^\/semantic\/file\/[a-zA-Z0-9_-]+\.jpg$/.test(h.evidence_url||'')){img.src='http://192.168.3.251:8091'+h.evidence_url;img.style.cssText='max-width:360px;width:100%';link.href=img.src;link.target='_blank';link.append(img);}
+   const bring=document.createElement('button');bring.textContent='带我去此观察点（小车将行驶）';bring.onclick=async()=>{try{const r=await fetch('/api/patrol/bring',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({object_id:h.id,query:h.query||d.query,map_id:h.map_id})});const body=await r.json();document.getElementById('nxPatrolState').textContent=body.error||body.message;}catch(e){document.getElementById('nxPatrolState').textContent='带路请求未确认，请查看任务状态';}};
+   card.append(p,link,bring);box.append(card);continue;
+ }
+ const pose=h.observation?.map_from_base?.translation;
+ p.textContent=`录像第 ${h.seconds.toFixed(1)} 秒（视频 ${h.video_seconds.toFixed(1)} 秒）候选。`+(pose?`当时小车观察位置：X ${pose[0].toFixed(2)}，Y ${pose[1].toFixed(2)} 米；这是观察位置，不是物体精确坐标。`:'此录像没有可靠的观察位置记录。');
+ if(/^\/patrol\/file\/[a-f0-9]{32}\/[a-f0-9]{32}\/hit_[0-9]{6}\.png$/.test(h.image)){img.src='http://192.168.3.251:8091'+h.image;img.style.cssText='max-width:360px;width:100%';link.href=img.src;link.target='_blank';link.append(img);}
+ card.append(p,link);box.append(card);}
+ }catch(e){document.getElementById('nxPatrolState').textContent='巡航状态连接中断';}
+}
+nxPatrolRefresh();setInterval(nxPatrolRefresh,1500);
+</script>
+
+<section id="patrolRouteEditor"></section><script src="/patrol-route.js?v=route-editor"></script>
+
+<section class="card" id="musicPanel"></section><script src="/music-ui.js?v=tools"></script>
