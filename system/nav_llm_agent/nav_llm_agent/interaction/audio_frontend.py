@@ -47,6 +47,14 @@ class AudioFrontendPolicy:
             raise ValueError(f"unsupported audio frontend profile: {profile_name}")
         provider = str(aec_provider or "none").strip().lower()
         ns = str(ns_provider or "none").strip().lower()
+        # Backward-compatible inference: a caller that explicitly requests
+        # full duplex with a named AEC provider is an external-AEC profile.
+        if (
+            profile_name == "guarded"
+            and mode is DuplexMode.AEC_FULL_DUPLEX
+            and provider not in {"", "none", "disabled", "guarded"}
+        ):
+            profile_name = "external_aec"
         if mode is DuplexMode.AEC_FULL_DUPLEX and provider in {
             "",
             "none",
@@ -64,6 +72,19 @@ class AudioFrontendPolicy:
             raise ValueError(
                 "noise_suppression=true requires a named NS provider"
             )
+        if profile_name == "pulse_webrtc":
+            if mode is not DuplexMode.AEC_FULL_DUPLEX:
+                raise ValueError("pulse_webrtc requires aec_full_duplex")
+            if provider != "pulseaudio_webrtc":
+                raise ValueError(
+                    "pulse_webrtc requires aec_provider=pulseaudio_webrtc"
+                )
+            if not bool(noise_suppression) or ns != "pulseaudio_webrtc":
+                raise ValueError(
+                    "pulse_webrtc requires WebRTC noise suppression"
+                )
+        if profile_name == "guarded" and mode is not DuplexMode.GUARDED_HALF_DUPLEX:
+            raise ValueError("guarded profile must remain half duplex")
         return cls(
             profile=profile_name,
             duplex_mode=mode,

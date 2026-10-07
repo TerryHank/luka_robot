@@ -41,30 +41,78 @@ class InteractionPlatformStatus(Node):
             String, "/llm_status",
             lambda msg: self._seen("agent", msg.data), 10
         )
+        self.xiaozhi_mode_file = str(
+            self.declare_parameter(
+                "xiaozhi_mode_file",
+                f"/run/user/{os.getuid()}/luka/xiaozhi_mode",
+            ).value
+        )
         self.create_timer(1.0, self.publish_status)
 
     def _seen(self, component, payload):
         self.last[component] = (time.monotonic(), payload)
 
-    def _component(self, name):
-        seen_at, payload = self.last[name]
+    def _decode(self, payload):
+        if not payload:
+            return None
+        try:
+            value = json.loads(payload)
+            return value if isinstance(value, dict) else payload
+        except (TypeError, json.JSONDecodeError):
+            return payload
+
+    def _component(self, name, node_names, expected_nodes=()):
+        seen_at, raw = self.last[name]
         age = None if seen_at <= 0 else max(0.0, time.monotonic() - seen_at)
+        node_online = any(node in node_names for node in expected_nodes)
         return {
-            "online": age is not None and age <= self.stale_sec,
+            "online": node_online or (age is not None and age <= self.stale_sec),
+            "node_online": node_online,
             "age_sec": None if age is None else round(age, 3),
-            "last": payload,
+            "last": self._decode(raw),
         }
 
+    def _xiaozhi_mode(self):
+        try:
+            with open(self.xiaozhi_mode_file, encoding="utf-8") as stream:
+                value = stream.read().strip()
+                if value:
+                    return value
+        except OSError:
+            pass
+        return "off"
+
     def publish_status(self):
+        node_names = set(self.get_node_names())
+        components = {
+            "voice_runtime": self._component(
+                "voice_runtime", node_names,
+                ("voice_gateway", "drobotics_voice_suite_bridge"),
+            ),
+            "agent_gateway": self._component(
+                "agent_gateway", node_names, ("interaction_agent_gateway",),
+            ),
+            "agent": self._component(
+                "agent", node_names, ("nav_llm_agent",),
+            ),
+        }
+        voice = components["voice_runtime"].get("last")
+        frontend = (
+            voice.get("frontend", {}) if isinstance(voice, dict) else {}
+        )
+        speech = (
+            voice.get("speech_backend", {}) if isinstance(voice, dict) else {}
+        )
         payload = {
             "schema": "luka.interaction.platform_status.v1",
             "architecture": "L4 Interaction Platform",
-            "audio_frontend": os.getenv("LUKA_AUDIO_FRONTEND", "guarded"),
-            "voice_backend": os.getenv("LUKA_VOICE_BACKEND", "legacy"),
-            "xiaozhi_mode": os.getenv("LUKA_XIAOZHI_MODE", "mcp_only"),
-            "components": {
-                name: self._component(name) for name in self.last
-            },
+            "audio_frontend": frontend.get("profile", "unknown"),
+            "duplex_mode": frontend.get("duplex_mode", "unknown"),
+            "aec_provider": frontend.get("aec_provider", "unknown"),
+            "ns_provider": frontend.get("ns_provider", "unknown"),
+            "speech_backend": speech.get("name", "unknown"),
+            "xiaozhi_mode": self._xiaozhi_mode(),
+            "components": components,
             "timestamp": time.time(),
         }
         self.publisher.publish(

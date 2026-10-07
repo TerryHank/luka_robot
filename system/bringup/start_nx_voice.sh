@@ -13,6 +13,8 @@ LUKA_VOICE_BARGE_IN="${LUKA_VOICE_BARGE_IN:-true}"
 LUKA_VOICE_CONTINUOUS="${LUKA_VOICE_CONTINUOUS:-true}"
 LUKA_VOICE_NS_PROVIDER="${LUKA_VOICE_NS_PROVIDER:-none}"
 LUKA_VOICE_NS="${LUKA_VOICE_NS:-false}"
+LUKA_VOICE_KWS_ENGINE="${LUKA_VOICE_KWS_ENGINE:-sherpa_onnx_zipformer}"
+LUKA_VOICE_VAD_ENGINE="${LUKA_VOICE_VAD_ENGINE:-sherpa_onnx_silero}"
 if [[ "$VOICE_BACKEND" == "drobotics" ]]; then
   exec /bin/bash /home/sunrise/luka_ws/system/bringup/start_rdk_voice_suite.sh
 fi
@@ -33,6 +35,8 @@ exec python3 /home/sunrise/luka_ws/system/runtime/tools/nx_voice_gateway.py --ro
  -p aec_provider:="$LUKA_VOICE_AEC_PROVIDER" \
  -p ns_provider:="$LUKA_VOICE_NS_PROVIDER" \
  -p noise_suppression:="$LUKA_VOICE_NS" \
+ -p kws_engine:="$LUKA_VOICE_KWS_ENGINE" \
+ -p vad_engine:="$LUKA_VOICE_VAD_ENGINE" \
  -p barge_in_enabled:="$LUKA_VOICE_BARGE_IN" \
  -p continuous_dialogue:="$LUKA_VOICE_CONTINUOUS" \
  --params-file "${NX_VOICE_STYLE:-/home/sunrise/luka_ws/common/config/nx_voice_style.yaml}"

@@ -3,6 +3,9 @@ set -euo pipefail
 
 MODE="${LUKA_XIAOZHI_MODE:-mcp_only}"
 WORKSPACE="${LUKA_WS:-/home/sunrise/luka_ws}"
+runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/luka"
+mkdir -p "$runtime_dir"
+printf '%s\n' "$MODE" > "$runtime_dir/xiaozhi_mode"
 
 resolve_root() {
   if [ -n "${XIAOZHI_RDK_ROOT:-}" ]; then
