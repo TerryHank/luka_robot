@@ -51,3 +51,25 @@ The normalized text Agent Gateway contains no robot tool implementation.
 Xiaozhi MCP tool calls use the localhost assistant safety API. Neither path can
 publish Twist or call DDSM directly. L3 remains the first layer allowed to own
 mission/capability execution.
+
+
+## Agent Gateway has two transports
+
+The architectural boundary is one logical gateway with two adapters:
+
+```text
+free-form text
+  -> ROS envelope gateway
+  -> /llm_voice_command
+  -> nav_llm_agent
+
+explicit Xiaozhi MCP tool call
+  -> LukaAgentGateway
+  -> localhost /api/assistant/tools + /api/assistant/execute
+  -> capability/workflow validation
+```
+
+The MCP path does **not** bypass L3 policy: motion is disabled by default for
+Xiaozhi, the tool must exist in the current catalog, original user text is
+required for grounded motion tools, and the assistant API revalidates the
+request before execution.

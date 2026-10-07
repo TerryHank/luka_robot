@@ -24,7 +24,7 @@ setup(
     zip_safe=True,
     maintainer='yuxi',
     maintainer_email='yuxi@todo.todo',
-    description='Thin LLM agent: natural-language commands to Nav2 via Ollama.',
+    description='Luka L4 interaction gateway, voice runtime and L3 agent integration.',
     license='Apache-2.0',
     entry_points={
         'console_scripts': [

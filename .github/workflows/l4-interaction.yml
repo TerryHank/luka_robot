@@ -37,6 +37,7 @@ jobs:
           bash -n system/bringup/stop_audio_frontend.sh
           bash -n system/scripts/start_xiaozhi_mcp.sh
           bash -n system/scripts/start_xiaozhi_platform.sh
+          bash -n system/scripts/l4_interaction_preflight.sh
       - name: Run L4 contract tests
         env:
           PYTHONPATH: system/nav_llm_agent

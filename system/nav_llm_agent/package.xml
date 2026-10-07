@@ -3,7 +3,7 @@
 <package format="3">
   <name>nav_llm_agent</name>
   <version>0.1.0</version>
-  <description>Thin LLM agent: natural-language commands to Nav2 navigate_to_pose via Ollama.</description>
+  <description>Luka L4 interaction gateway, voice runtime and L3 mission agent integration.</description>
   <maintainer email="yuxi@todo.todo">yuxi</maintainer>
   <license>Apache-2.0</license>
 
@@ -20,6 +20,7 @@
   <exec_depend>python3-yaml</exec_depend>
   <exec_depend>python3-numpy</exec_depend>
   <exec_depend>alsa-utils</exec_depend>
+  <exec_depend>pulseaudio-utils</exec_depend>
   <exec_depend>sensevoice_ros2</exec_depend>
   <exec_depend>hobot_tts</exec_depend>
   <exec_depend>hobot_xlm</exec_depend>

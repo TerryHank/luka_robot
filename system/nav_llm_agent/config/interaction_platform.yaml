@@ -20,9 +20,14 @@ layers:
     modes: [off, mcp_only, exclusive_remote]
     mcp_config: /home/sunrise/luka_ws/system/xiaozhi/mcp_config.luka.json
   agent_gateway:
-    input_topic: /luka/interaction/agent_input
-    output_topic: /llm_voice_command
-    status_topic: /luka/interaction/gateway_status
+    text:
+      input_topic: /luka/interaction/agent_input
+      output_topic: /llm_voice_command
+      status_topic: /luka/interaction/gateway_status
+    tools:
+      catalog: http://127.0.0.1:8503/api/assistant/tools
+      execute: http://127.0.0.1:8503/api/assistant/execute
+      xiaozhi_motion_default: false
   platform_status:
     topic: /luka/interaction/platform_status
 
