@@ -4,15 +4,16 @@ on:
   push:
     branches:
       - feat/l4-voice-runtime-xiaozhi-skainet
+      - refactor/workspace-layout
   pull_request:
     paths:
-      - "system/nav_llm_agent/**"
-      - "system/xiaozhi/**"
-      - "system/bringup/**"
-      - "system/scripts/start_xiaozhi*"
-      - "visualization/console/nx_voice_gateway.py"
-      - "visualization/console/nx_tts_pipeline.py"
-      - "evaluator/suite/test_l4_*"
+      - "src/system/nav_llm_agent/**"
+      - "src/src/system/xiaozhi/**"
+      - "src/src/system/bringup/**"
+      - "src/src/system/scripts/start_xiaozhi*"
+      - "src/visualization/console/nx_voice_gateway.py"
+      - "src/visualization/console/nx_tts_pipeline.py"
+      - "src/testing/evaluator/suite/test_l4_*"
       - "docs/architecture/L4_*"
 
 jobs:
@@ -27,19 +28,23 @@ jobs:
         run: python -m pip install --upgrade pytest numpy pyyaml
       - name: Compile L4 Python
         run: |
-          python -m compileall -q system/nav_llm_agent/nav_llm_agent/interaction
-          python -m compileall -q system/xiaozhi
+          python -m compileall -q src/system/nav_llm_agent/nav_llm_agent/interaction
+          python -m compileall -q src/system/xiaozhi
       - name: Check shell syntax
         run: |
-          bash -n system/bringup/start_nx_agent.sh
-          bash -n system/bringup/start_nx_voice.sh
-          bash -n system/bringup/audio_frontend_env.sh
-          bash -n system/bringup/stop_audio_frontend.sh
-          bash -n system/scripts/start_xiaozhi_mcp.sh
-          bash -n system/scripts/start_xiaozhi_platform.sh
-          bash -n system/scripts/l4_interaction_preflight.sh
+          bash -n src/system/bringup/start_nx_agent.sh
+          bash -n src/system/bringup/start_nx_voice.sh
+          bash -n src/system/bringup/audio_frontend_env.sh
+          bash -n src/system/bringup/stop_audio_frontend.sh
+          bash -n src/system/scripts/start_xiaozhi_mcp.sh
+          bash -n src/system/scripts/start_xiaozhi_platform.sh
+          bash -n src/system/scripts/l4_interaction_preflight.sh
       - name: Run L4 contract tests
         env:
-          PYTHONPATH: system/nav_llm_agent
+          PYTHONPATH: src/system/nav_llm_agent
         run: |
-          pytest -q             system/nav_llm_agent/test/test_voice_runtime.py             system/nav_llm_agent/test/test_interaction_gateway.py             evaluator/suite/test_l4_interaction_voice_runtime.py             evaluator/suite/test_l4_platform_architecture.py
+          pytest -q \
+            src/system/nav_llm_agent/test/test_voice_runtime.py \
+            src/system/nav_llm_agent/test/test_interaction_gateway.py \
+            src/testing/evaluator/suite/test_l4_interaction_voice_runtime.py \
+            src/testing/evaluator/suite/test_l4_platform_architecture.py

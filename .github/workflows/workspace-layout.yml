@@ -1,0 +1,83 @@
+name: Workspace Layout
+
+on:
+  push:
+    branches:
+      - refactor/workspace-layout
+    paths:
+      - "src/**"
+      - ".gitignore"
+      - ".vscode/**"
+      - "README.md"
+      - "docs/WORKSPACE_LAYOUT.md"
+      - ".github/workflows/workspace-layout.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - ".gitignore"
+      - ".vscode/**"
+      - "README.md"
+      - "docs/WORKSPACE_LAYOUT.md"
+
+jobs:
+  layout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate canonical source tree
+        run: |
+          test -d src/sensing
+          test -d src/localization
+          test -d src/mapping
+          test -d src/perception
+          test -d src/planning
+          test -d src/control
+          test -d src/system
+          test -d src/visualization
+          test -d src/testing
+          test ! -e src/COLCON_IGNORE
+
+      - name: Validate compatibility and data mounts
+        run: |
+          test -L sensing
+          test -L localization
+          test -L perception
+          test -L planning
+          test -L control
+          test -L system
+          test -L visualization
+          test -L map
+          test -L maps
+          test -L models
+          test -L recordings
+          test "$(readlink maps)" = "../luka_data/maps"
+          test "$(readlink models)" = "../luka_data/ml_models"
+          test "$(readlink recordings)" = "../luka_data/recordings"
+          test "$(git ls-files -s src/mapping/maps | awk '{print $1}')" = "120000"
+          test "$(git ls-files -s src/common/models | awk '{print $1}')" = "120000"
+          test "$(git ls-files -s src/perception/person_follow/models | awk '{print $1}')" = "120000"
+
+      - name: Reject generated artifacts in Git
+        run: |
+          ! git ls-files | grep -E '^\.vscode/browse\.vc\.db'
+          ! git ls-files | grep -E '^src/system/nx_chat/build/'
+          ! git ls-files | grep -E '^src/sensing/stereo_calibration/captures_'
+          ! git ls-files | grep -E '(^|/)(build|install|log)/'
+
+      - name: Check bootstrap script
+        run: |
+          bash -n src/system/scripts/bootstrap_workspace_layout.sh
+          mkdir -p "$RUNNER_TEMP/home"
+          HOME="$RUNNER_TEMP/home" \
+          LUKA_WS="$GITHUB_WORKSPACE" \
+          LUKA_DATA="$RUNNER_TEMP/luka_data" \
+          bash src/system/scripts/bootstrap_workspace_layout.sh
+          test -d build
+          test -d install
+          test -d log
+          test -d "$RUNNER_TEMP/luka_data/maps"
+          test -d "$RUNNER_TEMP/luka_data/ml_models"
+          test -d "$RUNNER_TEMP/luka_data/recordings/bags"
