@@ -8,6 +8,7 @@
   <license>Apache-2.0</license>
 
   <depend>rclpy</depend>
+  <exec_depend>luka_capabilities</exec_depend>
   <depend>ament_index_python</depend>
   <depend>std_msgs</depend>
   <depend>audio_msg</depend>

@@ -18,9 +18,7 @@ import rclpy
 from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from hotel_semantic_map_msgs.msg import SemanticMapStatus
-from nav2_msgs.action import NavigateToPose
 from nav2_msgs.srv import ClearEntireCostmap, LoadMap
-from rclpy.action import ActionClient
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
@@ -267,7 +265,11 @@ from .chat_memory import ChatMemory, stream_chat_with_messages
 import sys
 sys.path.insert(0,"/home/sunrise/luka_ws/system/runtime/tools")
 from nx_speaker_memory import SpeakerMemories, enrolled, speaker_key
-from nx_assistant_tools import candidate as nx_candidate, direct as nx_direct, prompt as nx_tool_prompt, http as nx_http, select as nx_select
+try:
+    from luka_capabilities import candidate as nx_candidate, direct as nx_direct, prompt as nx_tool_prompt, http as nx_http, select as nx_select
+except ModuleNotFoundError as exc:
+    if exc.name != "luka_capabilities":raise
+    from nx_assistant_tools import candidate as nx_candidate, direct as nx_direct, prompt as nx_tool_prompt, http as nx_http, select as nx_select
 
 
 class NavLlmAgent(Node):
@@ -488,7 +490,6 @@ class NavLlmAgent(Node):
             transient_qos,
         )
 
-        self._nav_client = ActionClient(self, NavigateToPose, "/navigate_to_pose")
         self._current_goal = None
         self._pending_kind = ""
         self._last_entry_status = "unknown"
@@ -987,32 +988,19 @@ class NavLlmAgent(Node):
             }
             self._publish_status(f"speech: {phrases[state]}")
 
-    def _send_navigation_pose(
-        self, name: str, x: float, y: float, yaw: float
-    ) -> bool:
-        if not self._nav_client.wait_for_server(timeout_sec=0.5):
-            self._complete_pending(
-                False, "nav2 not ready: navigate_to_pose unavailable"
-            )
-            return True
-        pose = PoseStamped()
-        pose.header.frame_id = self._frame_id
-        pose.header.stamp = self.get_clock().now().to_msg()
-        pose.pose.position.x = x
-        pose.pose.position.y = y
-        qx, qy, qz, qw = yaw_to_quat(yaw)
-        pose.pose.orientation.x = qx
-        pose.pose.orientation.y = qy
-        pose.pose.orientation.z = qz
-        pose.pose.orientation.w = qw
-        goal = NavigateToPose.Goal()
-        goal.pose = pose
-        self._pending_kind = f"navigation:{name}"
-        future = self._nav_client.send_goal_async(goal)
-        future.add_done_callback(
-            lambda fut, target=name: self._on_goal_response(fut, target)
-        )
-        self._publish_status(f"sending: navigate {name}")
+    def _send_navigation_pose(self, name: str, x: float, y: float, yaw: float) -> bool:
+        # Legacy floor workflows stay unavailable until exposed as capabilities.
+        # Coordinates never become an Interaction-level motion implementation.
+        del x, y, yaw
+        try:
+            rows=nx_http('/api/voice/destinations')['destinations']
+            hits=[row for row in rows if row['id']==name or row['display_name']==name]
+            if len(hits)!=1:raise ValueError('目标尚未登记为可用能力目的地')
+            result=nx_http('/api/assistant/execute',{'tool':'navigate',
+                          'arguments':{'name':hits[0]['display_name']},'source':self._llm_text})
+            if not result.get('ok'):raise ValueError(result.get('error','导航请求被拒绝'))
+            self._publish_status('submitted: '+result['message'])
+        except Exception as error:self._complete_pending(False,'没有执行：'+str(error))
         return True
 
     def _on_goal_response(self, future, name: str) -> None:
