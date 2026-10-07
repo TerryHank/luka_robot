@@ -24,7 +24,7 @@ def test_existing_console_motion_sources_are_explicitly_inventoried():
 
 
 def test_nav2_and_official_follow_keep_current_safety_ingress():
-    nav = (ROOT / "system/bringup/nx_navigation.launch.py").read_text(encoding="utf-8")
+    nav = (ROOT / "system/luka_bringup/luka_bringup/navigation.py").read_text(encoding="utf-8")
     assert "('cmd_vel','/nx/nav_raw')" in nav
     assert "('cmd_vel_smoothed','/luka/motion/nav')" in nav
     follow = (ROOT / "control/luka_person_following/launch/selected_follow.launch.py").read_text(encoding="utf-8")
