@@ -20,7 +20,14 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import String
 from nx_tts_backend import create_tts, validate_speaker_id
-from nav_llm_agent.interaction import AudioFrontendPolicy, VoiceRuntime, VoiceState
+from nav_llm_agent.interaction import (
+    AudioFrontendPolicy,
+    LocalSenseVoiceASR,
+    LocalTTSBackend,
+    VoiceRuntime,
+    VoiceState,
+    get_profile,
+)
 
 
 TAG_RE = re.compile(r"<\|[^|]+\|>")
@@ -194,6 +201,7 @@ class VoiceGateway(Node):
         self._tts_generation = 0
         self._playback_lock = threading.Lock()
         self._playback_proc = None
+        self.speech_profile = get_profile("luka_local")
         self.voice_runtime = VoiceRuntime(
             AudioFrontendPolicy.build(
                 profile=str(self.get_parameter("audio_frontend_profile").value),
@@ -249,14 +257,10 @@ class VoiceGateway(Node):
             provider="cpu",
         )
         self.kws_stream = self.kws.create_stream()
-        self.asr = sherpa_onnx.OfflineRecognizer.from_sense_voice(
-            tokens=os.path.join(asr_dir, "tokens.txt"),
-            model=os.path.join(asr_dir, "model.int8.onnx"),
-            num_threads=max(1, int(self.get_parameter("asr_num_threads").value)),
+        self.asr_backend = LocalSenseVoiceASR(
+            asr_dir,
             sample_rate=self.sample_rate,
-            language="zh",
-            use_itn=True,
-            provider="cpu",
+            threads=max(1, int(self.get_parameter("asr_num_threads").value)),
         )
         self.tts = None
         self.tts_engine = str(self.get_parameter("tts_engine").value).strip().lower()
@@ -285,9 +289,11 @@ class VoiceGateway(Node):
         if bool(self.get_parameter("tts_enabled").value):
             try:
                 tts_dir = str(self.get_parameter("tts_model_dir").value)
-                self.tts = create_tts(
-                    self.tts_engine, tts_dir,
-                    threads=int(self.get_parameter("tts_num_threads").value),
+                self.tts = LocalTTSBackend(
+                    create_tts(
+                        self.tts_engine, tts_dir,
+                        threads=int(self.get_parameter("tts_num_threads").value),
+                    )
                 )
                 self.tts_sid = validate_speaker_id(self.tts, self.tts_sid)
                 # Prepare the acknowledgement once, so wake-up does not wait
@@ -335,6 +341,7 @@ class VoiceGateway(Node):
 
     def _runtime_status(self, event: str, **details) -> None:
         payload = self.voice_runtime.snapshot()
+        payload["speech_backend"] = self.speech_profile.snapshot()
         payload["event"] = str(event)
         if details:
             payload["details"] = details
@@ -583,11 +590,11 @@ class VoiceGateway(Node):
         audio = np.concatenate(self.command_audio).astype(np.float32, copy=False)
         self._status(f"recognizing duration={len(audio) / self.sample_rate:.1f}s")
         try:
-            stream = self.asr.create_stream()
-            stream.accept_waveform(self.sample_rate, audio)
-            self.asr.decode_stream(stream)
-            text = TAG_RE.sub("", stream.result.text or "").strip()
-            self._status(f"asr_timing seconds={time.monotonic() - started_at:.3f}")
+            text = self.asr_backend.transcribe(audio, self.sample_rate)
+            self._status(
+                f"asr_timing backend={self.asr_backend.name} "
+                f"seconds={time.monotonic() - started_at:.3f}"
+            )
         except Exception as exc:
             self._return_to_wake(f"recognition_error {exc}")
             return

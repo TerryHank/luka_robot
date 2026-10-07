@@ -13,7 +13,12 @@ import rclpy
 from audio_msg.msg import SmartAudioData
 from rclpy.node import Node
 from std_msgs.msg import String
-from nav_llm_agent.interaction import AudioFrontendPolicy, VoiceRuntime, VoiceState
+from nav_llm_agent.interaction import (
+    AudioFrontendPolicy,
+    VoiceRuntime,
+    VoiceState,
+    get_profile,
+)
 
 
 def spoken_status(text):
@@ -42,6 +47,7 @@ class DRoboticsVoiceSuiteBridge(Node):
             2.0,
             float(self.declare_parameter("tts_chars_per_second", 5.0).value),
         )
+        self.speech_profile = get_profile("drobotics")
         self.runtime = VoiceRuntime(
             AudioFrontendPolicy.build(
                 duplex_mode="guarded_half_duplex",
@@ -84,6 +90,7 @@ class DRoboticsVoiceSuiteBridge(Node):
         payload = self.runtime.snapshot()
         payload["event"] = str(event)
         payload["backend"] = "drobotics"
+        payload["speech_backend"] = self.speech_profile.snapshot()
         payload["playback_timing"] = "estimated"
         if details:
             payload["details"] = details

@@ -6,6 +6,12 @@ contains no ESP32/ESP-SR runtime code.
 
 from .audio_frontend import AudioFrontendPolicy, DuplexMode
 from .voice_runtime import VoiceRuntime, VoiceState, VoiceStateMachine
+from .speech_backends import (
+    LocalSenseVoiceASR,
+    LocalTTSBackend,
+    SpeechBackendProfile,
+    get_profile,
+)
 
 __all__ = [
     "AudioFrontendPolicy",
@@ -13,4 +19,8 @@ __all__ = [
     "VoiceRuntime",
     "VoiceState",
     "VoiceStateMachine",
+    "LocalSenseVoiceASR",
+    "LocalTTSBackend",
+    "SpeechBackendProfile",
+    "get_profile",
 ]
