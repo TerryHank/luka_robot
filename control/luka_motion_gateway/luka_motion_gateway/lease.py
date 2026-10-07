@@ -45,7 +45,7 @@ class SourceLease:
 
     def permits(self, source):
         self.expire()
-        return not self.manual and self.source==source
+        return source in SOURCES and not self.manual and self.owner is not None and self.source==source
 
     def status(self):
         self.expire()

@@ -19,6 +19,8 @@ def request(arbiter,source='nav',owner='test',mode='acquire',**patch):
 
 def test_only_explicitly_leased_source_can_output_velocity():
     a,_=setup();v=[.1,0.,0.,0.,0.,0.]
+    assert not a.lease.permits(None)
+    assert not a.receive(None,v)
     assert not a.receive('nav',v)
     a.lease.request(request(a));assert a.receive('nav',v);assert a.output()==v
     assert not a.receive('follow',[.2,0.,0.,0.,0.,0.]);assert a.output()==v
