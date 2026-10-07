@@ -1,7 +1,0 @@
-string query
-string floor_id
----
-bool success
-hotel_semantic_map_msgs/Destination destination
-string error_code
-string message

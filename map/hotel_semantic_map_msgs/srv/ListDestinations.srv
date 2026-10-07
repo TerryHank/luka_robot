@@ -1,5 +1,0 @@
-string floor_id
-string poi_type
-bool enabled_only
----
-hotel_semantic_map_msgs/Destination[] destinations

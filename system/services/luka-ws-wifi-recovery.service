@@ -1,9 +1,0 @@
-# /etc/systemd/system/luka-ws-wifi-recovery.service
-[Unit]
-Description=Recover stuck S100 Wi-Fi connection
-After=NetworkManager.service
-Wants=NetworkManager.service
-
-[Service]
-Type=oneshot
-ExecStart=/home/sunrise/luka_ws/system/helpers/luka-ws-wifi-recovery

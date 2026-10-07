@@ -1,2 +1,0 @@
-SUBSYSTEM=="usb", ATTR{idProduct}=="060f", ATTR{idVendor}=="2bc5", MODE:="0660", OWNER:="root", GROUP:="video", SYMLINK+="astro_pro_plus"
-SUBSYSTEM=="usb", ATTR{idProduct}=="050f", ATTR{idVendor}=="2bc5", MODE:="0660", OWNER:="root", GROUP:="video", SYMLINK+="astro_pro_plus_rgb"

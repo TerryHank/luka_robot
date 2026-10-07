@@ -1,5 +1,0 @@
-{
-  "exit_code": 1,
-  "stdout": ".........F.........                                                      [100%]\n=================================== FAILURES ===================================\n___________ test_short_asr_fragments_and_looping_chat_are_contained ____________\n\n>   ???\nE   AssertionError: assert '好的呀。呀，好的啦。' == '好的。'\nE     - 好的。\nE     + 好的呀。呀，好的啦。\n\n/home/nvidia/ddsm_car_ws/src/nav_llm_agent/test/test_agent_parsing.py:91: AssertionError\n=========================== short test summary info ============================\nFAILED test_agent_parsing.py::test_short_asr_fragments_and_looping_chat_are_contained\n1 failed, 18 passed in 1.01s\n",
-  "stderr": ""
-}

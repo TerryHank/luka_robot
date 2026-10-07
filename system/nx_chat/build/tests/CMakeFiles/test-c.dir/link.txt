@@ -1,1 +1,0 @@
-/usr/bin/cc -O3 -DNDEBUG CMakeFiles/test-c.dir/test-c.c.o -o ../bin/test-c  -Wl,-rpath,/home/sunrise/luka_s100/nx_chat/build/bin ../bin/libllama.so.0.4.0 ../bin/libggml.so.0.23.0 ../bin/libggml-cpu.so.0.23.0 ../bin/libggml-base.so.0.23.0 

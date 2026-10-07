@@ -1,7 +1,0 @@
-configured: true
-frame_id: map
-x: -2.140108118902977
-y: -1.4005041410599686
-yaw: 0.4121038679285949
-map_file: /home/terry/ddsm_car_ws/maps/ddsm_map.yaml
-map_sha256: e23e526e7f4fb7ed38dfd5cbda8f083a587b502636d5daf6e870c0143e3f163b

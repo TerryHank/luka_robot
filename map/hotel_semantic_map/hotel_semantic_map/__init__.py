@@ -1,1 +1,0 @@
-"""Hotel semantic map package."""

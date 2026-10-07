@@ -1,7 +1,0 @@
-site_id: hotel_demo
-floor_id: floor_3
-map_id: ddsm_map_floor_3
-map_version: "floor_3-v1"
-frame_id: map
-semantic_areas: semantic_areas.geojson
-poi_database: pois.yaml
