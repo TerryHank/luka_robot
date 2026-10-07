@@ -26,8 +26,7 @@ ros2 run nav_llm_agent agent_node --ros-args \
  -p capabilities_file:=/home/sunrise/luka_ws/system/nav_llm_agent/config/capabilities.yaml \
  -p waypoints_file:=/home/sunrise/luka_ws/system/nav_llm_agent/config/waypoints_rk3588.yaml \
  -p transfer_state_file:=/home/sunrise/luka_ws/common/config/nx_dryrun_transfer_state.yaml \
- -p current_floor_id:=floor_4
-
- &
+ -p current_floor_id:=floor_4 &
 pids+=("$!")
-wait -n "${pids[@]}"
+
+wait -n
