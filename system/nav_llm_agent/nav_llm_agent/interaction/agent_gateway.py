@@ -3,69 +3,12 @@ from __future__ import annotations
 from collections import OrderedDict
 import json
 import time
-import uuid
 
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 
-
-SCHEMA = "luka.interaction.text.v1"
-ALLOWED_SOURCES = {
-    "voice_local",
-    "voice_drobotics",
-    "xiaozhi_protocol",
-    "app",
-    "dashboard",
-    "legacy_voice",
-}
-
-
-def normalize_envelope(raw: str, default_source: str = "legacy_voice") -> dict:
-    raw = str(raw or "").strip()
-    if not raw:
-        raise ValueError("empty interaction input")
-    try:
-        value = json.loads(raw)
-    except json.JSONDecodeError:
-        value = {"text": raw, "source": default_source}
-    if not isinstance(value, dict):
-        raise ValueError("interaction input must be text or a JSON object")
-
-    text = str(value.get("text") or "").strip()
-    if not 1 <= len(text) <= 1000:
-        raise ValueError("interaction text must contain 1..1000 characters")
-    source = str(value.get("source") or default_source).strip().lower()
-    if source not in ALLOWED_SOURCES:
-        raise ValueError(f"unsupported interaction source: {source}")
-
-    captured_at = value.get("captured_at")
-    if not isinstance(captured_at, (int, float)):
-        captured_at = time.time()
-
-    session_id = str(value.get("session_id") or "").strip()
-    turn_id = str(value.get("turn_id") or "").strip()
-    provided_turn_id = bool(turn_id)
-    if not turn_id:
-        turn_id = uuid.uuid4().hex
-
-    result = {
-        "schema": SCHEMA,
-        "text": text,
-        "source": source,
-        "session_id": session_id,
-        "turn_id": turn_id,
-        "captured_at": float(captured_at),
-        "_provided_turn_id": provided_turn_id,
-    }
-    if isinstance(value.get("speaker"), dict):
-        result["speaker"] = value["speaker"]
-    metadata = value.get("metadata")
-    if isinstance(metadata, dict):
-        # Interaction metadata is diagnostics/routing context only. Robot
-        # capabilities must still be revalidated in L3.
-        result["metadata"] = metadata
-    return result
+from .envelope import dedup_key, normalize_envelope, public_envelope
 
 
 class InteractionAgentGateway(Node):
@@ -114,11 +57,6 @@ class InteractionAgentGateway(Node):
             String(data=json.dumps(payload, ensure_ascii=False, sort_keys=True))
         )
 
-    def _dedup_key(self, env: dict) -> str:
-        if env.get("_provided_turn_id"):
-            return f"{env['source']}:{env.get('session_id','')}:{env['turn_id']}"
-        return f"{env['source']}:{env.get('session_id','')}:{env['text']}"
-
     def _is_duplicate(self, env: dict) -> bool:
         now = time.monotonic()
         cutoff = now - self.dedup_window
@@ -127,7 +65,7 @@ class InteractionAgentGateway(Node):
             if seen_at >= cutoff:
                 break
             self._recent.popitem(last=False)
-        key = self._dedup_key(env)
+        key = dedup_key(env)
         if key in self._recent:
             return True
         self._recent[key] = now
@@ -149,7 +87,7 @@ class InteractionAgentGateway(Node):
             )
             return
         self._sequence += 1
-        env.pop("_provided_turn_id", None)
+        env = public_envelope(env)
         env["sequence"] = self._sequence
         env["received_at"] = time.time()
         self.publisher.publish(

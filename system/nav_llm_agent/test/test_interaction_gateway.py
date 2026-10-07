@@ -1,4 +1,8 @@
-from nav_llm_agent.interaction.agent_gateway import normalize_envelope
+from nav_llm_agent.interaction.envelope import (
+    dedup_key,
+    normalize_envelope,
+    public_envelope,
+)
 
 
 def test_plain_text_is_normalized():
@@ -27,8 +31,17 @@ def test_unknown_source_is_rejected():
 
 
 def test_missing_turn_id_uses_content_for_transport_dedup():
-    from nav_llm_agent.interaction.agent_gateway import InteractionAgentGateway
     env = normalize_envelope('{"text":"你好","source":"voice_local"}')
-    node = InteractionAgentGateway.__new__(InteractionAgentGateway)
-    key = InteractionAgentGateway._dedup_key(node, env)
-    assert key.endswith(":你好")
+    assert dedup_key(env).endswith(":你好")
+
+
+def test_explicit_turn_id_is_idempotency_key():
+    env = normalize_envelope(
+        '{"text":"你好","source":"app","session_id":"s1","turn_id":"t1"}'
+    )
+    assert dedup_key(env) == "app:s1:t1"
+
+
+def test_private_normalization_marker_never_leaves_gateway():
+    env = public_envelope(normalize_envelope("你好", "voice_local"))
+    assert "_provided_turn_id" not in env
