@@ -40,7 +40,7 @@ def test_nav2_and_official_follow_keep_current_safety_ingress():
         assert "cmd_vel_out_topic: /nx/nav_safe" in monitor
     base = (ROOT / "common/config/nx_manual_base.yaml").read_text(encoding="utf-8")
     assert "nav_cmd_vel_topic: /nx/nav_safe" in base
-    manual = (ROOT / "visualization/console/nx_manual_base.py").read_text(encoding="utf-8")
+    manual = (ROOT / "control/luka_base_gate/luka_base_gate/gate.py").read_text(encoding="utf-8")
     assert "'/nx/follow_safe',self.on_follow_cmd_vel" not in manual
     assert "self.on_follow_cmd_vel(msg);return" in manual
     assert "'/nx/web_teleop_cmd_vel',self.on_web_cmd_vel" in manual

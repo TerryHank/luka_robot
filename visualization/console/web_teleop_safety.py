@@ -1,69 +1,10 @@
-"""Conservative, body-frame proximity checks for the S100 web teleop.
-
-The robot footprint is about 0.56 x 0.38 m.  These zones intentionally leave
-more clearance than the footprint; a missing/stale scan is handled by the caller.
-"""
-import math
-
-
-SENSORS = {
-    '/scan': (-0.065, 0.0, 0.0),
-    '/scan_low_filtered': (0.281, 0.005, 1.56975),
-}
-
-
-def nearby_points(scan, sensor_pose, max_radius=1.20):
-    sx, sy, yaw = sensor_pose
-    points = []
-    for index, distance in enumerate(scan.ranges):
-        if not (math.isfinite(distance) and scan.range_min < distance < scan.range_max):
-            continue
-        angle = yaw + scan.angle_min + index * scan.angle_increment
-        x = sx + distance * math.cos(angle)
-        y = sy + distance * math.sin(angle)
-        if x * x + y * y < max_radius * max_radius:
-            points.append((x, y))
-    return points
-
-
-def blocked(direction, points, speed=0.0):
-    """Require two returns; extend the stop zone as the selected gear rises."""
-    speed=max(0.0,float(speed))
-    linear_growth=.35*(min(speed,.80)/.80)**2
-    count = 0
-    for x, y in points:
-        if direction == 'forward':
-            # The static front limit is 5 cm past the 28 cm body edge.
-            # Keep the speed-dependent margin so faster commands brake earlier.
-            hit = 0.28 <= x <= 0.33+linear_growth and abs(y) <= 0.30
-        elif direction == 'back':
-            hit = -0.55-linear_growth <= x <= -0.28 and abs(y) <= 0.30
-        elif direction == 'left':
-            hit = 0.19 <= y <= 0.45+linear_growth and abs(x) <= 0.35
-        elif direction == 'right':
-            hit = -0.45-linear_growth <= y <= -0.19 and abs(x) <= 0.35
-        elif direction in ('turn_left', 'turn_right'):
-            # A turn sweeps the full body in either direction.
-            turn_radius=.47+.18*(min(speed,1.6)/1.6)**2
-            hit = x * x + y * y <= turn_radius * turn_radius and not (
-                abs(x) < 0.28 and abs(y) < 0.19
-            )
-        else:
-            return True
-        if hit:
-            count += 1
-            if count >= 2:
-                return True
-    return False
-
-
-def follow_motion_blocked(points, forward, yaw):
-    """Check the footprint swept by a follow command, including turns."""
-    if forward > 0 and blocked('forward', points, forward):
-        return True
-    if forward < 0 and blocked('back', points, -forward):
-        return True
-    if abs(yaw) > 1e-6 and blocked('turn_left' if yaw > 0 else 'turn_right',
-                                   points, abs(yaw)):
-        return True
-    return False
+"""Compatibility alias for shared Base Gate safety checks."""
+from pathlib import Path as _SourcePath
+import sys as _source_sys
+_source_root = _SourcePath(__file__).resolve().parents[2]
+for _package_path in ['control/luka_base_gate']:
+    _source_dir = _source_root / _package_path
+    if _source_dir.is_dir() and str(_source_dir) not in _source_sys.path:
+        _source_sys.path.insert(0, str(_source_dir))
+from luka_base_gate import arbitration as _implementation
+_source_sys.modules[__name__]=_implementation

@@ -31,6 +31,14 @@ S100 的 suite / architecture / Follow / route / object-voice 测试在隔离目
 
 候选运行用独立临时 systemd unit，源和配置未覆盖生产工作区；传感器与 AMCL 使用原服务。正式生产部署必须合并远端用户改动并重新构建，不能用候选代码覆盖这些产品策略。
 
+## Phase 8
+
+Base Gate 改为持有 driver 实例，门控替换 driver 的导航/手动输入订阅与命令 timer，反馈 hook 继续更新编码器 freshness；nx_manual_base.py 保留旧命令入口，未拆成两个运行节点。Driver 电机协议未改。
+
+6 包（包含既有 ddsm_car_control 和新 luka_base_gate）在隔离目录构建通过。架空轮检查发现 watchdog 回调同步等待服务会阻塞自己的 ROS 回调组，改为非阻塞取消并增加专项回归；提取出的 watchdog 缺失 String import 也已修复，并用 pyflakes 检查新包的名称作用域。
+
+第二次架空轮 Nav2/Behavior → Gateway → Safety → composition Base Gate → driver 实测：action 已接受，编码器 [11.5,-11.3,-29.7,-51.4] → [12.9,-31.8,-11.4,-58.5] 度，8 个安全速度样本，停止确认通过。测试用 driver 临时参数上限为线速度 0.08 m/s、角速度 0.12 rad/s；生产参数文件未修改。Nav2 SpeedLimit 不替代最终全向速度上限，测试检查实际 driver 输出。
+
 ## 尚不能称为通过的项目
 
-完整工作区构建、真实人物 Follow、重定位运动、真实手柄、落地受控导航、Phase 8 二次实测，以及最终部署/源码依赖扫描尚待后续记录。架空轮、ROS transport、静态/单元、colcon 和完整产品验收分别记录，不能互相替代。
+完整工作区构建、真实人物 Follow、重定位运动、真实手柄、落地受控导航，以及最终部署/源码依赖扫描尚待后续记录。架空轮、ROS transport、静态/单元、colcon 和完整产品验收分别记录，不能互相替代。

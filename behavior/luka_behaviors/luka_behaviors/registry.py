@@ -22,7 +22,7 @@ class BehaviorRegistry:
   self.follow=FollowBehavior(self.node)
  def motion_watchdog(self):
   motion=self.node.motion
-  if self.node.nx_handle is not None and not motion.valid('nav'):self.navigate.cancel()
+  if self.node.nx_handle is not None and not motion.valid('nav'):self.navigate.cancel(wait_for_gate=False)
   if self.follow and self.follow.legacy_controller.enabled:
    controller=self.follow.legacy_controller
    if not controller.nav_mode and not controller.detour.active and not motion.valid('follow'):self.follow.cancel()

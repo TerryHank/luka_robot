@@ -66,7 +66,9 @@ def main():
         while time.monotonic()-began<2:
             if not node.motion.valid('nav'):raise ValueError('Navigation motion lease was revoked')
             if samples[-1]['motor_feedback_input']['last_feedback_error']:raise ValueError('Encoder became invalid')
-            if safe and (abs(safe[-1][0])>.12 or abs(safe[-1][1])>.12):raise ValueError('Low-speed envelope exceeded')
+            final=samples[-1]['bridge_rs485_output']
+            if math.hypot(final['vx'],final['vy'])>.09 or abs(final['wz'])>.13:
+                raise ValueError('Final motor command exceeds the wheels-test speed envelope')
             if any(abs(row['position_degrees']-old)>.3 for row,old in zip(samples[-1]['motor_feedback_input']['wheels'],before)):break
             time.sleep(.05)
     finally:

@@ -1,15 +1,17 @@
 """Lease-aware Nav2 action adapter for the unchanged official follow controller."""
 from rclpy.action import ActionClient, ActionServer, GoalResponse, CancelResponse
 from nav2_msgs.action import NavigateToPose
+from rclpy.callback_groups import ReentrantCallbackGroup
 
 
 class FollowNavigationProxy:
     def __init__(self,node,lease,enabled):
         self.node=node;self.lease=lease;self.enabled=enabled;self.handle=None;self.active=False
-        self.client=ActionClient(node,NavigateToPose,'/navigate_to_pose')
+        self.group=ReentrantCallbackGroup()
+        self.client=ActionClient(node,NavigateToPose,'/navigate_to_pose',callback_group=self.group)
         self.server=ActionServer(node,NavigateToPose,'/luka/behavior/follow_navigation',
                                  execute_callback=self.execute,goal_callback=self.goal,
-                                 cancel_callback=self.cancel)
+                                 cancel_callback=self.cancel,callback_group=self.group)
         node.create_timer(.1,self.watchdog)
 
     def watchdog(self):
