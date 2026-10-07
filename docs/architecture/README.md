@@ -1,10 +1,14 @@
 # Luka 架构护栏
 
-本目录完成手术重构计划的 **Phase 0**：记录当前源码依赖，冻结已知运动入口，阻止新增跨层调用。参考仓库为 `TerryHank/luka_ws`，初始审计基线为 `17a60d4bf9c0ae367342339df198b44166d5a258`，审计日期为 2026-10-07。提交前远端新增 `877992f` 的 canonical 路径迁移，Phase 0 已 rebase 到该提交并重新验证，没有覆盖并发更新。
+本目录记录手术重构计划 **Phase 0–11** 的实现与验收。参考仓库为 `TerryHank/luka_ws`，初始审计基线为 `17a60d4bf9c0ae367342339df198b44166d5a258`，审计日期为 2026-10-07。远端新增 `877992f` 的 canonical 路径迁移与 `84160de` 的 SDK 归档均已吸收，没有覆盖并发更新。
 
-此次在 Windows 本地检出目录执行，未连接 S100。文中“当前”指基线源码和启动配置；不代表现场服务、参数、进程或 topic 发布者已经核实。
+代码整合在 Windows 本地执行，完整构建、ROS 集成和两次架空轮验收在 S100 的隔离候选目录执行。完整产品验收尚未通过：落地导航、真实人物跟随和真实手柄按用户要求暂缓；原生产工作树的未提交改动保留，未切换正式生产目录。
 
 - [当前依赖与计划差异](CURRENT_RUNTIME_ARCHITECTURE.md)
+- [迁移前依赖快照](BASELINE_RUNTIME_ARCHITECTURE.md)
+- [分阶段验收及未完成项](REFACTOR_ACCEPTANCE.md)
+- [canonical 启动方式](BRINGUP.md)
+- [历史文件归档及校验](REPOSITORY_HYGIENE.md)
 - [目标架构与分阶段门槛](TARGET_RUNTIME_ARCHITECTURE.md)
 - [层级规则和现存例外](LAYER_RULES.md)
 - [完整运动源清单](MOTION_SOURCES.md)
@@ -29,6 +33,6 @@ python3 -m pytest evaluator/architecture -q
 
 修复后既有 suite：**39 项通过**。Architecture：**9 项通过**。这些是主机侧静态/单元测试结果；ROS 构建、板端推理和真机验收均未执行。没有修改产品源码、launch、参数、运动 topic 或兼容链接。
 
-## 本轮停止点
+## 执行进度
 
-按执行计划第 23 节，本轮完成 Phase 0 的审查、测试、commit 和 `push origin main` 后停止。后续 Phase 1–6 的能力/任务/行为迁移，以及 Phase 7 运动链改造，属于下一阶段。
+用户随后授权完整执行。Phase 1–11 的代码、兼容入口、启动、归档和 CI 已提交；后续验收范围与证据见 REFACTOR_ACCEPTANCE.md。上述 39 / 9 项属于 Phase 0 历史结果，不能代替当前测试结果。

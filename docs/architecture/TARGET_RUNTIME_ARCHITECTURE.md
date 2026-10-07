@@ -1,5 +1,7 @@
 # 目标架构和迁移门槛
 
+Phase 0–11 代码已实施。此表保留原实施门槛；当前验收结果与暂缓事项见 [REFACTOR_ACCEPTANCE.md](REFACTOR_ACCEPTANCE.md)。
+
 ```mermaid
 flowchart TD
     I[L5 Xiaozhi / Voice / Dashboard / App] --> C[L4 Capability Gateway]
@@ -20,7 +22,7 @@ flowchart TD
 
 | 阶段 | 范围 | 完成门槛 |
 |---|---|---|
-| Phase 0（本轮） | 文档、跳层检查、当前源清单 | 既有 suite 与 architecture 全部通过；运行源码不变 |
+| Phase 0 | 文档、跳层检查、当前源清单 | 既有 suite 与 architecture 全部通过；运行源码不变 |
 | Phase 1–2 | 纯 capability policy、dispatcher、旧入口 wrapper | 旧/新 API 一致、Xiaozhi grounding/停止门仍有效 |
 | Phase 3–4 | Behavior adapter、Mission 实现迁移与 shim | Follow fail-closed、任务/会话/重启恢复专项测试通过 |
 | Phase 5–6 | agent 入口收敛、Dashboard 依赖逆转 | 无新动作实现落入 Interaction；保留全部 HTTP API |
