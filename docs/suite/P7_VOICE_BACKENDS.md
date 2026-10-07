@@ -46,3 +46,30 @@ that architecture.
 P7 does not claim full-duplex acoustic echo cancellation. The current legacy
 path still uses playback guarding. A future audio-frontend phase can insert
 WebRTC AEC with a render reference without changing the Agent contract.
+
+
+## L4 runtime contract
+
+Both voice backends now expose the same structured interaction-state topic:
+
+```text
+/voice/runtime
+```
+
+States follow the xiaozhi-style interaction model:
+
+```text
+idle -> listening -> thinking -> speaking
+                         ^          |
+                         +----------+
+                     barge-in / follow-up
+```
+
+The legacy Luka backend has real local playback-process visibility and can
+perform generation-safe speech cancellation. Acoustic barge-in remains gated
+behind `aec_full_duplex` plus a named AEC provider.
+
+The D-Robotics backend does not currently expose a reliable hobot_tts
+playback-drained signal. Its `speaking` duration is therefore an explicitly
+marked estimate used for diagnostics/session state only. This is not evidence
+of AEC or full-duplex support.

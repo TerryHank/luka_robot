@@ -103,3 +103,13 @@ def test_system_startup_stays_guarded_by_default():
         encoding="utf-8")
     assert 'LUKA_VOICE_DUPLEX_MODE="' + "$" + '{LUKA_VOICE_DUPLEX_MODE:-guarded_half_duplex}"' in text
     assert 'LUKA_VOICE_AEC_PROVIDER="' + "$" + '{LUKA_VOICE_AEC_PROVIDER:-none}"' in text
+
+
+def test_drobotics_backend_uses_same_runtime_contract_without_claiming_aec():
+    text = (
+        ROOT / "system/nav_llm_agent/nav_llm_agent/voice_suite_bridge.py"
+    ).read_text(encoding="utf-8")
+    assert '"/voice/runtime"' in text
+    assert 'duplex_mode="guarded_half_duplex"' in text
+    assert 'aec_provider="none"' in text
+    assert '"playback_timing"] = "estimated"' in text
