@@ -3,9 +3,16 @@
 import urllib.request
 from nx_people_proxy import handle as people_handle
 from pathlib import Path
+from pathlib import Path as _SourcePath
+import sys as _source_sys
+_source_root = _SourcePath(__file__).resolve().parents[2]
+for _package_path in ['system/luka_capabilities', 'behavior/luka_behaviors']:
+    _source_dir = _source_root / _package_path
+    if _source_dir.is_dir() and str(_source_dir) not in _source_sys.path:
+        _source_sys.path.insert(0, str(_source_dir))
+from luka_behaviors.registry import BehaviorRegistry
 from object_pose_context import ObjectPoseContext
 from s100_function_start import FunctionStart
-from nx_relocalization import Relocalization
 from nx_patrol_mission import PatrolMission
 from nx_patrol_route import PatrolRoute
 from nx_assistant_tools import execute as execute_assistant, TOOLS as ASSISTANT_TOOLS
@@ -13,8 +20,6 @@ from nx_music import Music
 from nx_runtime_health import RuntimeHealth
 from nx_product_api import ProductAPI
 from nx_destination_catalog import customer_destinations
-from nx_follow import FollowController
-from nx_follow_acquire import FollowAcquisition
 from s100_boot_pose import save_verified_pose, navigation_verified
 from sensor_msgs.msg import Joy
 from nav2_msgs.msg import CollisionMonitorState
@@ -77,7 +82,8 @@ def init(self):
     self.create_subscription(CollisionMonitorState,'/collision_monitor_state',lambda msg:on_collision_state(self,msg),10)
     self.nx_voice_pub=self.create_publisher(app.String,'/voice/control',10)
     self.object_pose_context=ObjectPoseContext(self)
-    self.relocalization=Relocalization(self,lambda:stop_nav(self))
+    self.behaviors=BehaviorRegistry(self,lambda *args,**kwargs:send_nav(self,*args,**kwargs),lambda **kwargs:stop_nav(self,**kwargs))
+    self.relocalization=self.behaviors.relocalize.legacy_controller
     self.create_timer(5.0,lambda:save_verified_pose(self))
     self.nx_speech_pub=self.create_publisher(app.String,'/llm_status',10)
     self.patrol_mission=PatrolMission(self,lambda ident:send_nav(self,ident),lambda:stop_nav(self),lambda text:speak_nav(self,text))
@@ -92,8 +98,9 @@ def init(self):
     self.runtime_health=RuntimeHealth(self)
     legacy_diagnostics=self.diagnostics.snapshot
     self.diagnostics.snapshot=lambda:s100_diagnostics(self,legacy_diagnostics)
-    self.follow_controller=FollowController(self)
-    self.follow_acquisition=FollowAcquisition(self.follow_controller)
+    self.behaviors.initialize_follow()
+    self.follow_controller=self.behaviors.follow.legacy_controller
+    self.follow_acquisition=self.behaviors.follow.acquisition
     self.patrol_mission.route_store=PatrolRoute('/home/sunrise/luka_ws/common/state/patrol_route.json',lambda:destination_catalog(self),lambda:self.current_floor_id)
     self.product.navigate=lambda target:send_nav(self,None,target)
     self.patrol_mission.send_observation=lambda target:send_nav(self,None,target)

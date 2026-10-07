@@ -1,0 +1,15 @@
+from .interfaces import Behavior
+
+class StopBehavior(Behavior):
+ def __init__(self,registry,mission):self.registry=registry;self.mission=mission;self.last={}
+ def start(self):
+  errors=[];result={}
+  operations=[('follow',self.registry.follow.cancel),('patrol',self.mission().stop),
+              ('navigate',self.registry.navigate.cancel),('relocalize',self.registry.relocalize.cancel)]
+  for name,operation in operations:
+   try:result[name]=operation()
+   except Exception as error:errors.append(name+': '+str(error))
+  self.last={'ok':not errors,'errors':errors,'results':result}
+  return self.last
+ def cancel(self):return self.start()
+ def status(self):return self.last
