@@ -4,8 +4,9 @@ import sys
 import pytest
 
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "system/nav_llm_agent"))
+ROOT = Path(__file__).resolve().parents[4]
+SRC = ROOT / "src"
+sys.path.insert(0, str(SRC / "system/nav_llm_agent"))
 
 from nav_llm_agent.interaction import (  # noqa: E402
     AudioFrontendPolicy,
@@ -15,7 +16,7 @@ from nav_llm_agent.interaction import (  # noqa: E402
 
 
 def test_reference_sources_are_pinned():
-    text = (ROOT / "common/vendor/voice/REFERENCE_LOCK.md").read_text(
+    text = (SRC / "common/vendor/voice/REFERENCE_LOCK.md").read_text(
         encoding="utf-8")
     assert "0d576d3d4c049c6f55eaf879725dc23e516511b4" in text
     assert "4f3d8252373fdbbec7c20add928ff084aeff4066" in text
@@ -53,7 +54,7 @@ def test_xiaozhi_style_speaking_to_listening_transition():
 
 
 def test_l4_interaction_runtime_has_no_motion_authority():
-    directory = ROOT / "system/nav_llm_agent/nav_llm_agent/interaction"
+    directory = SRC / "system/nav_llm_agent/nav_llm_agent/interaction"
     text = "\n".join(
         p.read_text(encoding="utf-8")
         for p in directory.glob("*.py")
@@ -73,7 +74,7 @@ def test_l4_interaction_runtime_has_no_motion_authority():
 
 
 def test_actual_nx_pipeline_has_generation_safe_barge_in():
-    text = (ROOT / "visualization/console/nx_tts_pipeline.py").read_text(
+    text = (SRC / "visualization/console/nx_tts_pipeline.py").read_text(
         encoding="utf-8")
     assert "capture_during_playback" in text
     assert "_tts_generation" in text
@@ -83,7 +84,7 @@ def test_actual_nx_pipeline_has_generation_safe_barge_in():
 
 
 def test_product_gateway_uses_vad_barge_in_without_dropping_cache():
-    text = (ROOT / "visualization/console/nx_voice_gateway.py").read_text(
+    text = (SRC / "visualization/console/nx_voice_gateway.py").read_text(
         encoding="utf-8")
     assert "_barge_in_from_speech('sherpa_vad')" in text
     assert "segment=self.speech_vad.feed(samples)" in text
@@ -91,7 +92,7 @@ def test_product_gateway_uses_vad_barge_in_without_dropping_cache():
 
 def test_runtime_diagnostics_are_published():
     text = (
-        ROOT / "system/nav_llm_agent/nav_llm_agent/voice_gateway.py"
+        SRC / "system/nav_llm_agent/nav_llm_agent/voice_gateway.py"
     ).read_text(encoding="utf-8")
     assert '"/voice/runtime"' in text
     assert "AudioFrontendPolicy.build" in text
@@ -99,7 +100,7 @@ def test_runtime_diagnostics_are_published():
 
 
 def test_system_startup_stays_guarded_by_default():
-    text = (ROOT / "system/bringup/start_nx_voice.sh").read_text(
+    text = (SRC / "system/bringup/start_nx_voice.sh").read_text(
         encoding="utf-8")
     assert 'LUKA_VOICE_DUPLEX_MODE="' + "$" + '{LUKA_VOICE_DUPLEX_MODE:-guarded_half_duplex}"' in text
     assert 'LUKA_VOICE_AEC_PROVIDER="' + "$" + '{LUKA_VOICE_AEC_PROVIDER:-none}"' in text
@@ -107,7 +108,7 @@ def test_system_startup_stays_guarded_by_default():
 
 def test_drobotics_backend_uses_same_runtime_contract_without_claiming_aec():
     text = (
-        ROOT / "system/nav_llm_agent/nav_llm_agent/voice_suite_bridge.py"
+        SRC / "system/nav_llm_agent/nav_llm_agent/voice_suite_bridge.py"
     ).read_text(encoding="utf-8")
     assert '"/voice/runtime"' in text
     assert 'duplex_mode="guarded_half_duplex"' in text
@@ -117,7 +118,7 @@ def test_drobotics_backend_uses_same_runtime_contract_without_claiming_aec():
 
 def test_drobotics_backend_drops_asr_while_estimated_tts_is_speaking():
     text = (
-        ROOT / "system/nav_llm_agent/nav_llm_agent/voice_suite_bridge.py"
+        SRC / "system/nav_llm_agent/nav_llm_agent/voice_suite_bridge.py"
     ).read_text(encoding="utf-8")
     assert "self.runtime.state is VoiceState.SPEAKING" in text
     assert "asr_ignored reason=playback_guard" in text
