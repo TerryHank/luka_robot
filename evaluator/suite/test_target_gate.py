@@ -9,11 +9,12 @@ from luka_person_following.target_gate import selected_target
 
 def row(**patch):
     base = dict(
-        class="person", track_id=12, bbox=[200, 80, 400, 450],
+        track_id=12, bbox=[200, 80, 400, 450],
         confidence=.9, visible=True, observation_strength="strong",
         association_ambiguous=False, depth_valid=True,
         seg_depth_trimmed_mean=True, position_optical_m=[.1, 0., 3.],
         width_m=.5, height_m=1.7)
+    base["class"] = "person"
     base.update(patch)
     return base
 

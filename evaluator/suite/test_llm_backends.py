@@ -7,8 +7,19 @@ ROOT = Path(__file__).resolve().parents[2]
 PKG = ROOT / "system/nav_llm_agent"
 sys.path.insert(0, str(PKG))
 
-from nav_llm_agent.llm.base import LLMBackend
-from nav_llm_agent.llm.fallback import FallbackBackend
+def load_pure_backends():
+    """Execute the real pure implementations without the ROS-loaded __init__."""
+    scope = {"__name__": "luka_pure_backend_test"}
+    for filename in ("base.py", "fallback.py"):
+        path = PKG / "nav_llm_agent/llm" / filename
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        tree.body = [node for node in tree.body
+                     if not (isinstance(node, ast.ImportFrom) and node.level)]
+        exec(compile(tree, str(path), "exec"), scope)
+    return scope["LLMBackend"], scope["FallbackBackend"]
+
+
+LLMBackend, FallbackBackend = load_pure_backends()
 
 
 class DummyBackend(LLMBackend):
@@ -66,12 +77,20 @@ class LlmBackendTest(unittest.TestCase):
 
     def test_backend_layer_has_no_motion_api(self):
         llm_dir=PKG / "nav_llm_agent/llm"
-        text="\n".join(
-            p.read_text(encoding="utf-8")
-            for p in llm_dir.glob("*.py")
-        )
-        for forbidden in ("cmd_vel", "NavigateToPose", "ddsm_car_control"):
-            self.assertNotIn(forbidden, text)
+        for path in llm_dir.glob("*.py"):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            # Architecture prose may name a forbidden interface. Check actual
+            # code, including topic strings, while excluding only docstrings.
+            for node in ast.walk(tree):
+                body = getattr(node, "body", None)
+                if isinstance(body, list) and body and isinstance(body[0], ast.Expr):
+                    value = body[0].value
+                    if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                        del body[0]
+            text = ast.unparse(tree)
+            for forbidden in ("cmd_vel", "NavigateToPose", "ddsm_car_control"):
+                with self.subTest(path=path.name, forbidden=forbidden):
+                    self.assertNotIn(forbidden, text)
 
 
 if __name__ == "__main__":
