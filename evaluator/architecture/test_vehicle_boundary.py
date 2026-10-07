@@ -3,13 +3,9 @@ import ast
 from .source_checks import ROOT, imported_modules, sources
 
 
-# Existing commissioning/base exceptions. Phase 8 may remove these explicitly;
-# adding a driver import elsewhere requires an architecture decision.
-LEGACY_IMPORTS = {
-    "visualization/console/nx_manual_stop.py": {"ddsm_car_control.zdt_y42_protocol"},
-    "visualization/console/nx_readonly_odom.py": {
-        "ddsm_car_control.zdt_y42_protocol", "ddsm_car_control.zdt_mecanum_kinematics"},
-}
+# Commissioning implementations now live in the Base boundary. Console
+# compatibility commands import only their canonical wrappers.
+LEGACY_IMPORTS = {}
 
 
 def test_no_new_driver_imports_outside_vehicle_implementation():

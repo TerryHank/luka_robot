@@ -20,13 +20,15 @@
 
 测试读取源码，不导入节点。driver 导入检查覆盖别名；publisher 检查覆盖 Twist 别名和关键字参数。它们不能证明动态 import、动态字符串 topic、C++ 全部节点、ROS remap 后的图、参数覆盖或唯一发布者：这些需要后续集成验证。C++ 官方 Follow 的入口目前由 launch 合同检查覆盖。
 
-## 原有 Vehicle import 例外
+## Phase 0 原有 Vehicle import 例外（Phase 11 已消除）
 
 | canonical 文件 | 冻结 import | 用途 / 后续处理 |
 |---|---|---|
 | `visualization/console/nx_manual_base.py` | `ddsm_car_control.zdt_mecanum_rs485_bridge` | 现有底盘门与 driver 继承；Phase 8 组合迁移 |
 | `visualization/console/nx_manual_stop.py` | `ddsm_car_control.zdt_y42_protocol` | 调试/急停电机工具，import 会打开串口；保留但不执行 |
 | `visualization/console/nx_readonly_odom.py` | `ddsm_car_control.zdt_y42_protocol`、`ddsm_car_control.zdt_mecanum_kinematics` | 只读编码器调试；不作为自主行为依赖 |
+
+当前三个入口均已委托 control/luka_base_gate：实际 driver adapter、manual_stop、readonly_odom 在 Base 边界内，console 保留兼容命令。当前 Vehicle 检查不再允许边界外的任何直接 driver import。
 
 `nav_llm_agent` 和 Dashboard 现存的 Nav2 action 所有权、旧 Follow/recovery bypass 在 [当前图](CURRENT_RUNTIME_ARCHITECTURE.md) 中明确记录，Phase 0 不宣称它们已经满足目标分层。后续阶段才逐项迁移，不通过新增大范围 allowlist 掩盖问题。
 
