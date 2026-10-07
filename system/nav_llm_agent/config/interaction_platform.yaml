@@ -1,0 +1,35 @@
+version: 1
+name: L4 Interaction Platform
+
+layers:
+  audio_frontend:
+    profiles: [guarded, pulse_webrtc]
+    capabilities: [aec, noise_suppression, kws, vad, pre_roll]
+    runtime_topic: /voice/runtime
+  voice_runtime:
+    capabilities:
+      - state_machine
+      - session
+      - continuous_dialogue
+      - barge_in
+      - playback_generation
+    runtime_topic: /voice/runtime
+  speech_backend:
+    profiles: [luka_local, drobotics, xiaozhi_remote]
+  xiaozhi:
+    modes: [off, mcp_only, exclusive_remote]
+    mcp_config: /home/sunrise/luka_ws/system/xiaozhi/mcp_config.luka.json
+  agent_gateway:
+    input_topic: /luka/interaction/agent_input
+    output_topic: /llm_voice_command
+    status_topic: /luka/interaction/gateway_status
+  platform_status:
+    topic: /luka/interaction/platform_status
+
+boundary:
+  downstream: L3 Mission
+  forbidden_in_l4:
+    - cmd_vel
+    - NavigateToPose
+    - DDSM motor control
+    - direct mission execution

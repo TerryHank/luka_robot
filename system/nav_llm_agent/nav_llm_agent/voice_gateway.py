@@ -478,7 +478,12 @@ class VoiceGateway(Node):
         recognized.data = command
         self._runtime_utterance_final(command)
         self.text_pub.publish(recognized)
-        self.command_pub.publish(recognized)
+        self.command_pub.publish(String(data=json.dumps({
+            "text": command,
+            "source": "voice_local",
+            "session_id": "local_voice",
+            "captured_at": time.time(),
+        }, ensure_ascii=False)))
         # The command is THINKING now; only reset acoustic capture to KWS.
         self.mode = "wake"
         self.last_partial = ""

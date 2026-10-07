@@ -45,6 +45,7 @@ def normalize_envelope(raw: str, default_source: str = "legacy_voice") -> dict:
 
     session_id = str(value.get("session_id") or "").strip()
     turn_id = str(value.get("turn_id") or "").strip()
+    provided_turn_id = bool(turn_id)
     if not turn_id:
         turn_id = uuid.uuid4().hex
 
@@ -55,6 +56,7 @@ def normalize_envelope(raw: str, default_source: str = "legacy_voice") -> dict:
         "session_id": session_id,
         "turn_id": turn_id,
         "captured_at": float(captured_at),
+        "_provided_turn_id": provided_turn_id,
     }
     if isinstance(value.get("speaker"), dict):
         result["speaker"] = value["speaker"]
@@ -113,7 +115,7 @@ class InteractionAgentGateway(Node):
         )
 
     def _dedup_key(self, env: dict) -> str:
-        if env.get("turn_id"):
+        if env.get("_provided_turn_id"):
             return f"{env['source']}:{env.get('session_id','')}:{env['turn_id']}"
         return f"{env['source']}:{env.get('session_id','')}:{env['text']}"
 
@@ -147,6 +149,7 @@ class InteractionAgentGateway(Node):
             )
             return
         self._sequence += 1
+        env.pop("_provided_turn_id", None)
         env["sequence"] = self._sequence
         env["received_at"] = time.time()
         self.publisher.publish(

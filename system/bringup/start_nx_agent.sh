@@ -17,6 +17,9 @@ ros2 run nav_llm_agent interaction_gateway --ros-args \
  -p output_topic:=/llm_voice_command &
 pids+=("$!")
 
+ros2 run nav_llm_agent interaction_status &
+pids+=("$!")
+
 ros2 run nav_llm_agent agent_node --ros-args \
  -p dry_run:=false \
  -p ollama_url:=http://127.0.0.1:8092 -p model:=qwen3-4b-chat -p llm_api:=openai \
