@@ -133,6 +133,6 @@ class TTSPipelineMixin:
                 if index==count:
                     state=self.voice_runtime.playback_drained(kind)
                     self._runtime_status('playback_drained',kind=kind,generation=generation)
-                    if (kind=='response' and state is VoiceState.LISTENING and
+                    if (kind=='response' and state.value=='listening' and
                             self.voice_runtime.continuous_dialogue):
                         self._arm_command_capture('continuous_dialogue')

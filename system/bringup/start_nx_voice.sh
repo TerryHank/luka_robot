@@ -4,6 +4,10 @@ set -eo pipefail
 : "${NX_MIC:?请先用 arecord -L 查找麦克风，并设置 NX_MIC}"
 : "${NX_SPEAKER:?请先用 aplay -L 查找扬声器，并设置 NX_SPEAKER}"
 VOICE_BACKEND="${LUKA_VOICE_BACKEND:-legacy}"
+LUKA_VOICE_DUPLEX_MODE="${LUKA_VOICE_DUPLEX_MODE:-guarded_half_duplex}"
+LUKA_VOICE_AEC_PROVIDER="${LUKA_VOICE_AEC_PROVIDER:-none}"
+LUKA_VOICE_BARGE_IN="${LUKA_VOICE_BARGE_IN:-true}"
+LUKA_VOICE_CONTINUOUS="${LUKA_VOICE_CONTINUOUS:-true}"
 if [[ "$VOICE_BACKEND" == "drobotics" ]]; then
   exec /bin/bash /home/sunrise/luka_ws/system/bringup/start_rdk_voice_suite.sh
 fi
@@ -19,4 +23,8 @@ export CYCLONEDDS_URI=file:///home/sunrise/luka_ws/common/config/cyclonedds_offl
 exec python3 /home/sunrise/luka_ws/system/runtime/tools/nx_voice_gateway.py --ros-args \
  -p audio_device:="$NX_MIC" -p speaker_device:="$NX_SPEAKER" \
  -p command_end_silence:=0.6 \
+ -p duplex_mode:="$LUKA_VOICE_DUPLEX_MODE" \
+ -p aec_provider:="$LUKA_VOICE_AEC_PROVIDER" \
+ -p barge_in_enabled:="$LUKA_VOICE_BARGE_IN" \
+ -p continuous_dialogue:="$LUKA_VOICE_CONTINUOUS" \
  --params-file "${NX_VOICE_STYLE:-/home/sunrise/luka_ws/common/config/nx_voice_style.yaml}"

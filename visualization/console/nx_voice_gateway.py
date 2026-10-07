@@ -60,6 +60,9 @@ class NXVoiceGateway(TTSPipelineMixin, VoiceGateway):
             self.last_partial=''; self.command_parts=[]
             self._reset_command_capture()
             self.command_deadline=time.monotonic()+self.conversation_timeout
+            try:self.voice_runtime.continue_listening(reason)
+            except ValueError as exc:self._runtime_status('invalid_transition',error=str(exc))
+            else:self._runtime_status('conversation_listening',reason=reason)
             self._status('conversation_listening timeout=12s reason='+reason)
             return
         super()._return_to_wake(reason)
@@ -82,6 +85,7 @@ class NXVoiceGateway(TTSPipelineMixin, VoiceGateway):
 
     def _publish_command(self,text):
         command=deduplicate_command(clean_command(text,self.wake_word))
+        self._runtime_utterance_final(command)
         corrected=correct_room_command(command)
         if corrected!=command:self._status(f'room_correction raw={command} corrected={corrected}')
         command=corrected
@@ -201,6 +205,9 @@ class NXVoiceGateway(TTSPipelineMixin, VoiceGateway):
             self.command_deadline=time.monotonic()+self.command_timeout
             self.last_partial='';self.command_parts=[]
             self._reset_command_capture()
+            try:self.voice_runtime.manual_listen('manual_wake')
+            except ValueError as exc:self._runtime_status('invalid_transition',error=str(exc))
+            else:self._runtime_status('manual_wake')
             self._status('manual_wake_detected; listening')
             self.conversation_active=True
             return True
