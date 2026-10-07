@@ -6,14 +6,14 @@ from pathlib import Path
 from pathlib import Path as _SourcePath
 import sys as _source_sys
 _source_root = _SourcePath(__file__).resolve().parents[2]
-for _package_path in ['system/luka_capabilities', 'behavior/luka_behaviors']:
+for _package_path in ['system/luka_capabilities', 'behavior/luka_behaviors', 'mission/luka_mission']:
     _source_dir = _source_root / _package_path
     if _source_dir.is_dir() and str(_source_dir) not in _source_sys.path:
         _source_sys.path.insert(0, str(_source_dir))
 from luka_behaviors.registry import BehaviorRegistry
 from object_pose_context import ObjectPoseContext
 from s100_function_start import FunctionStart
-from nx_patrol_mission import PatrolMission
+from luka_mission.manager import MissionManager
 from nx_patrol_route import PatrolRoute
 from nx_assistant_tools import execute as execute_assistant, TOOLS as ASSISTANT_TOOLS
 from nx_music import Music
@@ -86,7 +86,8 @@ def init(self):
     self.relocalization=self.behaviors.relocalize.legacy_controller
     self.create_timer(5.0,lambda:save_verified_pose(self))
     self.nx_speech_pub=self.create_publisher(app.String,'/llm_status',10)
-    self.patrol_mission=PatrolMission(self,lambda ident:send_nav(self,ident),lambda:stop_nav(self),lambda text:speak_nav(self,text))
+    self.missions=MissionManager(self,self.behaviors,lambda text:speak_nav(self,text))
+    self.patrol_mission=self.missions.patrol
     self.product=ProductAPI(self)
     self.raw_localization_status=self.product.localization_status
     self.product.localization_status=lambda:verified_localization_status(self)

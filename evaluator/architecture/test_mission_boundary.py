@@ -12,7 +12,7 @@ def test_patrol_and_future_mission_code_do_not_implement_motion():
 
 
 def test_patrol_preserves_injected_navigation_and_state_recovery():
-    text = (ROOT / "visualization/console/nx_patrol_mission.py").read_text(encoding="utf-8")
+    text = (ROOT / "mission/luka_mission/luka_mission/patrol.py").read_text(encoding="utf-8")
     assert "class PatrolMission" in text
     assert "self.send=send" in text
     assert "self.stop_nav" in text
