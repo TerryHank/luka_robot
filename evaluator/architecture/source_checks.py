@@ -10,6 +10,8 @@ def sources(directory):
     """Canonical source only: compatibility links and historical copies are excluded."""
     for path in sorted(directory.rglob("*.py")):
         relative = path.relative_to(ROOT)
+        if relative.parts[0] in {"build", "install", "log", ".git"}:
+            continue
         if path.is_symlink() or any(
                 part.startswith("backup-") or part in
                 {"__pycache__", "legacy", "history", "fixtures", "artifacts", "test", "tests", "src"}
