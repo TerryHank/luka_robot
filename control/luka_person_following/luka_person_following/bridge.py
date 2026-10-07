@@ -114,6 +114,12 @@ class SelectedBridge(Node):
         self.create_service(
             SetBool, "/luka_person_following/set_enabled", self.set_enabled)
 
+        from luka_motion_gateway.client import MotionLeaseClient
+        from luka_behaviors.follow_navigation import FollowNavigationProxy
+        self.motion=MotionLeaseClient(self)
+        self.base_gate=self.create_client(SetBool,'/nx/navigation_enable')
+        self.motion_future=None;self.base_future=None;self.base_enabled=False;self.motion_armed=False
+        self.follow_navigation=FollowNavigationProxy(self,self.motion,lambda:self.desired and self.valid and self.robot_tf_ready and self.base_enabled)
         self.latest_msg = None
         self.latest_rows = []
         self.latest_received_mono = None
@@ -158,7 +164,12 @@ class SelectedBridge(Node):
                 else "map/base/camera TF or controller unavailable"
             )
         else:
+            if request.data and (not self.base_gate.service_is_ready() or not self.motion.status):
+                response.success=False;response.message='Base or motion gateway unavailable';return response
+            self.motion_armed=False
             self.desired = bool(request.data)
+            self.base_future=self.base_gate.call_async(SetBool.Request(data=bool(request.data)))
+            if not request.data:self.motion.stop()
             self.current_block_reason = None if request.data else "manual_disable"
             response.success = True
             response.message = (
@@ -166,6 +177,24 @@ class SelectedBridge(Node):
         return response
 
     def sync_enable(self):
+        lease_valid=self.motion.valid('follow') or self.motion.valid('nav')
+        if self.motion_armed and not lease_valid:self.desired=False
+        if lease_valid:self.motion_armed=True
+        if self.base_future is not None and self.base_future.done():
+            try:self.base_enabled=self.base_future.result().success and self.desired
+            except Exception:self.base_enabled=False
+            self.base_future=None
+            if not self.base_enabled:self.desired=False
+        if self.motion_future is not None and self.motion_future.done():
+            try:self.motion_future.result()
+            except Exception:self.desired=False
+            self.motion_future=None
+        if self.desired and self.base_enabled and self.motion.desired is None and self.motion_future is None:
+            self.motion_future=self.motion.request('follow')
+        if not self.desired:
+            self.motion.release()
+            if self.base_enabled and self.base_gate.service_is_ready():
+                self.base_gate.call_async(SetBool.Request(data=False));self.base_enabled=False
         if self.pending is not None:
             if not self.pending.done():
                 return
@@ -175,10 +204,11 @@ class SelectedBridge(Node):
             except Exception:
                 self.applied = None
             self.pending = None
-        if self.applied != self.desired and self.client.service_is_ready():
+        permitted=self.desired and self.base_enabled and (self.motion.valid('follow') or self.motion.valid('nav'))
+        if self.applied != permitted and self.client.service_is_ready():
             req = SetBool.Request()
-            req.data = self.desired
-            self.pending_value = self.desired
+            req.data = permitted
+            self.pending_value = permitted
             self.pending = self.client.call_async(req)
 
     def _message_age(self):
@@ -335,7 +365,7 @@ class SelectedBridge(Node):
         self.sync_enable()
 
         # Finish controller cancellation before presenting changed/empty input.
-        if self.desired or self.applied is not True:
+        if (self.desired and self.base_enabled and (self.motion.valid('follow') or self.motion.valid('nav'))) or self.applied is not True:
             self._publish_output(msg)
 
         status = {

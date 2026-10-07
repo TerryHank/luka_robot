@@ -61,6 +61,7 @@ def on_collision_state(self,msg):
             speak_nav(self,'前方已清开，我继续前往'+self.nx_nav_match.get('display_name','目标位置')+'。')
 
 def stop_nav(self,wait_for_gate=True):
+    self.motion.release()
     """Cancel the active action and disable the navigation gate."""
     if hasattr(self,'escape_recovery'):
         self.escape_recovery.cancel('用户已停止导航')
@@ -98,7 +99,9 @@ def send_nav(self,poi_id,observation=None):
         if not self.behaviors.navigate.verified(localization):
             raise ValueError('定位候选尚未通过高置信雷达与重复定位核验；暂不导航，请等待自动重定位完成')
         if hasattr(self,'web_teleop'):self.web_teleop.force_stop()
-        gate(self,True)
+        self.motion.acquire('nav')
+        try:gate(self,True)
+        except Exception:self.motion.release();raise
         self.nx_nav_match=match
         self.nx_nav_retry=0
         self.nx_nav_cancel_requested=False
@@ -116,6 +119,8 @@ def send_nav(self,poi_id,observation=None):
             try:
                 handle=wait(self.nx_nav.send_goal_async(make_goal(match)))
                 if not handle.accepted:raise ValueError('导航服务拒绝目标')
+                if not self.motion.valid('nav'):
+                    handle.cancel_goal_async();raise ValueError('导航租约已被撤销')
                 self.nx_handle=handle;self.nx_nav_retry=attempt
                 self.nx_status=('正在前往 ' if attempt==0 else '正在重新规划前往 ')+match['display_name']
                 def finished(f):
@@ -161,6 +166,7 @@ def send_nav(self,poi_id,observation=None):
                         self.nx_status='障碍或路径暂不可用，正在第 '+str(attempt+1)+' 次重试'
                         threading.Thread(target=lambda:(time.sleep(1.5),submit(attempt+1)),daemon=True).start()
                         return
+                    self.motion.release()
                     self.nx_handle=None
                     self.nx_nav_outcome=status
                     self.nx_status={4:'已到达',5:'已取消',6:'导航失败，请检查路线或定位'}.get(status,'导航已结束')
@@ -180,6 +186,7 @@ def send_nav(self,poi_id,observation=None):
                     threading.Thread(target=lambda:(time.sleep(1.5),submit(attempt+1)),daemon=True).start()
                     return
                 self.nx_handle=None
+                self.motion.release()
                 self.nx_nav_outcome=6;self.nx_status='导航失败，请检查路线或定位';gate(self,False)
                 if not (hasattr(self,'patrol_mission') and self.patrol_mission.active()):speak_nav(self,'到不了'+match.get('display_name','目标位置')+'，我已停在当前位置。接下来要我做什么？')
         try: submit(0)

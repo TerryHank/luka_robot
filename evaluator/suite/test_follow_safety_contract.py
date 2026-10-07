@@ -9,7 +9,7 @@ LAUNCH = ROOT / "control/luka_person_following/launch/selected_follow.launch.py"
 class FollowSafetyContractTest(unittest.TestCase):
     def test_real_direct_follow_velocity_enters_luka_safety_chain(self):
         text = LAUNCH.read_text(encoding="utf-8")
-        self.assertIn("else '/nx/nav_smoothed'", text)
+        self.assertIn("else '/luka/motion/follow'", text)
         self.assertNotIn("else '/cmd_vel'", text)
 
     def test_dry_run_keeps_fake_endpoints(self):

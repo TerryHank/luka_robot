@@ -9,7 +9,7 @@ class P10SafetyGateStaticTest(unittest.TestCase):
         launch = (
             ROOT / "control/luka_person_following/launch/selected_follow.launch.py"
         ).read_text(encoding="utf-8")
-        self.assertIn("/nx/nav_smoothed", launch)
+        self.assertIn("/luka/motion/follow", launch)
 
     def test_base_consumes_only_nav_safe(self):
         config = (ROOT / "common/config/nx_manual_base.yaml").read_text(

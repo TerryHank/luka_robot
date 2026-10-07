@@ -4,9 +4,9 @@ from .source_checks import ROOT, sources, tree, twist_publishers
 
 
 CONSOLE_TWIST_SOURCES = {
-    "behavior/luka_behaviors/luka_behaviors/follow_controller.py": ["/nx/follow_safe"],
-    "behavior/luka_behaviors/luka_behaviors/relocalization.py": ["/nx/nav_guarded"],
-    "visualization/console/nx_escape_recovery.py": ["/nx/web_teleop_cmd_vel"],
+    "behavior/luka_behaviors/luka_behaviors/follow_controller.py": ["/luka/motion/follow"],
+    "behavior/luka_behaviors/luka_behaviors/relocalization.py": ["/luka/motion/relocalize"],
+    "visualization/console/nx_escape_recovery.py": ["/luka/motion/recovery"],
     "visualization/console/web_teleop_dashboard.py": ["/nx/web_teleop_cmd_vel"],
     "visualization/console/mecanum_dance_demo.py": ["topic"],
     "visualization/console/person_follow_demo.py": ["args.cmd_topic"],
@@ -26,13 +26,13 @@ def test_existing_console_motion_sources_are_explicitly_inventoried():
 def test_nav2_and_official_follow_keep_current_safety_ingress():
     nav = (ROOT / "system/bringup/nx_navigation.launch.py").read_text(encoding="utf-8")
     assert "('cmd_vel','/nx/nav_raw')" in nav
-    assert "('cmd_vel_smoothed','/nx/nav_smoothed')" in nav
+    assert "('cmd_vel_smoothed','/luka/motion/nav')" in nav
     follow = (ROOT / "control/luka_person_following/launch/selected_follow.launch.py").read_text(encoding="utf-8")
-    assert "else '/nx/nav_smoothed'" in follow
+    assert "else '/luka/motion/follow'" in follow
     assert "else '/cmd_vel'" not in follow
     assert "default_value='true'" in follow
     guard = (ROOT / "common/config/nx_heading_guard.yaml").read_text(encoding="utf-8")
-    assert "cmd_vel_in_topic: /nx/nav_smoothed" in guard
+    assert "cmd_vel_in_topic: /luka/motion/autonomy" in guard
     assert "cmd_vel_out_topic: /nx/nav_guarded" in guard
     for name in ("nx_nav2.yaml", "nx_nav2_without_sonar.yaml"):
         monitor = (ROOT / "common/config" / name).read_text(encoding="utf-8")
@@ -41,7 +41,8 @@ def test_nav2_and_official_follow_keep_current_safety_ingress():
     base = (ROOT / "common/config/nx_manual_base.yaml").read_text(encoding="utf-8")
     assert "nav_cmd_vel_topic: /nx/nav_safe" in base
     manual = (ROOT / "visualization/console/nx_manual_base.py").read_text(encoding="utf-8")
-    assert "'/nx/follow_safe',self.on_follow_cmd_vel" in manual
+    assert "'/nx/follow_safe',self.on_follow_cmd_vel" not in manual
+    assert "self.on_follow_cmd_vel(msg);return" in manual
     assert "'/nx/web_teleop_cmd_vel',self.on_web_cmd_vel" in manual
 
 

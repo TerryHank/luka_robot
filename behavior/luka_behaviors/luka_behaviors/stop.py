@@ -3,6 +3,7 @@ from .interfaces import Behavior
 class StopBehavior(Behavior):
  def __init__(self,registry,mission):self.registry=registry;self.mission=mission;self.last={}
  def start(self):
+  if hasattr(getattr(self.registry,'node',None),'motion'):self.registry.node.motion.stop()
   errors=[];result={}
   operations=[('follow',self.registry.follow.cancel),('patrol',self.mission().stop),
               ('navigate',self.registry.navigate.cancel),('relocalize',self.registry.relocalize.cancel)]

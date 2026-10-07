@@ -10,5 +10,7 @@
   <exec_depend>tf2_ros</exec_depend><exec_depend>tf2_geometry_msgs</exec_depend>
   <exec_depend>tros_person_following</exec_depend><exec_depend>hobot_mot</exec_depend>
   <exec_depend>launch_ros</exec_depend>
+  <exec_depend>luka_motion_gateway</exec_depend>
+  <exec_depend>luka_behaviors</exec_depend>
   <export><build_type>ament_python</build_type></export>
 </package>

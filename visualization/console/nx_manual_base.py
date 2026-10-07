@@ -56,8 +56,6 @@ class ManualBase(ZDTMecanumRS485Bridge):
         # Keep follow commands on their own executor lane, as for Nav2, so
         # they reach the motor watchdog before its 600 ms deadline.
         self.follow_group=MutuallyExclusiveCallbackGroup()
-        self.create_subscription(Twist,'/nx/follow_safe',self.on_follow_cmd_vel,10,
-                                 callback_group=self.follow_group)
         self.tf_buffer=Buffer()
         self.tf_node=rclpy.create_node('nx_base_tf_listener')
         self.tf_listener=TransformListener(self.tf_buffer,self.tf_node,spin_thread=True)
@@ -67,6 +65,7 @@ class ManualBase(ZDTMecanumRS485Bridge):
             self.create_subscription(LaserScan,topic,lambda m,t=topic:self.scan_input(t,m),qos_profile_sensor_data,callback_group=self.scan_group)
         self.create_subscription(Twist,'/nx/web_teleop_cmd_vel',self.on_web_cmd_vel,10,callback_group=self.web_group)
         self.web_status_pub=self.create_publisher(String,'/nx/web_teleop_status',10)
+        self.motion_status=self.create_publisher(String,'/luka/base/status',10)
 
     def on_web_cmd_vel(self,msg):
         """Web commands are a separate, capped manual source with their own lease."""
@@ -195,6 +194,8 @@ class ManualBase(ZDTMecanumRS485Bridge):
         super().on_manual_cmd_vel(msg)
 
     def on_nav_cmd_vel(self,msg):
+        if self.follow_allowed:
+            self.on_follow_cmd_vel(msg);return
         if self.nav_allowed:
             # Final ceiling after the heading guard, matching the NX Nav2 limits.
             msg=copy.deepcopy(msg)
@@ -282,6 +283,10 @@ class ManualBase(ZDTMecanumRS485Bridge):
             else:
                 self.latest_nav_cmd=None
         if not (self.nav_allowed or self.follow_allowed) or (self.nav_allowed and now-self.nav_at>.25):self.latest_nav_cmd=None
+        healthy=self.navigation_ready() and not self.motion_paused
+        self.motion_status.publish(String(data=json.dumps({'healthy':healthy,
+            'manual_active':bool(self.held or self.web_state), 'nav_allowed':self.nav_allowed,
+            'follow_allowed':self.follow_allowed,'reason':self.nav_reason})))
         super().on_command_timer()
         address=os.environ.get('NOTIFY_SOCKET')
         if address:

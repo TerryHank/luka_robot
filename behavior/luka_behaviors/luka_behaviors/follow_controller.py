@@ -121,6 +121,9 @@ def decide(people, camera_age, front_clearance, scans_fresh, allow_anonymous=Fal
 class FollowController:
     def __init__(self, node):
         self.node = node
+        if not hasattr(node,'motion'):
+            from luka_motion_gateway.client import MotionLeaseClient
+            node.motion=MotionLeaseClient(node)
         self.lock = threading.RLock()
         self.enabled = False
         self.mode = 'profile'
@@ -152,7 +155,7 @@ class FollowController:
         self.blocked_since = None
         self.detour = FollowDetourManager(self, node)
         self.detour_enabled = os.getenv('NX_FOLLOW_NAV_DETOUR', '0') == '1'
-        self.pub = node.create_publisher(Twist, '/nx/follow_safe', 10)
+        self.pub = node.create_publisher(Twist, '/luka/motion/follow', 10)
         self.gate = node.create_client(SetBool, '/nx/follow_enable')
         for topic in ('/scan', '/scan_low_filtered'):
             node.create_subscription(LaserScan, topic, lambda msg, name=topic: self.on_scan(name, msg), qos_profile_sensor_data)
@@ -357,6 +360,10 @@ class FollowController:
             time.sleep(.02)
         if not future.done() or not future.result().success:
             raise ValueError('底盘拒绝跟随：'+(future.result().message if future.done() else '响应超时'))
+        if not self.nav_mode:
+            try:self.node.motion.acquire('follow')
+            except Exception:
+                self.gate.call_async(SetBool.Request(data=False));raise
         with self.lock:
             if epoch != self.command_epoch:
                 self.gate.call_async(SetBool.Request(data=False))
@@ -375,6 +382,7 @@ class FollowController:
         return self.snapshot()
 
     def stop(self, reason='已手动停止'):
+        if hasattr(getattr(self,'node',None),'motion'):self.node.motion.release()
         with self.lock:
             self.command_epoch += 1
             was_enabled = self.enabled

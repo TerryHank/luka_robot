@@ -33,7 +33,7 @@ class EscapeRecovery:
         self.scans = {}
         self.odom = None
         self.last_result = {'ok': False, 'reason': '尚未执行'}
-        self.pub = node.create_publisher(Twist, '/nx/web_teleop_cmd_vel', 10)
+        self.pub = node.create_publisher(Twist, '/luka/motion/recovery', 10)
         self.subscriptions = [node.create_subscription(
             LaserScan, topic, lambda msg, key=topic: self._scan(key, msg),
             qos_profile_sensor_data) for topic in SENSORS]
@@ -82,7 +82,7 @@ class EscapeRecovery:
                 self.last_result = {'ok': False, 'reason': reason}
 
     def _publish(self, direction):
-        if self.cancelled.is_set():
+        if self.cancelled.is_set() or not self.node.motion.valid('recovery'):
             return
         msg = Twist()
         if direction == 'back': msg.linear.x = -.06
@@ -91,7 +91,14 @@ class EscapeRecovery:
         self.pub.publish(msg)
 
     def run(self, teleop_active, required_direction=None):
-        result = self._run_once(teleop_active, required_direction)
+        if not self.enabled:return {'ok':False,'reason':'自动脱困尚未启用'}
+        from luka_behaviors.navigation_execution import gate
+        self.node.motion.acquire('recovery')
+        try:
+            gate(self.node,True)
+            result = self._run_once(teleop_active, required_direction)
+        finally:
+            self.node.motion.release();gate(self.node,False)
         with self.lock:
             self.last_result = result
         return result

@@ -138,6 +138,7 @@ class FollowDetourManager:
         self.localization_ok = False
 
     def cancel(self):
+        if hasattr(self.node,'motion'):self.node.motion.release()
         self.cancel_event.set()
         if self.handle is not None:
             try:
@@ -399,6 +400,7 @@ class FollowDetourManager:
             self.reason = ('已找到人体观察路径，正在切换底盘控制' if mode == 'target'
                            else '已找到短绕行路径，正在切换底盘控制')
             self._gate(controller.gate, False, epoch, identity)
+            node.motion.acquire('nav')
             self._gate(node.nx_gate, True, epoch, identity)
             limit = SpeedLimit()
             limit.percentage = False
@@ -478,6 +480,7 @@ class FollowDetourManager:
                 resumed = True
             elif succeeded and self._current(epoch, identity):
                 try:
+                    node.motion.acquire('follow')
                     self._gate(controller.gate, True, epoch, identity)
                     self.reason = '已绕过障碍，继续视觉跟随'
                     resumed = True

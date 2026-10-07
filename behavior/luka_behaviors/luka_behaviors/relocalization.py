@@ -33,7 +33,7 @@ class Relocalization:
         self.global_client=node.create_client(Empty,'/reinitialize_global_localization')
         self.update_client=node.create_client(Empty,'/request_nomotion_update')
         # Feed the existing dual-lidar collision monitor, never its output.
-        self.cmd_pub=node.create_publisher(Twist,'/nx/nav_guarded',10)
+        self.cmd_pub=node.create_publisher(Twist,'/luka/motion/relocalize',10)
         node.create_subscription(PoseWithCovarianceStamped,'/amcl_pose',self.on_pose,10)
         node.create_subscription(Odometry,'/wheel/odom',self.on_odom,qos_profile_sensor_data)
     def on_pose(self,msg):
@@ -99,6 +99,7 @@ class Relocalization:
         except Exception as exc:
             return self.scan_matcher.empty('map_to_base_tf_unavailable:'+str(exc)[:100])
     def stop_rotation(self):
+        if hasattr(self.node,'motion'):self.node.motion.release()
         self.cancel.set()
         self.cmd_pub.publish(Twist())
     def localized(self):
@@ -191,6 +192,7 @@ class Relocalization:
         """Slowly rotate in place while AMCL receives a full 360-degree scan."""
         enabled=False
         try:
+            self.node.motion.acquire('relocalize')
             # Navigation gating prevents the command from reaching the motors
             # until encoder, TF and lidar data are all fresh.
             for _ in range(12):
@@ -212,12 +214,14 @@ class Relocalization:
                     raise ValueError('定位期间雷达或里程计数据过期，已停止自转')
                 if self.node.patrol_mission.active() or self.node.nx_handle is not None:
                     raise ValueError('其他行驶任务已接管，停止自转')
+                if not self.node.motion.valid('relocalize'):raise ValueError('重定位运动租约已失效')
                 self.cmd_pub.publish(cmd)
                 time.sleep(.1)
             if self.cancel.is_set():raise ValueError('自转已由停车按钮取消')
             if not self.localized() and self.rotation_progress<2*math.pi-.25:
                 raise ValueError('限定时间内未完成一圈自转，已停止；请检查底盘与避障状态')
         finally:
+            self.node.motion.release()
             self.last_rotation_yaw=None
             self.cmd_pub.publish(Twist())
             if enabled:

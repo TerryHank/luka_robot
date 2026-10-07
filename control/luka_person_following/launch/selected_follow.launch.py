@@ -109,12 +109,12 @@ def generate_launch_description():
                 'navigate_to_pose_action_name': PythonExpression([
                     "'/luka_follow_dryrun/navigate_to_pose' if '",
                     dry,
-                    "' == 'true' else '/navigate_to_pose'"
+                    "' == 'true' else '/luka/behavior/follow_navigation'"
                 ]),
                 'cmd_vel_topic': PythonExpression([
                     "'/luka_follow_dryrun/cmd_vel' if '",
                     dry,
-                    "' == 'true' else '/nx/nav_smoothed'"
+                    "' == 'true' else '/luka/motion/follow'"
                 ]),
             }],
             remappings=[
