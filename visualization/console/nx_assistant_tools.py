@@ -1,109 +1,15 @@
 """Allowlisted NX tools. No model-supplied URLs, shell commands or coordinates."""
 import json,re,urllib.request,urllib.error
-
-TOOLS={
- 'robot_status':'查询小车服务、任务状态，参数{}',
- 'destinations':'列出当前可导航航点，参数{}',
- 'follow_status':'查询人体跟随状态，参数{}',
- 'follow_start':'开始跟随当前已经选择并通过核验的人，参数{}',
- 'follow_stop':'停止人体跟随并停车，参数{}',
- 'navigate':'去、回到、带我回已有房间或航点，例如带我回卧室休息。参数{name:航点显示名称}',
- 'cancel_all':'停止导航、巡航和找物，参数{}',
- 'patrol_start':'按已保存路线巡航一遍，实时识别并保存物体记忆，参数{}',
- 'patrol_stop':'停止巡航，保留已保存物体记忆，参数{}',
- 'patrol_route':'查看巡航路线，参数{}',
- 'patrol_route_set':'设置巡航顺序，参数{names:[航点显示名称,...]，仅原话有停留秒数时添加dwell_s}',
- 'find_object':'查询当前地图的物体记忆找物，参数{query:物品名称或基本描述}',
- 'object_where':'查询已找到物品的观察位置，参数{query:物品名称，可省略}',
- 'object_bring':'仅带用户去已找到的物品处，例如剪刀、水杯；房间名称禁止使用此工具，应选navigate。参数{query:物品名称，可省略}',
- 'localization_status':'查询定位状态，参数{}',
- 'localization_auto':'停止状态下尝试自动重定位，参数{}',
- 'voiceprint_status':'查询声纹录入数量与最近说话人候选，参数{}',
- 'music_search':'搜索音乐，参数{query:歌名或歌手}',
- 'music_play':'搜索并播放音乐，参数{query:歌名或歌手}',
- 'music_pause':'暂停音乐，参数{}',
- 'music_resume':'继续播放音乐，参数{}',
- 'music_stop':'停止音乐，参数{}',
- 'music_status':'查询音乐播放状态，参数{}',
- 'music_volume':'设置音乐音量，参数{volume:0到100}',
- 'functions_status':'查询各服务状态，参数{}',
- 'functions_start':'启动现有小车功能服务，参数{}',
- 'camera_find':'识别相机当前画面的物品，参数{query:物品名称}',
- 'record_start':'原地开始录像，不导航，参数{}',
- 'record_stop':'停止录像并保存，参数{}',
- 'record_status':'查询录像和搜索状态，参数{}',
- 'voice_volume':'调整说话音量，参数{direction:up或down}',
- 'settings_help':'账号、配网、地图房间航点编辑、声纹录入、手动定位、启动重启等操作入口，参数{topic:功能名称}',
-}
-READ_ONLY={'robot_status','destinations','follow_status','patrol_route','object_where','localization_status','voiceprint_status','music_search','music_status','settings_help','functions_status','record_status'}
-TRIGGERS={'functions_start':['启动','开启'], 'follow_start':['跟着','跟随','跟我'], 'follow_stop':['停止','别跟','不要跟','结束跟随'], 'camera_find':['看','识别'], 'record_start':['录像','录制'], 'record_stop':['停止','结束'], 'voice_volume':['声音','音量'], 'navigate':['去','到','前往','导航','带我回','送我回'], 'cancel_all':['停止','停车','停下','取消','急停','别走'],
- 'patrol_start':['巡航','巡逻'], 'patrol_stop':['停止','结束','取消'], 'patrol_route_set':['路线','巡航','顺序'],
- 'find_object':['找','查找'], 'object_bring':['带我','带路'], 'localization_auto':['重定位','重新定位'],
- 'music_play':['播放','放歌','来首','来一首','听','放一首'], 'music_pause':['暂停'], 'music_resume':['继续','恢复'],
- 'music_stop':['停止','关闭','关掉','别放'], 'music_volume':['音量','声音']}
-
-def prompt():
- return ("你是露卡的工具选择器，只返回JSON。可用工具：" + ",".join(TOOLS) +
-         "。闲聊选chat，含糊请求选clarify；每次只选一个。问能力用settings_help，不执行动作。"
-         "导航仅选原话中的已保存航点，房间不用object_bring；找物用find_object，已找到物品带路用object_bring。"
-         "不要编造目标或执行否定、假设、引用中的动作。")
-
-def polite_command(text):
- """Only normalize whole, explicit requests; retain targets and negations."""
- t=text.strip()
- t=re.sub(r'^(?:露卡|卢卡)[，,：:\s]*', '', t)
- m=re.fullmatch(r'(?:你)?(?:能不能|可不可以|可以|能)(?:帮我|帮忙)?((?:带我去|带我到|带我过去|去|前往|导航到|找|播放|放一首|暂停音乐|停止音乐|开始巡航).+?)(?:吗|么)?[？?。！!]*',t)
- if m:return m[1]
- m=re.fullmatch(r'((?:带我去|带我到|去|前往|导航到|帮我找|播放|开始巡航).+?)[，,]?(?:好吗|好不好|行吗|可以吗)[？?。！!]*',t)
- return m[1] if m else t
-
-def candidate(text):
- if polite_command(text)!=text.strip():return True
- return any(w in text for w in ('启动','录像','录制','识别','音量','声音','音乐','放歌','播放','来首','听一首','找','带我','跟随','跟着','巡航','巡逻','导航','前往','重定位','声纹','谁在说话','航点','目的地','电梯','建图','配网','联网','注册','账号','房间','地图','功能','状态','音量'))
-
-def direct(text):
- text=polite_command(text)
- if any(w in text for w in ('然后','再去','并且','或者','还是')):
-  return {'tool':'clarify','arguments':{}}
- t=re.sub(r'[\s，。！,.!]','',text)
- t=re.sub(r'^(?:露卡|卢卡)[，,:：]?', '', t)
- t=re.sub(r'^(?:麻烦你|麻烦|请你|请)', '', t)
- if t in ('我想知道现在有哪些地方可以去','有哪些地方可以去','你能去哪里','有哪些目的地','有哪些航点'):
-  return {'tool':'destinations','arguments':{}}
- m=re.fullmatch(r'我把(.{1,30}?)忘在哪儿了(?:帮忙看看|帮我找找|帮我找一下)',t)
- if m:return {'tool':'find_object','arguments':{'query':m[1]}}
- if re.fullmatch(r'(?:我想|我要)?听(?:一点|一些|点)?(?:轻松|安静|舒缓|好听)的?(?:音乐|歌)',t):
-  return {'tool':'clarify','arguments':{}}
- if t in ('带我过去','带我去刚才找到的地方','带我去刚才那个地方'):
-  return {'tool':'object_bring','arguments':{}}
- if t in ('继续','继续吧','去那里','去那儿','接着走'):
-  return {'tool':'clarify','arguments':{}}
- for phrase,tool in [('跟着我','follow_start'),('开始跟随','follow_start'),('开始跟着我','follow_start'),('停止跟随','follow_stop'),('别跟着我','follow_stop'),('不要跟着我','follow_stop'),('暂停音乐','music_pause'),('暂停播放','music_pause'),('继续播放','music_resume'),('继续音乐','music_resume'),('恢复播放','music_resume'),('停止音乐','music_stop'),('关闭音乐','music_stop'),('停止播放','music_stop'),('现在放的什么歌','music_status'),('有哪些功能','settings_help'),('你能做什么','settings_help'),('查询小车状态','robot_status'),('小车现在怎么样','robot_status')]:
-  if t==phrase:return {'tool':tool,'arguments':{}}
- if t in ('调大声音','把声音调大','声音调大','声音大一点','音量大一点'):
-  return {'tool':'voice_volume','arguments':{'direction':'up'}}
- if t in ('调小声音','把声音调小','声音调小','声音小一点','音量小一点'):
-  return {'tool':'voice_volume','arguments':{'direction':'down'}}
- if t in ('重新定位','自动重定位','开始重定位'):
-  return {'tool':'localization_auto','arguments':{}}
- # Speech commonly says “我要听/我想听/听一首”，which must stay a
- # deterministic music action instead of falling through to local chat.
- m=re.fullmatch(r'(?:我(?:要|想)?|请|帮我)?(?:播放|放歌|放一首|来首|来一首|听一首|听)(.{1,80})',t)
- if m and not any(mark in m[1] for mark in ('吗','？','?','怎么','如何')):
-  return {'tool':'music_play','arguments':{'query':m[1]}}
- for phrase,tool in [('停止','cancel_all'),('停车','cancel_all'),('停下','cancel_all'),('急停','cancel_all'),('停止导航','cancel_all'),('取消导航','cancel_all'),('别走了','cancel_all'),('停止跟随','follow_stop'),('结束跟随','follow_stop'),('开始录像','record_start'),('停止录像','record_stop'),('查看录像状态','record_status'),('启动小车功能','functions_start'),('查询服务状态','functions_status')]:
-  if t==phrase:return {'tool':tool,'arguments':{}}
- from nx_voice_commands import route
- a=route(t)
- if a:
-  routed={'stop':'cancel_all','object_where':'object_where','object_bring':'object_bring','patrol_start':'patrol_start','patrol_stop':'patrol_stop','find_object':'find_object'}
-  if a[0] in routed:
-   return {'tool':routed[a[0]],'arguments':({'name':a[1]} if a[0]=='navigate' else ({'query':a[1]} if a[1] else {}))}
- # Common ASR prefixes are still deterministic when the destination is
- # explicit; do not send these obvious motion commands through the LLM router.
- m=re.fullmatch(r'(?:请|请你|帮我|我要|我想|让小车|让露卡|小车)?(?:去|到|前往|导航到|带我去|带我到|把我带到)(.{1,40}?)(?:吧)?',t)
- if m:return {'tool':'navigate','arguments':{'name':m[1]}}
- return None
+from pathlib import Path as _SourcePath
+import sys as _source_sys
+_source_root = _SourcePath(__file__).resolve().parents[2]
+for _package_path in ['system/luka_capabilities']:
+    _source_dir = _source_root / _package_path
+    if _source_dir.is_dir() and str(_source_dir) not in _source_sys.path:
+        _source_sys.path.insert(0, str(_source_dir))
+from luka_capabilities.catalog import TOOLS, READ_ONLY, TRIGGERS, prompt
+from luka_capabilities.direct_router import polite_command, candidate, direct
+from luka_capabilities.policy import validate
 
 def http(path,body=None):
  req=urllib.request.Request('http://127.0.0.1:8503'+path,data=None if body is None else json.dumps(body).encode(),headers={'Content-Type':'application/json'})
@@ -112,27 +18,6 @@ def http(path,body=None):
  except urllib.error.HTTPError as e:
   try:raise ValueError(json.loads(e.read()).get('error','小车接口拒绝请求'))
   except json.JSONDecodeError:raise ValueError('小车接口拒绝请求')
-
-def validate(tool,args,source):
- if not isinstance(source,str) or not 1<=len(source)<=1000:raise ValueError('原话无效')
- if tool not in TOOLS or not isinstance(args,dict):raise ValueError('未接通的功能，不执行')
- if tool not in READ_ONLY:
-  intent=polite_command(source)
-  if any(w in intent for w in ('不要','不用','不想','别去','能不能','是否','吗','？','?','然后','再去','并且','或者','还是','不播放','别播放','不要启动','不去','不需要','先不','例如','假如','如果','他说','怎么','如何')):raise ValueError('请明确说出一个要执行的动作')
-  if not any(w in source for w in TRIGGERS.get(tool,[])):raise ValueError('原话没有明确要求执行这个动作')
- if tool=='music_volume':
-  v=args.get('volume')
-  if type(v) is not int or not 0<=v<=100 or not re.search(r'(?<![0-9])'+str(v)+r'(?![0-9])',source):raise ValueError('请说出0到100的音乐音量数字')
- if tool in ('find_object','camera_find','music_search','music_play') and not args.get('query'):raise ValueError('请明确说出物品或歌名')
- if 'dwell_s' in args and '秒' in source:
-  v=args['dwell_s']
-  if type(v) not in (int,float) or not 0<=v<=60 or not re.search(r'(?<![0-9])'+re.escape(str(v))+r'\s*秒',source):raise ValueError('停留秒数必须来自原话')
- if tool=='voice_volume':
-  if args.get('direction') not in ('up','down') or not any(w in source for w in (('大','高') if args['direction']=='up' else ('小','低'))):raise ValueError('请明确说调大或调小说话音量')
- for key in ('query','name'):
-  if key in args:
-   v=args[key]
-   if not isinstance(v,str) or not 1<=len(v.strip())<=80 or v not in source:raise ValueError('目标必须来自你的原话，请说出名称')
 
 def execute(node,tool,args,source,catalog,send_nav,music):
  validate(tool,args,source)
@@ -210,7 +95,6 @@ def execute(node,tool,args,source,catalog,send_nav,music):
   return '已录入'+str(sum(p['ready'] for p in s['profiles']))+'个声纹。最近记录为'+str(r.get('name') or '未确定说话人')+'，不是身份认证。'
  if tool.startswith('music_'):return music.action(tool.removeprefix('music_'),args)
  if tool=='settings_help':return '我可以导航、按路线巡航并实时记住物品、查询物体记忆并带路、查询定位和声纹、管理音乐，也可以按你的要求单独录像。账号联网、地图房间航点编辑、声纹录入和手动定位请在客户页操作；启动重启在监控页。电梯和自主建图尚未接通，超声波已关闭。'
-
 
 def select(text,catalog,context=None):
  """Use local grammar-constrained JSON generation; never execute a tool here."""

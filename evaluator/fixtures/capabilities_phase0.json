@@ -1,0 +1,139 @@
+[
+  {
+    "text": "跟着我",
+    "candidate": true,
+    "direct": {
+      "tool": "follow_start",
+      "arguments": {}
+    },
+    "polite": "跟着我"
+  },
+  {
+    "text": "停止跟随",
+    "candidate": true,
+    "direct": {
+      "tool": "follow_stop",
+      "arguments": {}
+    },
+    "polite": "停止跟随"
+  },
+  {
+    "text": "不要跟着我",
+    "candidate": true,
+    "direct": {
+      "tool": "follow_stop",
+      "arguments": {}
+    },
+    "polite": "不要跟着我"
+  },
+  {
+    "text": "你会跟随吗",
+    "candidate": true,
+    "direct": null,
+    "polite": "你会跟随吗"
+  },
+  {
+    "text": "去厨房",
+    "candidate": false,
+    "direct": {
+      "tool": "navigate",
+      "arguments": {
+        "name": "厨房"
+      }
+    },
+    "polite": "去厨房"
+  },
+  {
+    "text": "帮我找剪刀",
+    "candidate": true,
+    "direct": {
+      "tool": "find_object",
+      "arguments": {
+        "query": "剪刀"
+      }
+    },
+    "polite": "帮我找剪刀"
+  },
+  {
+    "text": "停止",
+    "candidate": false,
+    "direct": {
+      "tool": "cancel_all",
+      "arguments": {}
+    },
+    "polite": "停止"
+  },
+  {
+    "text": "可以帮我去厨房吗",
+    "candidate": true,
+    "direct": {
+      "tool": "navigate",
+      "arguments": {
+        "name": "厨房"
+      }
+    },
+    "polite": "去厨房"
+  },
+  {
+    "text": "去厨房然后去卧室",
+    "candidate": false,
+    "direct": {
+      "tool": "clarify",
+      "arguments": {}
+    },
+    "polite": "去厨房然后去卧室"
+  },
+  {
+    "text": "你能做什么",
+    "candidate": false,
+    "direct": {
+      "tool": "settings_help",
+      "arguments": {}
+    },
+    "polite": "你能做什么"
+  },
+  {
+    "text": "开始巡航",
+    "candidate": true,
+    "direct": {
+      "tool": "patrol_start",
+      "arguments": {}
+    },
+    "polite": "开始巡航"
+  },
+  {
+    "text": "重新定位",
+    "candidate": false,
+    "direct": {
+      "tool": "localization_auto",
+      "arguments": {}
+    },
+    "polite": "重新定位"
+  },
+  {
+    "text": "听一首成都",
+    "candidate": true,
+    "direct": {
+      "tool": "music_play",
+      "arguments": {
+        "query": "成都"
+      }
+    },
+    "polite": "听一首成都"
+  },
+  {
+    "text": "带我过去",
+    "candidate": true,
+    "direct": {
+      "tool": "object_bring",
+      "arguments": {}
+    },
+    "polite": "带我过去"
+  },
+  {
+    "text": "我累了",
+    "candidate": false,
+    "direct": null,
+    "polite": "我累了"
+  }
+]
