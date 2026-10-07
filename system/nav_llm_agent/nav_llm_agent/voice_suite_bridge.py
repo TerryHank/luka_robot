@@ -62,7 +62,9 @@ class DRoboticsVoiceSuiteBridge(Node):
         self.tts_generation = 0
         self.tts_timer = None
 
-        self.command_pub = self.create_publisher(String, "/llm_command", 10)
+        self.command_pub = self.create_publisher(
+            String, "/luka/interaction/agent_input", 10
+        )
         self.text_pub = self.create_publisher(
             String, "/voice/recognized_text", 10)
         self.status_pub = self.create_publisher(String, "/voice/status", 10)
@@ -197,7 +199,12 @@ class DRoboticsVoiceSuiteBridge(Node):
         else:
             self.runtime_status("utterance_final")
         self.text_pub.publish(String(data=text))
-        self.command_pub.publish(String(data=text))
+        self.command_pub.publish(String(data=json.dumps({
+            "text": text,
+            "source": "voice_drobotics",
+            "session_id": "drobotics_voice",
+            "captured_at": time.time(),
+        }, ensure_ascii=False)))
         self.status("asr_accepted backend=drobotics")
 
     def on_llm_status(self, msg):

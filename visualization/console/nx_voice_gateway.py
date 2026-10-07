@@ -30,7 +30,8 @@ class NXVoiceGateway(TTSPipelineMixin, VoiceGateway):
         self.conversation_timeout=12.0
         self.speech_vad=SpeechVAD('/home/sunrise/luka_ws/common/models/voice/vad/silero_vad.onnx')
         super().__init__()
-        self.speaker_command_pub=self.create_publisher(String,'/llm_voice_command',10)
+        self.speaker_command_pub=self.create_publisher(
+            String,'/luka/interaction/agent_input',10)
         self._speaker_future=None;self._speaker_at=0.0
         self.voiceprint=VoiceprintWorker(self)
         self.voice_follow=VoiceFollowCoordinator(self.say,self._status)
@@ -115,7 +116,13 @@ class NXVoiceGateway(TTSPipelineMixin, VoiceGateway):
             if future:
                 try:speaker=future.result(timeout=1.5)
                 except Exception:pass
-            envelope={'text':command,'speaker':speaker,'captured_at':self._speaker_at}
+            envelope={
+                'text':command,
+                'source':'voice_local',
+                'speaker':speaker,
+                'captured_at':self._speaker_at,
+                'session_id':'local_voice',
+            }
             self.text_pub.publish(String(data=command))
             self.speaker_command_pub.publish(String(data=json.dumps(envelope,ensure_ascii=False)))
             self._return_to_wake('speaker_command_sent')

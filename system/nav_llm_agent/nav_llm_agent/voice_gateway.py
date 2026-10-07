@@ -226,7 +226,9 @@ class VoiceGateway(Node):
         status_qos = QoSProfile(depth=10)
         status_qos.reliability = ReliabilityPolicy.RELIABLE
         status_qos.durability = DurabilityPolicy.TRANSIENT_LOCAL
-        self.command_pub = self.create_publisher(String, "/llm_command", 10)
+        self.command_pub = self.create_publisher(
+            String, "/luka/interaction/agent_input", 10
+        )
         self.text_pub = self.create_publisher(String, "/voice/recognized_text", 10)
         self.status_pub = self.create_publisher(String, "/voice/status", status_qos)
         self.runtime_pub = self.create_publisher(String, "/voice/runtime", status_qos)
