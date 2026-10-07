@@ -12,7 +12,6 @@ import wave
 from std_msgs.msg import String
 from nav_llm_agent.voice_gateway import VoiceGateway, clean_command, deduplicate_command
 from nx_voice_commands import route, hold_level, correct_room_command, destination_intent
-from luka_capabilities.client import execute_remote as capability_execute
 from nx_speech_vad import SpeechVAD
 from nx_tts_pipeline import TTSPipelineMixin
 from nx_object_announcer import ObjectAnnouncer
@@ -153,17 +152,15 @@ class NXVoiceGateway(TTSPipelineMixin, VoiceGateway):
                     self.say('暂时读不到找物记录，请检查视觉服务。')
             threading.Thread(target=reply_location,daemon=True).start()
             return
-        tool={'stop':'cancel_all','navigate':'navigate','patrol_start':'patrol_start',
-              'patrol_stop':'patrol_stop','find_object':'find_object','object_bring':'object_bring',
-              'follow_start':'follow_start','follow_stop':'follow_stop'}[kind]
-        if kind=='navigate':
-            hits=[row for row in destinations if row['id']==poi]
-            if len(hits)!=1:self.say('目的地已变化，请重新选择。');return
-            body={'name':hits[0]['display_name']}
-        else:body={'query':poi} if poi is not None and kind in ('find_object','object_bring') else {}
+        path={'stop':'/api/nav/stop','navigate':'/api/nav','patrol_start':'/api/patrol/start','patrol_stop':'/api/patrol/stop','find_object':'/api/patrol/find','object_bring':'/api/patrol/bring','follow_start':'/api/follow/start','follow_stop':'/api/follow/stop'}[kind]
+        body={'id':poi} if kind=='navigate' else {'query':poi} if kind=='find_object' else {}
+        if kind=='object_bring':body={'query':poi}
         started=time.monotonic()
         try:
-            result=capability_execute(tool,body,command)
+            req=urllib.request.Request('http://127.0.0.1:8503'+path,
+                data=json.dumps(body).encode(),headers={'Content-Type':'application/json'},method='POST')
+            with urllib.request.urlopen(req,timeout=20) as response:
+                result=json.load(response)
             if not result.get('ok'):raise ValueError('导航接口未确认')
             reply=result.get('message') or ('跟随已启动，我会保持距离。' if kind=='follow_start' else '跟随已停止。' if kind=='follow_stop' else '导航已停止。' if kind=='stop' else '已提交前往'+result['display_name']+'的导航。')
             self._status(f'voice_action_accepted kind={kind} seconds={time.monotonic()-started:.3f}')

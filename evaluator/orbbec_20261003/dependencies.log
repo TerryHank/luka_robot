@@ -1,40 +1,0 @@
-Reading package lists...
-Building dependency tree...
-Reading state information...
-The following additional packages will be installed:
-  ros-humble-camera-calibration-parsers
-The following NEW packages will be installed:
-  ros-humble-backward-ros ros-humble-camera-calibration-parsers
-  ros-humble-camera-info-manager ros-humble-image-publisher
-0 upgraded, 4 newly installed, 0 to remove and 641 not upgraded.
-Need to get 246 kB of archives.
-After this operation, 835 kB of additional disk space will be used.
-Get:1 http://mirrors4.tuna.tsinghua.edu.cn/ros2/ubuntu jammy/main arm64 ros-humble-backward-ros arm64 1.0.8-2jammy.20260306.212100 [58.1 kB]
-Get:2 http://mirrors4.tuna.tsinghua.edu.cn/ros2/ubuntu jammy/main arm64 ros-humble-camera-calibration-parsers arm64 3.1.13-1jammy.20260908.011532 [51.6 kB]
-Get:3 http://mirrors4.tuna.tsinghua.edu.cn/ros2/ubuntu jammy/main arm64 ros-humble-camera-info-manager arm64 3.1.13-1jammy.20260908.011907 [40.8 kB]
-Get:4 http://mirrors4.tuna.tsinghua.edu.cn/ros2/ubuntu jammy/main arm64 ros-humble-image-publisher arm64 3.0.9-1jammy.20260908.085505 [95.0 kB]
-debconf: unable to initialize frontend: Dialog
-debconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)
-debconf: falling back to frontend: Readline
-debconf: unable to initialize frontend: Readline
-debconf: (This frontend requires a controlling tty.)
-debconf: falling back to frontend: Teletype
-dpkg-preconfigure: unable to re-open stdin: 
-Fetched 246 kB in 2s (150 kB/s)
-Selecting previously unselected package ros-humble-backward-ros.
-(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 230685 files and directories currently installed.)
-Preparing to unpack .../ros-humble-backward-ros_1.0.8-2jammy.20260306.212100_arm64.deb ...
-Unpacking ros-humble-backward-ros (1.0.8-2jammy.20260306.212100) ...
-Selecting previously unselected package ros-humble-camera-calibration-parsers.
-Preparing to unpack .../ros-humble-camera-calibration-parsers_3.1.13-1jammy.20260908.011532_arm64.deb ...
-Unpacking ros-humble-camera-calibration-parsers (3.1.13-1jammy.20260908.011532) ...
-Selecting previously unselected package ros-humble-camera-info-manager.
-Preparing to unpack .../ros-humble-camera-info-manager_3.1.13-1jammy.20260908.011907_arm64.deb ...
-Unpacking ros-humble-camera-info-manager (3.1.13-1jammy.20260908.011907) ...
-Selecting previously unselected package ros-humble-image-publisher.
-Preparing to unpack .../ros-humble-image-publisher_3.0.9-1jammy.20260908.085505_arm64.deb ...
-Unpacking ros-humble-image-publisher (3.0.9-1jammy.20260908.085505) ...
-Setting up ros-humble-backward-ros (1.0.8-2jammy.20260306.212100) ...
-Setting up ros-humble-camera-calibration-parsers (3.1.13-1jammy.20260908.011532) ...
-Setting up ros-humble-camera-info-manager (3.1.13-1jammy.20260908.011907) ...
-Setting up ros-humble-image-publisher (3.0.9-1jammy.20260908.085505) ...

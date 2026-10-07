@@ -24,9 +24,6 @@ ALIASES = {'人': 'person', '人体': 'person', '人员': 'person'}
 class Detector:
     def __init__(self):
         self.model = Yolo26PersonSegmenter(confidence=.30)
-        self.runtime_backend = getattr(self.model, 'backend_name', 'legacy')
-        self.runtime_fallback_reason = getattr(
-            self.model, 'fallback_reason', None)
         self.lock = Lock()
 
     def infer(self, image):
@@ -51,23 +48,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/health":
-            return self.reply({
-                "ok": True,
-                "model_loaded": detector is not None,
-                "backend": "yolo26m-objv1-seg-person-bpu",
-                "runtime_backend_requested": __import__("os").getenv(
-                    "NX_YOLO26_RUNTIME_BACKEND", "legacy"),
-                "runtime_backend_active": (
-                    detector.runtime_backend if detector is not None else None),
-                "runtime_fallback_reason": (
-                    detector.runtime_fallback_reason if detector is not None
-                    else None),
-                "classes": len(NAMES),
-                "enabled_classes": NAMES,
-                "model": MODEL,
-                "runtime_model": str(HBM),
-                "open_vocabulary": False,
-            })
+            return self.reply({"ok": True, "model_loaded": detector is not None,
+                               "backend": "yolo26m-objv1-seg-person-bpu",
+                               "classes": len(NAMES), "enabled_classes": NAMES, "model": MODEL, "runtime_model": str(HBM), "open_vocabulary": False})
         self.reply({"error": "not found"}, 404)
 
     def do_POST(self):
@@ -102,12 +85,9 @@ class Handler(BaseHTTPRequestHandler):
             results = active.infer(image)
             if query:
                 results = [row for row in results if row["class"] == target]
-            return self.reply({
-                "detections": results,
-                "inference_seconds": round(time.monotonic() - started, 4),
-                "backend": "yolo26m-objv1-seg-person-bpu",
-                "runtime_backend": active.runtime_backend,
-            })
+            return self.reply({"detections": results,
+                               "inference_seconds": round(time.monotonic() - started, 4),
+                               "backend": "yolo26m-objv1-seg-person-bpu"})
         except (ValueError, KeyError, TypeError) as exc:
             self.reply({"error": str(exc)}, 400)
         except Exception as exc:

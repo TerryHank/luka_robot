@@ -1,10 +1,111 @@
-"""Compatibility alias for the canonical behavior implementation."""
-from pathlib import Path as _SourcePath
-import sys as _source_sys
-_source_root = _SourcePath(__file__).resolve().parents[2]
-for _package_path in ['behavior/luka_behaviors']:
-    _source_dir = _source_root / _package_path
-    if _source_dir.is_dir() and str(_source_dir) not in _source_sys.path:
-        _source_sys.path.insert(0, str(_source_dir))
-from luka_behaviors import range_gate as _implementation
-_source_sys.modules[__name__]=_implementation
+"""Reject abrupt visual range changes before a follow command is considered.
+
+This gate cannot create a distance or keep the robot moving through a missing
+measurement. It only withholds implausible stereo measurements until two new
+frames agree. Identity, camera freshness, and obstacle checks remain separate.
+"""
+
+import math
+
+
+class PersonRangeGate:
+    def __init__(self, single_chest=False):
+        self.single_chest = bool(single_chest)
+        self.reset()
+
+    def reset(self):
+        self.target_key = None
+        self.last_frame_at = None
+        self.last_good = None
+        self.pending = None
+        self.reason = 'target_not_verified'
+
+    def protect(self, people, allow_anonymous=False):
+        target = (people or {}).get('target_session') or {}
+        verified = target.get('face_verified') and target.get('profile_id')
+        if not (target.get('active') and target.get('visible') and
+                (verified or allow_anonymous) and target.get('track_id') is not None):
+            self.reset()
+            return people
+        key = (target.get('profile_id') or 'anonymous', target['track_id'])
+        if key != self.target_key:
+            self.reset()
+            self.target_key = key
+        tracks = people.get('tracks') or []
+        selected = [t for t in tracks if t.get('track_id') == key[1]]
+        if len(selected) != 1:
+            self.reason = 'target_not_unique'
+            return people
+        track = selected[0]
+        try:
+            frame_at = float(people['frame_at'])
+        except (KeyError, TypeError, ValueError):
+            self.reason = 'invalid_frame_time'
+            return self._reject(people, track)
+        if not math.isfinite(frame_at):
+            self.reason = 'invalid_frame_time'
+            return self._reject(people, track)
+        if self.last_frame_at is not None and frame_at <= self.last_frame_at:
+            return self._reject(people, track) if self.reason != 'range_consistent' else people
+        self.last_frame_at = frame_at
+        if track.get('depth_valid') is not True:
+            self.reason = 'stereo_range_missing'
+            if self.last_good and frame_at-self.last_good[0] > .6:
+                self.last_good = None
+                self.pending = None
+            return people
+        try:
+            distance = float(track['distance_m'])
+        except (KeyError, TypeError, ValueError):
+            self.reason = 'invalid_stereo_range'
+            return self._reject(people, track)
+        if not math.isfinite(distance) or not .6 < distance < 4.:
+            self.reason = 'invalid_stereo_range'
+            return self._reject(people, track)
+        diagnostic = track.get('depth_diagnostic') or {}
+        chest = diagnostic.get('chest_distance_m')
+        single_chest_ok = (
+            self.single_chest and verified and self.last_good is None and
+            diagnostic.get('chest_reason') == 'ok' and
+            isinstance(chest, (int,float)) and math.isfinite(chest) and
+            abs(chest-distance) <= .12 and
+            (diagnostic.get('chest_pixels') or 0) >= 350 and
+            (diagnostic.get('chest_support') or 0) >= .90 and
+            (diagnostic.get('chest_spread_m') or 1.) <= .18)
+        if single_chest_ok:
+            self.last_good = (frame_at, distance)
+            self.pending = None
+            self.reason = 'high_confidence_chest_anchor'
+            return people
+        if self.last_good is not None:
+            dt = frame_at-self.last_good[0]
+            if 0 < dt <= .6 and abs(distance-self.last_good[1]) <= .18+1.0*dt:
+                self.last_good = (frame_at, distance)
+                self.pending = None
+                self.reason = 'range_consistent'
+                return people
+            if dt > .6:
+                self.last_good = None
+                self.pending = None
+        if self.pending is not None:
+            dt = frame_at-self.pending[0]
+            # Stereo on clothing can be intermittent near furniture. Two
+            # separate, closely agreeing ranges may still establish a static
+            # anchor even with invalid frames between them; a different
+            # furniture layer never qualifies merely because time passed.
+            if 0 < dt <= 1.5 and abs(distance-self.pending[1]) <= .15:
+                self.last_good = (frame_at, distance)
+                self.pending = None
+                self.reason = 'range_consistent'
+                return people
+        self.pending = (frame_at, distance)
+        self.reason = 'acquiring_range' if self.last_good is None else 'stereo_range_jump'
+        return self._reject(people, track)
+
+    @staticmethod
+    def _reject(people, track):
+        protected = dict(people)
+        protected['tracks'] = [dict(t, depth_valid=False, distance_m=None,
+                                    depth_m=None, depth_reason='temporal_range_rejected')
+                               if t is track else t for t in people.get('tracks') or []]
+        return protected

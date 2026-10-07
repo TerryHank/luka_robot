@@ -1,0 +1,36 @@
+{
+  "tag": "code-snapshot-20261007-211321",
+  "archive_sha256": "60823ec68fe15ae67c84097c41674cbf8b033fd5e3ce6391d40cd968067ad04e",
+  "source_git_head": "f4580201d96c39c4130d5f1ef0adbd5055c76e9f",
+  "reviewed_at_utc": "2026-10-07T13:27:25.762491+00:00",
+  "unresolved_findings": 0,
+  "resolved_findings": [
+    {
+      "path": "system/nx_chat/runtime/scripts/apple/validate-ios.sh",
+      "line": 699,
+      "kind": "quoted-secret-assignment",
+      "resolution": "Upstream documentation echo with placeholder Apple authentication credentials"
+    },
+    {
+      "path": "system/nx_chat/runtime/scripts/apple/validate-macos.sh",
+      "line": 696,
+      "kind": "quoted-secret-assignment",
+      "resolution": "Upstream documentation echo with placeholder Apple authentication credentials"
+    },
+    {
+      "path": "system/nx_chat/runtime/scripts/apple/validate-tvos.sh",
+      "line": 692,
+      "kind": "quoted-secret-assignment",
+      "resolution": "Upstream documentation echo with placeholder Apple authentication credentials"
+    },
+    {
+      "path": "system/nx_chat/runtime/scripts/apple/validate-visionos.sh",
+      "line": 690,
+      "kind": "quoted-secret-assignment",
+      "resolution": "Upstream documentation echo with placeholder Apple authentication credentials"
+    }
+  ],
+  "publication": "only this tag; no branch update",
+  "capture_consistency": "source lstat fingerprints and Git HEAD unchanged during capture",
+  "runtime_recovery": "dependencies/models/credentials/runtime state remain outside this source snapshot"
+}

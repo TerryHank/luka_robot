@@ -296,66 +296,15 @@ class Monitor:
         self.appearance_ready = False
         self.appearance_error = None if self.appearance_reid_enabled else 'disabled_by_config'
         self.appearance_s = None
-        self.person_detector = dict(
-            requested=os.getenv('NX_PERSON_DETECTOR', 'yolo').lower(),
-            runtime_backend_requested=os.getenv('NX_YOLO26_RUNTIME_BACKEND', 'legacy').lower(),
-            active=None, fallback_reason=None, monitor_only=True)
+        self.person_detector = dict(requested=os.getenv('NX_PERSON_DETECTOR', 'yolo').lower(),
+                                    active=None, fallback_reason=None, monitor_only=True)
         self.camera_source = os.getenv('NX_PEOPLE_CAMERA', 'orbbec').lower()
         self.metric_depth_available = self.camera_source == 'orbbec'
         self.full_fov_people = False
         self.dual_view_ready = False
         self.generation = 0
         self.peak_memory = 0
-        self.ros_publisher = None
-        self.ros_publish_error = None
-        if os.getenv('NX_PERSON_ROS_PUBLISH', '0') == '1':
-            try:
-                from ros_observation_publisher import RosObservationPublisher
-                self.ros_publisher = RosObservationPublisher(
-                    optical_frame=os.getenv(
-                        'NX_PERSON_OPTICAL_FRAME',
-                        'camera_color_optical_frame'))
-            except Exception as exc:
-                self.ros_publish_error = (
-                    'ros_publisher_unavailable:' + type(exc).__name__)
         threading.Thread(target=self.run, daemon=True).start()
-
-    def publish_ros_observations(self):
-        publisher = getattr(self, 'ros_publisher', None)
-        if publisher is None:
-            return
-        with self.lock:
-            tracks = []
-            for row in self.tracks:
-                item = {
-                    key: row.get(key)
-                    for key in (
-                        'class', 'track_id', 'bbox', 'confidence',
-                        'depth_valid', 'depth_reason', 'depth_source',
-                        'distance_m', 'bearing_rad', 'bbox_bearing_rad',
-                        'observation_strength', 'association_ambiguous',
-                        'visible')
-                }
-                diagnostic = row.get('depth_diagnostic')
-                item['depth_diagnostic'] = (
-                    dict(diagnostic) if isinstance(diagnostic, dict) else None)
-                tracks.append(item)
-            snapshot = {
-                'frame_at': self.frame_at,
-                'frame_mono': self.frame_mono,
-                'fps': self.fps,
-                'tracks': tracks,
-                'selected_track_id': self.tracker.selected_track_id,
-                'loading': self.loading,
-                'error': self.error,
-                'metric_depth_available': self.metric_depth_available,
-            }
-        try:
-            publisher.publish(snapshot)
-            self.ros_publish_error = None
-        except Exception as exc:
-            self.ros_publish_error = (
-                'ros_publish_failed:' + type(exc).__name__)
 
     def status(self, include_frame=True):
         with self.lock:
@@ -426,12 +375,6 @@ class Monitor:
                             if getattr(self, 'appearance_reid_enabled', False) else None,
                             error=getattr(self, 'appearance_error', None)),
                         person_detector=dict(getattr(self, 'person_detector', {})),
-                        ros_observation=dict(
-                            enabled=getattr(self, 'ros_publisher', None) is not None,
-                            error=getattr(self, 'ros_publish_error', None),
-                            targets_topic='/luka/perception/person_targets',
-                            selected_topic='/luka/perception/selected_track_id',
-                            diagnostics_topic='/luka/perception/person_diagnostics'),
                         face_recognition=dict(enabled=self.face_recognition_enabled,
                             loaded=self.models is not None and self.models[2] is not None))
 
@@ -480,7 +423,6 @@ class Monitor:
             self.frame_mono = None
             self.frame_at = None
             self.jpeg = None
-        self.publish_ros_observations()
 
     def maybe_finish_enrollment(self, examined, tracks, frame_mono):
         """Auto-save only while the enrolled person has a clear face this frame."""
@@ -701,16 +643,8 @@ class Monitor:
                 from s100_bpu_person_pose import BpuPersonPose
                 detector = Yolo26PersonSegmenter(confidence=.35)
                 pose_model = BpuPersonPose(confidence=.35)
-                self.person_detector.update(
-                    active='yolo26m_objv1_seg_bpu',
-                    confidence=.35,
-                    model=MODEL,
-                    runtime_model=str(HBM),
-                    runtime_backend=getattr(detector, 'backend_name', 'legacy'),
-                    fallback_reason=getattr(detector, 'fallback_reason', None),
-                    classes=['person'],
-                    depth_method='seg_valid_trimmed_mean',
-                    trim_ratio=.15)
+                self.person_detector.update(active='yolo26m_objv1_seg_bpu', confidence=.35,
+                                            model=MODEL, runtime_model=str(HBM), classes=['person'], depth_method='seg_valid_trimmed_mean', trim_ratio=.15)
             elif requested == 'bpu_seg':
                 from s100_bpu_person_seg import BpuPersonSegmenter
                 from s100_bpu_person_pose import BpuPersonPose
@@ -828,8 +762,7 @@ class Monitor:
                         self.full_fov_people = full_fov_people
                     detections = detector.detect(image)
                     if requested == 'yolo26_seg':
-                        self.person_detector['timings_ms'] = dict(
-                            getattr(detector, 'timings_ms', {}) or {})
+                        self.person_detector['timings_ms'] = dict(detector.model.last_timings_ms)
                     poses = []
                     if pose_model is not None:
                         try:
@@ -904,7 +837,6 @@ class Monitor:
                     self.process_observations(detections, image, jpeg, stamp, mono, faces,
                                               appearance_embeddings=embeddings,
                                               face_image=face_image)
-                    self.publish_ros_observations()
                     with self.lock:
                         elapsed = time.monotonic()-cycle
                         self.inference_s = round(elapsed, 3)

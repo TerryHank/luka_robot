@@ -1,10 +1,498 @@
-"""Compatibility alias for the canonical behavior implementation."""
-from pathlib import Path as _SourcePath
-import sys as _source_sys
-_source_root = _SourcePath(__file__).resolve().parents[2]
-for _package_path in ['behavior/luka_behaviors']:
-    _source_dir = _source_root / _package_path
-    if _source_dir.is_dir() and str(_source_dir) not in _source_sys.path:
-        _source_sys.path.insert(0, str(_source_dir))
-from luka_behaviors import follow_detour as _implementation
-_source_sys.modules[__name__]=_implementation
+"""Short, Nav2-planned detour while a verified person remains in view.
+
+The follow velocity source and the navigation velocity source never own the
+base at the same time. Losing the person or either lidar cancels the detour.
+"""
+import math
+import os
+from pathlib import Path
+import threading
+import time
+import xml.etree.ElementTree as ET
+
+from nav2_msgs.action import ComputePathToPose, FollowPath, NavigateToPose
+from nav2_msgs.msg import SpeedLimit
+from nav2_msgs.srv import GetCostmap
+from nav_msgs.msg import Path as NavPath
+from rclpy.action import ActionClient
+from std_srvs.srv import SetBool
+
+from follow_path_audit import path_audit
+
+
+FOLLOW_PLANNER_ID = 'GridBased'
+
+
+def active_follow_planner(bt_path=None):
+    """Fail closed if the navigation BT would execute a different planner.
+
+    Preplanning and execution must use the same planner. The installed lattice
+    plugin is still under swept-footprint validation for moving follow goals.
+    """
+    path = Path(bt_path or os.getenv('NX_FOLLOW_NAV_BT_XML') or
+                Path(__file__).resolve().parent.parent / 'config' / 'nx_recovery.xml')
+    selectors = ET.parse(path).findall('.//PlannerSelector')
+    if len(selectors) != 1:
+        raise RuntimeError('无法确认导航行为树的默认规划器')
+    selected = selectors[0].get('default_planner')
+    if selected != FOLLOW_PLANNER_ID:
+        raise RuntimeError('人体跟随规划器与导航行为树不一致；请先完成新规划器的车身扫掠验收')
+    return selected
+
+
+def detour_side(points):
+    """Return -1 for right or +1 for left only for a one-sided obstacle."""
+    left = any(.35 < x < 1.0 and .19 < y < .38 for x, y in points)
+    right = any(.35 < x < 1.0 and -.38 < y < -.19 for x, y in points)
+    if left == right:
+        return None
+    side = -1 if left else 1
+    # Require a clear destination-side strip, not merely a clear centre ray.
+    if any(.15 < x < 1.0 and .19 < side*y < .65 for x, y in points):
+        return None
+    return side
+
+
+def map_goal(pose, forward, lateral):
+    x, y, yaw = pose['x'], pose['y'], pose['yaw']
+    return (x+forward*math.cos(yaw)-lateral*math.sin(yaw),
+            y+forward*math.sin(yaw)+lateral*math.cos(yaw), yaw)
+
+
+def observation_goal(anchor, pose, stand_off_m=1.45, max_step_m=.40):
+    """A bounded map observation pose that stays behind the measured person."""
+    dx, dy = anchor['x']-pose['x'], anchor['y']-pose['y']
+    distance = math.hypot(dx, dy)
+    if not 1.65 < distance < 3.5:
+        return None
+    step = min(max_step_m, distance-stand_off_m)
+    x = pose['x']+step*dx/distance
+    y = pose['y']+step*dy/distance
+    yaw = math.atan2(anchor['y']-y, anchor['x']-x)
+    return x, y, yaw
+
+
+def bounded_hint_goal(hint, pose):
+    """A small Nav2 target within the remaining unmeasured travel budget."""
+    if not hint or hint.get('remaining_robot_travel_m', 0.) <= .12:
+        return None
+    dx = hint['waypoint_x']-pose['x']
+    dy = hint['waypoint_y']-pose['y']
+    direct = math.hypot(dx, dy)
+    step = min(.18, hint['remaining_robot_travel_m']-.04)
+    if direct <= .08 or step <= .08:
+        return None
+    ratio = min(1., step/direct)
+    return (pose['x']+ratio*dx, pose['y']+ratio*dy,
+            hint['waypoint_yaw'])
+
+
+def path_ends_at(path, waypoint, position_tolerance=.16, yaw_tolerance=.20):
+    """Reject planner results that do not actually reach the observation pose."""
+    if not path.poses:
+        return False
+    end = path.poses[-1].pose
+    q = end.orientation
+    yaw = math.atan2(2*(q.w*q.z+q.x*q.y), 1-2*(q.y*q.y+q.z*q.z))
+    yaw_error = math.atan2(math.sin(yaw-waypoint[2]),
+                           math.cos(yaw-waypoint[2]))
+    return (math.hypot(end.position.x-waypoint[0],
+                       end.position.y-waypoint[1]) <= position_tolerance and
+            abs(yaw_error) <= yaw_tolerance)
+
+
+def costmap_recent(costmap, now_s, max_age_s=2.):
+    if costmap.header.frame_id != 'map':
+        return False
+    stamp = costmap.metadata.update_time
+    age = now_s-(stamp.sec+stamp.nanosec/1e9)
+    return math.isfinite(age) and -.5 <= age <= max_age_s
+
+
+class FollowDetourManager:
+    def __init__(self, controller, node):
+        self.controller, self.node = controller, node
+        self.planner = ActionClient(node, ComputePathToPose,
+                                    '/compute_path_to_pose')
+        # When enabled, the path that was audited is sent directly to the
+        # controller. NavigateToPose would plan a second, different path.
+        self.audited_path_mode = os.getenv('NX_FOLLOW_AUDITED_PATH') == '1'
+        self.path_follower = (ActionClient(node, FollowPath, '/follow_path')
+                              if self.audited_path_mode else None)
+        self.costmap_client = (node.create_client(GetCostmap, '/global_costmap/get_costmap')
+                               if self.audited_path_mode else None)
+        self.speed_pub = node.create_publisher(SpeedLimit, '/speed_limit', 10)
+        self.active = False
+        self.reason = '未绕行'
+        self.cooldown_until = 0.
+        self.cancel_event = threading.Event()
+        self.handle = None
+        self.dynamic_anchor = None
+        self.dynamic_robot_start = None
+        self.dynamic_max_travel = .55
+        self.dynamic_max_path = 1.5
+        self.replan_requested = False
+        self.waiting_for_depth = False
+        self.waiting_for_clear_path = False
+        self.localization_checked_at = 0.
+        self.localization_ok = False
+
+    def cancel(self):
+        self.cancel_event.set()
+        if self.handle is not None:
+            try:
+                self.handle.cancel_goal_async()
+            except Exception:
+                pass
+        if self.node.nx_gate.service_is_ready():
+            self.node.nx_gate.call_async(SetBool.Request(data=False))
+
+    def consider(self, people, now, points):
+        if self.active or now < self.cooldown_until:
+            return False
+        target = people.get('target_session') or {}
+        person = next((r for r in people.get('tracks') or []
+                       if r.get('track_id') == target.get('track_id')), None)
+        anchor = self.controller.map_estimator.anchor
+        pose = self.controller.map_estimator.pose
+        width = people.get('frame_width')
+        box = (person or {}).get('bbox')
+        if (not target.get('active') or not target.get('visible') or
+                not (target.get('face_verified') or self.controller.mode == 'track') or not person or
+                not isinstance(box, list) or len(box) != 4 or
+                not isinstance(width, (int, float)) or width <= 0 or
+                not anchor or not pose or
+                anchor['identity'] != (target.get('profile_id'), target.get('track_id')) or
+                pose['scope'] != anchor['scope'] or
+                not 0 <= now-anchor['received'] <= 1.2 or
+                not 0 <= now-pose['received'] <= .55 or
+                abs((box[0]+box[2])/(2*width)-.5) > .2):
+            return False
+        side = detour_side(points)
+        if side is None:
+            return False
+        self.active = True
+        self.reason = '正在规划绕过单侧障碍'
+        self.cancel_event.clear()
+        epoch = self.controller.command_epoch
+        identity = anchor['identity']
+        pose = dict(pose)
+        threading.Thread(target=self._run,
+                         args=(epoch, identity, pose, side, None, 'detour'), daemon=True).start()
+        return True
+
+    def consider_target(self, people, now):
+        """Navigate to a short observation pose from a verified stereo map point."""
+        if self.active or now < self.cooldown_until:
+            return False
+        target = people.get('target_session') or {}
+        person = next((r for r in people.get('tracks') or []
+                       if r.get('track_id') == target.get('track_id')), None)
+        anchor = self.controller.map_estimator.anchor
+        pose = self.controller.map_estimator.pose
+        if (not target.get('active') or not target.get('visible') or
+                not target.get('face_verified') or not person or
+                person.get('association_ambiguous') or
+                person.get('observation_strength') not in
+                    ('strong', 'strong_detection', 'stable_moderate_observation') or
+                not anchor or not pose or
+                anchor['identity'] != (target.get('profile_id'), target.get('track_id')) or
+                pose['scope'] != anchor['scope'] or
+                not 0 <= now-anchor['received'] <= 1.2 or
+                not 0 <= now-pose['received'] <= .55):
+            return False
+        using_hint = person.get('depth_valid') is not True
+        if not using_hint:
+            # Wait for the image-time map projection of this exact frame.
+            # A previous anchor must not silently authorize a new full step.
+            if anchor.get('frame') != people.get('frame_at'):
+                return False
+            waypoint = observation_goal(anchor, pose)
+        else:
+            # One missing depth frame may use a short, bearing-checked map
+            # observation pose. MapFollowEstimate caps total unmeasured robot
+            # travel since the last metric anchor at 0.25 m.
+            hint = self.controller.map_estimator.hint(people, now)
+            waypoint = bounded_hint_goal(hint, pose)
+        if waypoint is None:
+            self.reason = '已在观察距离内，或目标距离超出可靠范围'
+            return False
+        self.active = True
+        self.reason = '正在规划 Nav2 人体观察点'
+        self.cancel_event.clear()
+        self.replan_requested = False
+        self.waiting_for_depth = False
+        self.waiting_for_clear_path = False
+        self.dynamic_anchor = (anchor['x'], anchor['y'])
+        self.dynamic_robot_start = ((anchor['robot_x'], anchor['robot_y'])
+                                    if using_hint else (pose['x'], pose['y']))
+        self.dynamic_max_travel = .30 if using_hint else .55
+        self.dynamic_max_path = .30 if using_hint else 1.5
+        epoch = self.controller.command_epoch
+        identity = anchor['identity']
+        threading.Thread(target=self._run,
+                         args=(epoch, identity, dict(pose), None, waypoint, 'target'),
+                         daemon=True).start()
+        return True
+
+    def _current(self, epoch, identity):
+        controller = self.controller
+        if (self.audited_path_mode and
+                time.monotonic()-self.localization_checked_at > .2):
+            self.localization_ok = bool(self.node.product.localization_status().get('ready'))
+            self.localization_checked_at = time.monotonic()
+        with controller.lock:
+            people = controller.people or {}
+            target = people.get('target_session') or {}
+            age = people.get('camera_age')
+            age = age+time.monotonic()-controller.people_at if isinstance(age, (int, float)) else None
+            _, front_fresh = controller.scan_state()
+            _, rear_fresh = controller.rear_scan_state()
+            dynamic_ok = True
+            if self.dynamic_anchor is not None:
+                anchor = controller.map_estimator.anchor
+                pose = controller.map_estimator.pose
+                person = next((r for r in people.get('tracks') or []
+                               if r.get('track_id') == target.get('track_id')), None)
+                if (anchor is None or anchor.get('identity') != identity or
+                        pose is None or not 0 <= time.monotonic()-pose['received'] <= 1.0 or
+                        not person or person.get('association_ambiguous')):
+                    dynamic_ok = False
+                elif not 0 <= time.monotonic()-anchor['received'] <= 5.0:
+                    # Cancel the current route at zero speed, but keep the
+                    # user's follow request armed for the next verified depth.
+                    self.waiting_for_depth = True
+                    dynamic_ok = False
+                elif math.hypot(anchor['x']-self.dynamic_anchor[0],
+                                anchor['y']-self.dynamic_anchor[1]) > .45:
+                    self.replan_requested = True
+                    dynamic_ok = False
+                elif math.hypot(pose['x']-self.dynamic_robot_start[0],
+                                pose['y']-self.dynamic_robot_start[1]) > self.dynamic_max_travel:
+                    dynamic_ok = False
+                else:
+                    bearing = person.get('bbox_bearing_rad')
+                    camera_x = pose['x']+controller.map_estimator.camera_forward_m*math.cos(pose['yaw'])
+                    camera_y = pose['y']+controller.map_estimator.camera_forward_m*math.sin(pose['yaw'])
+                    predicted = pose['yaw']-math.atan2(anchor['y']-camera_y,
+                                                       anchor['x']-camera_x)
+                    if (not isinstance(bearing, (int,float)) or not math.isfinite(bearing) or
+                            abs(math.atan2(math.sin(bearing-predicted),
+                                           math.cos(bearing-predicted))) > .25 or
+                            (person.get('depth_valid') is True and
+                             isinstance(person.get('distance_m'), (int,float)) and
+                             person['distance_m'] < 1.2)):
+                        dynamic_ok = False
+            return (not self.cancel_event.is_set() and controller.enabled and
+                    controller.command_epoch == epoch and front_fresh and rear_fresh and
+                    (not self.audited_path_mode or self.localization_ok) and
+                    dynamic_ok and
+                    isinstance(age, (int, float)) and age <= .9 and
+                    target.get('active') and target.get('visible') and
+                    (target.get('profile_id'), target.get('track_id')) == identity and
+                    (target.get('face_verified') is True or controller.mode == 'track'))
+
+    def _wait(self, future, epoch, identity, timeout):
+        deadline = time.monotonic()+timeout
+        while not future.done() and time.monotonic() < deadline:
+            if not self._current(epoch, identity):
+                raise RuntimeError('绕行期间目标或传感器失效')
+            time.sleep(.05)
+        if not future.done():
+            raise RuntimeError('导航规划或执行超时')
+        return future.result()
+
+    def _gate(self, client, enabled, epoch, identity):
+        if not client.service_is_ready():
+            raise RuntimeError('底盘模式切换未就绪')
+        result = self._wait(client.call_async(SetBool.Request(data=enabled)),
+                            epoch, identity, 3.)
+        if not result.success:
+            raise RuntimeError('底盘拒绝模式切换：'+result.message)
+
+    def _goal(self, action_type, x, y, yaw):
+        goal = action_type.Goal()
+        goal.goal.header.frame_id = 'map'
+        goal.goal.header.stamp = self.node.get_clock().now().to_msg()
+        goal.goal.pose.position.x = x
+        goal.goal.pose.position.y = y
+        goal.goal.pose.orientation.z = math.sin(yaw/2)
+        goal.goal.pose.orientation.w = math.cos(yaw/2)
+        return goal
+
+    def _run(self, epoch, identity, pose, side, waypoint, mode):
+        controller, node = self.controller, self.node
+        succeeded = False
+        resumed = False
+        nav_disabled = False
+        speed_limited = False
+        soft_replan = False
+        try:
+            planner_ids = (('FootprintAware', 'GridBased') if self.audited_path_mode
+                           else (active_follow_planner(),))
+            if (not self._current(epoch, identity) or
+                    not self.planner.wait_for_server(timeout_sec=2.) or
+                    not (self.path_follower.server_is_ready() if self.audited_path_mode
+                         else node.nx_nav.server_is_ready()) or
+                    (self.audited_path_mode and not self.costmap_client.service_is_ready()) or
+                    node.nx_handle is not None or
+                    not node.product.localization_status().get('ready')):
+                raise RuntimeError('身份、定位或导航服务尚未就绪')
+            chosen = None
+            chosen_path = None
+            chosen_planner = None
+            candidates = ([waypoint] if mode == 'target' else
+                          [map_goal(pose, forward, lateral)
+                           for forward, lateral in ((.4, .35*side), (.6, .4*side))])
+            for point in candidates:
+                for planner_id in planner_ids:
+                    if not self._current(epoch, identity):
+                        raise RuntimeError('目标已改变')
+                    goal = self._goal(ComputePathToPose, *point)
+                    goal.use_start = False
+                    goal.planner_id = planner_id
+                    handle = self._wait(self.planner.send_goal_async(goal),
+                                        epoch, identity, 3.)
+                    if handle is None or not handle.accepted:
+                        continue
+                    result = self._wait(handle.get_result_async(), epoch, identity, 4.)
+                    path_msg = result.result.path if result and result.status == 4 else None
+                    path = path_msg.poses if path_msg else []
+                    length = sum(math.hypot(b.pose.position.x-a.pose.position.x,
+                                            b.pose.position.y-a.pose.position.y)
+                                 for a, b in zip(path, path[1:]))
+                    limit = self.dynamic_max_path if mode == 'target' else 1.2
+                    if not (2 <= len(path) <= 60 and length <= limit and
+                            (not self.audited_path_mode or path_ends_at(path_msg, point))):
+                        continue
+                    if self.audited_path_mode:
+                        if math.hypot(path[0].pose.position.x-pose['x'],
+                                      path[0].pose.position.y-pose['y']) > .25:
+                            continue
+                        snapshot = self._wait(self.costmap_client.call_async(GetCostmap.Request()),
+                                              epoch, identity, 2.)
+                        if snapshot is None:
+                            continue
+                        if not costmap_recent(snapshot.map,
+                                              node.get_clock().now().nanoseconds/1e9):
+                            self.reason = '人体短路径拒绝：代价地图未更新'
+                            continue
+                        swept = NavPath()
+                        swept.header = path_msg.header
+                        swept.poses = [self._goal(ComputePathToPose,
+                                                  pose['x'], pose['y'], pose['yaw']).goal,
+                                       *path]
+                        audit = path_audit(swept, snapshot.map, limit)
+                        if not audit['safe']:
+                            self.reason = '人体短路径拒绝：'+audit['reason']
+                            continue
+                        chosen_path = path_msg
+                    chosen, chosen_planner = point, planner_id
+                    break
+                if chosen is not None:
+                    break
+            if chosen is None:
+                if mode == 'target':
+                    self.waiting_for_clear_path = True
+                raise RuntimeError('地图中没有可用的人体观察路径' if mode == 'target'
+                                   else '右侧或左侧没有可用的地图绕行路径')
+            self.reason = ('已找到人体观察路径，正在切换底盘控制' if mode == 'target'
+                           else '已找到短绕行路径，正在切换底盘控制')
+            self._gate(controller.gate, False, epoch, identity)
+            self._gate(node.nx_gate, True, epoch, identity)
+            limit = SpeedLimit()
+            limit.percentage = False
+            limit.speed_limit = .15
+            self.speed_pub.publish(limit)
+            speed_limited = True
+            time.sleep(.1)
+            if not self._current(epoch, identity):
+                raise RuntimeError('目标已改变')
+            if self.audited_path_mode:
+                goal = FollowPath.Goal()
+                goal.path = chosen_path
+                goal.controller_id = 'FollowPath'
+                goal.goal_checker_id = 'general_goal_checker'
+                client = self.path_follower
+            else:
+                goal = NavigateToPose.Goal()
+                goal.pose.header.frame_id = 'map'
+                goal.pose.header.stamp = node.get_clock().now().to_msg()
+                goal.pose.pose.position.x, goal.pose.pose.position.y = chosen[:2]
+                goal.pose.pose.orientation.z = math.sin(chosen[2]/2)
+                goal.pose.pose.orientation.w = math.cos(chosen[2]/2)
+                client = node.nx_nav
+            self.handle = self._wait(client.send_goal_async(goal), epoch, identity, 4.)
+            if self.handle is None or not self.handle.accepted:
+                raise RuntimeError('导航拒绝短绕行目标')
+            with node.nx_lock:
+                node.nx_handle = self.handle
+                node.nx_nav_match = {'display_name':
+                                     '人体观察点' if mode == 'target' else '人体跟随绕障'}
+            self.reason = (('正沿已审计的 '+chosen_planner+' 路径' if self.audited_path_mode
+                            else '正沿 Nav2 路径')+
+                           ('接近人体观察点' if mode == 'target' else '绕过单侧障碍'))
+            # A 0.15 m/s route may include a turn and local replanning.
+            # _wait still checks the selected person and both lidars every 50 ms.
+            result = self._wait(self.handle.get_result_async(), epoch, identity, 20.)
+            if result.status != 4:
+                raise RuntimeError('导航绕行未到达')
+            self._gate(node.nx_gate, False, epoch, identity)
+            nav_disabled = True
+            succeeded = True
+        except Exception as exc:
+            soft_replan = mode == 'target' and (self.replan_requested or self.waiting_for_depth
+                                                or self.waiting_for_clear_path)
+            self.reason = ('观察路径暂不可通行；停车等待重新规划' if self.waiting_for_clear_path else
+                           '等待新的双目地图观测；保持停车' if self.waiting_for_depth else
+                           '目标位置更新，正在重新规划' if soft_replan else
+                           '导航跟随停车：'+str(exc)[:100])
+            if self.handle is not None:
+                try:
+                    self.handle.cancel_goal_async()
+                except Exception:
+                    pass
+        finally:
+            if not nav_disabled and node.nx_gate.service_is_ready():
+                try:
+                    disable = node.nx_gate.call_async(SetBool.Request(data=False))
+                    deadline = time.monotonic()+2.
+                    while not disable.done() and time.monotonic() < deadline:
+                        time.sleep(.02)
+                    nav_disabled = disable.done() and disable.result().success
+                except Exception:
+                    pass
+            if speed_limited:
+                limit = SpeedLimit()
+                limit.percentage = False
+                limit.speed_limit = 0.
+                self.speed_pub.publish(limit)
+            with node.nx_lock:
+                if node.nx_handle is self.handle:
+                    node.nx_handle = None
+            self.handle = None
+            # Keep the requested person locked only after a successful,
+            # identity-checked detour. Never resume from a cancelled route.
+            if succeeded and mode == 'target' and self._current(epoch, identity):
+                self.reason = '已到人体观察点，继续更新地图目标'
+                resumed = True
+            elif succeeded and self._current(epoch, identity):
+                try:
+                    self._gate(controller.gate, True, epoch, identity)
+                    self.reason = '已绕过障碍，继续视觉跟随'
+                    resumed = True
+                except Exception as exc:
+                    self.reason = '绕行后未恢复跟随：'+str(exc)[:80]
+            self.cooldown_until = time.monotonic()+(1.5 if self.waiting_for_clear_path else
+                                                     .5 if mode == 'target' else 12.)
+            self.active = False
+            self.dynamic_anchor = None
+            self.dynamic_robot_start = None
+            self.dynamic_max_travel = .55
+            self.dynamic_max_path = 1.5
+            self.waiting_for_clear_path = False
+            with controller.lock:
+                still_requested = (controller.enabled and
+                                   controller.command_epoch == epoch)
+            if not resumed and still_requested and not soft_replan:
+                controller.stop(self.reason)

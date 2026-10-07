@@ -374,6 +374,9 @@ private:
   // buzzer_min_interval_sec_: <0 不发任何蜂鸣器消息（禁用）；==0 不限制；>0 节流。
   void publishBuzzerPattern(uint8_t pattern);
   uint64_t tracking_track_id_{0};     // 当前跟随目标 track_id（IDLE 时为 0）
+  // Tracker IDs are temporary trajectory IDs. In single-person mode a new ID
+  // may represent the same continuous target after a brief association gap.
+  bool single_person_auto_relock_{true};
   bool target_lost_{false};           // TRACKING 期本帧未检测到目标（pending-lost 宽限期内）
   rclcpp::Time tp_target_lost_;       // 首次丢失时刻（进 pending-lost 宽限期）
   rclcpp::Time tp_lost_;             // 进 LOST 时刻（relock timeline 起点）

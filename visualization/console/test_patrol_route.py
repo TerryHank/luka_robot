@@ -34,13 +34,12 @@ class RouteTests(unittest.TestCase):
     def test_execution_order(self):
         self.route.save({'revision':0,'ids':['customer_desk','wp_010','wp_008'],'dwell_s':0})
         d=self.route.document();m,sent=self.mission()
-        def vision(path,body=None):
-            return {'ok':True,'session_id':body['session_id']} if path=='/semantic/start' else {'ok':True,'running':False}
-        with patch('nx_patrol_mission.vision',vision),patch('nx_patrol_mission.current_scope',return_value={'map_id':'test-map'}),patch.object(m,'memory_health',return_value=True):m.run_patrol(d,self.route.resolve(d))
+        def vision(path,body=None):return {'id':'test'} if path=='/patrol/start' else {'recording':{'id':'test','frames':1}}
+        with patch('nx_patrol_mission.vision',vision):m.run_patrol(d,self.route.resolve(d))
         self.assertEqual(sent,d['ids']);self.assertEqual(m.state['mode'],'complete')
     def test_changed_waypoint_aborts(self):
         d=self.route.document();points=self.route.resolve(d);m,sent=self.mission();self.rows[0]['x']=90.
-        with patch('nx_patrol_mission.vision',lambda path,body=None:{'ok':True,'session_id':body['session_id'],'running':False}),patch('nx_patrol_mission.current_scope',return_value={'map_id':'test-map'}),patch.object(m,'memory_health',return_value=True):m.run_patrol(d,points)
+        with patch('nx_patrol_mission.vision',lambda path,body=None:{'id':'test','recording':{'id':'test','frames':1}}):m.run_patrol(d,points)
         self.assertFalse(sent);self.assertEqual(m.state['mode'],'failed')
     def test_active_route_edit_rejected(self):
         m,_=self.mission();m.active=lambda:True

@@ -33,7 +33,3 @@ __pycache__/
 
 # Standalone Orbbec SDK archive lives outside the workspace
 /sensing/orbbec_sdk_v1/
-
-# Local editor and test caches
-.vscode/browse.vc.db*
-.pytest_cache/

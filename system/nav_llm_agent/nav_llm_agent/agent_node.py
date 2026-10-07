@@ -18,7 +18,9 @@ import rclpy
 from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from hotel_semantic_map_msgs.msg import SemanticMapStatus
+from nav2_msgs.action import NavigateToPose
 from nav2_msgs.srv import ClearEntireCostmap, LoadMap
+from rclpy.action import ActionClient
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
@@ -35,7 +37,6 @@ from nav_llm_agent.floor_transfer import (
     state_from_target,
 )
 from nav_llm_agent.llm_client import OllamaClient
-from nav_llm_agent.llm import create_llm_backend
 from nav_llm_agent.waypoint_store import default_waypoints_path, load_waypoints
 from nav_llm_agent.workflow_engine import WorkflowEngine
 
@@ -265,11 +266,7 @@ from .chat_memory import ChatMemory, stream_chat_with_messages
 import sys
 sys.path.insert(0,"/home/sunrise/luka_ws/system/runtime/tools")
 from nx_speaker_memory import SpeakerMemories, enrolled, speaker_key
-try:
-    from luka_capabilities import candidate as nx_candidate, direct as nx_direct, prompt as nx_tool_prompt, http as nx_http, select as nx_select
-except ModuleNotFoundError as exc:
-    if exc.name != "luka_capabilities":raise
-    from nx_assistant_tools import candidate as nx_candidate, direct as nx_direct, prompt as nx_tool_prompt, http as nx_http, select as nx_select
+from nx_assistant_tools import candidate as nx_candidate, direct as nx_direct, prompt as nx_tool_prompt, http as nx_http, select as nx_select
 
 
 class NavLlmAgent(Node):
@@ -280,9 +277,6 @@ class NavLlmAgent(Node):
         self.declare_parameter("ollama_url", "http://127.0.0.1:8080")
         self.declare_parameter("model", "qwen2.5-1.5b")
         self.declare_parameter("llm_api", "openai")
-        self.declare_parameter("llm_backend", "ollama")
-        self.declare_parameter("llm_fallbacks", "")
-        self.declare_parameter("llm_backend_timeout_sec", 12.0)
         self.declare_parameter("temperature", 0.1)
         self.declare_parameter("num_ctx", 3072)
         self.declare_parameter("max_tokens", 160)
@@ -349,7 +343,7 @@ class NavLlmAgent(Node):
         self._transfer_state = load_transfer_state(self._transfer_state_file)
         self._resume_checked = False
 
-        self._legacy_client = OllamaClient(
+        self._client = OllamaClient(
             base_url=str(self.get_parameter("ollama_url").value),
             model=str(self.get_parameter("model").value),
             temperature=float(self.get_parameter("temperature").value),
@@ -359,19 +353,9 @@ class NavLlmAgent(Node):
             api=str(self.get_parameter("llm_api").value),
             max_tokens=int(self.get_parameter("max_tokens").value),
         )
-        self._client = create_llm_backend(
-            self,
-            primary=str(self.get_parameter("llm_backend").value),
-            fallbacks=str(self.get_parameter("llm_fallbacks").value),
-            ollama_client=self._legacy_client,
-            timeout_sec=float(self.get_parameter("llm_backend_timeout_sec").value),
-        )
         chat_key_name = str(self.get_parameter("chat_api_key_env").value)
         chat_api_key = load_chat_api_key(chat_key_name)
-        self._chat_provider = (
-            "qwen3.6-flash" if chat_api_key
-            else getattr(self._client, "name", "local")
-        )
+        self._chat_provider = "qwen3.6-flash" if chat_api_key else "local"
         self._chat_client = OllamaClient(
             base_url=str(self.get_parameter("chat_url").value),
             model=str(self.get_parameter("chat_model").value),
@@ -490,6 +474,7 @@ class NavLlmAgent(Node):
             transient_qos,
         )
 
+        self._nav_client = ActionClient(self, NavigateToPose, "/navigate_to_pose")
         self._current_goal = None
         self._pending_kind = ""
         self._last_entry_status = "unknown"
@@ -802,22 +787,6 @@ class NavLlmAgent(Node):
         self, handler: str, arguments: Dict[str, Any], workflow_step: bool = False
     ) -> bool:
         del workflow_step
-        if not self._dry_run:
-            # Legacy metadata/workflow callbacks share the same gateway and
-            # cannot wake old placeholder executors or manufacture authority.
-            from luka_capabilities import TOOLS,execute_remote
-            if handler not in TOOLS:
-                self._publish_status('executor_error: 此流程尚未接通能力 '+handler)
-                return False
-            values=dict(arguments)
-            if handler=='navigate' and 'waypoint' in values:
-                waypoint=self._waypoints.get(str(values.pop('waypoint')),{})
-                values={'name':waypoint.get('description','')}
-            try:
-                result=execute_remote(handler,values,self._llm_text)
-                self._publish_status('submitted: '+result.get('message',''))
-            except Exception as error:self._publish_status('executor_error: '+str(error))
-            return False
         if self._dry_run:
             self._publish_status(f"dry_run: {handler} {arguments}")
             return False
@@ -1004,19 +973,32 @@ class NavLlmAgent(Node):
             }
             self._publish_status(f"speech: {phrases[state]}")
 
-    def _send_navigation_pose(self, name: str, x: float, y: float, yaw: float) -> bool:
-        # Legacy floor workflows stay unavailable until exposed as capabilities.
-        # Coordinates never become an Interaction-level motion implementation.
-        del x, y, yaw
-        try:
-            rows=nx_http('/api/voice/destinations')['destinations']
-            hits=[row for row in rows if row['id']==name or row['display_name']==name]
-            if len(hits)!=1:raise ValueError('目标尚未登记为可用能力目的地')
-            result=nx_http('/api/assistant/execute',{'tool':'navigate',
-                          'arguments':{'name':hits[0]['display_name']},'source':self._llm_text})
-            if not result.get('ok'):raise ValueError(result.get('error','导航请求被拒绝'))
-            self._publish_status('submitted: '+result['message'])
-        except Exception as error:self._complete_pending(False,'没有执行：'+str(error))
+    def _send_navigation_pose(
+        self, name: str, x: float, y: float, yaw: float
+    ) -> bool:
+        if not self._nav_client.wait_for_server(timeout_sec=0.5):
+            self._complete_pending(
+                False, "nav2 not ready: navigate_to_pose unavailable"
+            )
+            return True
+        pose = PoseStamped()
+        pose.header.frame_id = self._frame_id
+        pose.header.stamp = self.get_clock().now().to_msg()
+        pose.pose.position.x = x
+        pose.pose.position.y = y
+        qx, qy, qz, qw = yaw_to_quat(yaw)
+        pose.pose.orientation.x = qx
+        pose.pose.orientation.y = qy
+        pose.pose.orientation.z = qz
+        pose.pose.orientation.w = qw
+        goal = NavigateToPose.Goal()
+        goal.pose = pose
+        self._pending_kind = f"navigation:{name}"
+        future = self._nav_client.send_goal_async(goal)
+        future.add_done_callback(
+            lambda fut, target=name: self._on_goal_response(fut, target)
+        )
+        self._publish_status(f"sending: navigate {name}")
         return True
 
     def _on_goal_response(self, future, name: str) -> None:

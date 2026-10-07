@@ -1,0 +1,11 @@
+target_relock:
+  ros__parameters:
+    single_person_auto_relock: true
+    id_grace_timeout: 0.8
+    relock_max_time_gap: 1.5
+    relock_max_position_delta: 0.8
+    relock_max_depth_delta: 0.6
+    relock_multi_person_max_distance: 0.8
+    target_lost_timeout: 3.0
+    stop_while_relocking: true
+    enable_debug_log: true

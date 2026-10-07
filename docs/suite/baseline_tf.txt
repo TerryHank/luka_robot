@@ -1,4 +1,0 @@
-map -> odom -> base_link -> base_footprint -> camera_link -> camera_color_optical_frame
-base_link -> base_footprint: zero planar projection in current follow launch
-base_footprint -> camera_link: xyz=(0,0,0.70), rpy=(0,0,0)
-Fresh live TF evidence is required before P10.

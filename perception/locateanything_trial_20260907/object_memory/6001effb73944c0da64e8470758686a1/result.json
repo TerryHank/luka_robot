@@ -1,1 +1,0 @@
-{"image":"/home/sunrise/luka_ws/perception/locateanything_trial_20260907/object_memory/6001effb73944c0da64e8470758686a1/input.jpg","prompt":"Locate all the instances that matches the following description: lighter.","mode":"slow-greedy","inference_seconds":1.759238,"detections":[{"label":"lighter","box":[223.104,288.62402,241.02399,312.81601]}]}

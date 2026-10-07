@@ -4,7 +4,6 @@ import threading
 import time
 import unittest
 from types import SimpleNamespace
-from unittest.mock import Mock
 
 from nx_follow import FollowController, decide, project_target
 from person_range_gate import PersonRangeGate
@@ -135,7 +134,7 @@ class FollowSafetyTest(unittest.TestCase):
         controller.mode = 'profile'
         controller.command_epoch = 0
         controller.node = SimpleNamespace(
-            motion=Mock(spec=['acquire','release','valid']),nx_handle=None,
+            nx_handle=None,
             patrol_mission=SimpleNamespace(active=lambda: False),
             relocalization=SimpleNamespace(running=False))
         controller.people_at = time.monotonic()
@@ -168,7 +167,7 @@ class FollowSafetyTest(unittest.TestCase):
         controller.mode = 'profile'
         controller.command_epoch = 0
         controller.node = SimpleNamespace(
-            motion=Mock(spec=['acquire','release','valid']),nx_handle=None,
+            nx_handle=None,
             patrol_mission=SimpleNamespace(active=lambda: False),
             relocalization=SimpleNamespace(running=False))
         controller.people_at = controller.same_frame_since = now
@@ -211,7 +210,7 @@ class FollowSafetyTest(unittest.TestCase):
         controller.mode = 'profile'
         controller.command_epoch = 0
         controller.node = SimpleNamespace(
-            motion=Mock(spec=['acquire','release','valid']),nx_handle=None,
+            nx_handle=None,
             patrol_mission=SimpleNamespace(active=lambda: False),
             relocalization=SimpleNamespace(running=False))
         controller.people_at = controller.same_frame_since = now

@@ -1,12 +1,14 @@
 """Fail closed before sending a page-selected observation to ROS."""
 import math
 
+MAX_OBSERVATION_AGE_SEC = 0.9
+
 
 def selected_observation(state, request_age=0.0):
     if not state.get('active') or state.get('loading') or state.get('error'):
         return None, 'monitor_unavailable'
     age = state.get('camera_age')
-    if age is None or not math.isfinite(age) or not 0 <= age + request_age <= .5:
+    if age is None or not math.isfinite(age) or not 0 <= age + request_age <= MAX_OBSERVATION_AGE_SEC:
         return None, 'stale_frame'
     ident = state.get('selected_track_id')
     if ident is None:

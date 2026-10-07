@@ -68,6 +68,7 @@ PersonFollowingNode::PersonFollowingNode(const rclcpp::NodeOptions & options)
   this->declare_parameter<float>("target_filter_range_y_min", -1.0);
   this->declare_parameter<float>("target_filter_range_y_max", 1.0);
   this->declare_parameter<float>("target_filter_confidence_thr", 0.5);
+  this->declare_parameter<bool>("single_person_auto_relock", true);
 
   // --- Target selection ---
   this->declare_parameter<double>("select_min_confidence", 0.7);
@@ -145,6 +146,7 @@ PersonFollowingNode::PersonFollowingNode(const rclcpp::NodeOptions & options)
   target_filter_range_y_min_ = this->get_parameter("target_filter_range_y_min").as_double();
   target_filter_range_y_max_ = this->get_parameter("target_filter_range_y_max").as_double();
   target_filter_confidence_thr_ = this->get_parameter("target_filter_confidence_thr").as_double();
+  single_person_auto_relock_ = this->get_parameter("single_person_auto_relock").as_bool();
   // --- Target selection ---
   select_min_confidence_ = this->get_parameter("select_min_confidence").as_double();
   select_weight_dist_ = this->get_parameter("select_weight_dist").as_double();
@@ -523,6 +525,23 @@ void PersonFollowingNode::detectResultCallback(
       }
     }
     if (!found) {
+      // The upstream single-person bridge performs time/position/depth
+      // continuity checks. If it has already relocked the target with a new
+      // temporary tracker ID, accept that sole candidate here instead of
+      // entering LOST and waiting for motion that may not exist.
+      if (single_person_auto_relock_ && persons.size() == 1) {
+        const auto &candidate = persons.front();
+        const auto old_id = tracking_track_id_;
+        tracking_track_id_ = candidate.target->track_id;
+        target_lost_ = false;
+        following_active_ = false;
+        RCLCPP_WARN(this->get_logger(),
+          "Target relocked: track_id %lu -> %lu; reason=single_person_continuity",
+          old_id, tracking_track_id_);
+        setFollowStatus(FollowStatus::TRACKING);
+        publishGoalPose(*candidate.target, msg->header.stamp);
+        return;
+      }
       // Transition into LOST: set state, cancel the stale follow nav goal, and
       // start the belief-guided search (prediction-first + belief fallback).
       // Extracted as a lambda so the pending-lost shortcut below reuses it.

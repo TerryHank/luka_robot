@@ -3,31 +3,30 @@
 import urllib.request
 from nx_people_proxy import handle as people_handle
 from pathlib import Path
-from pathlib import Path as _SourcePath
-import sys as _source_sys
-_source_root = _SourcePath(__file__).resolve().parents[2]
-for _package_path in ['system/luka_capabilities', 'behavior/luka_behaviors', 'mission/luka_mission', 'control/luka_motion_gateway']:
-    _source_dir = _source_root / _package_path
-    if _source_dir.is_dir() and str(_source_dir) not in _source_sys.path:
-        _source_sys.path.insert(0, str(_source_dir))
-from luka_behaviors.registry import BehaviorRegistry
 from object_pose_context import ObjectPoseContext
 from s100_function_start import FunctionStart
-from luka_mission.manager import MissionManager
+from nx_relocalization import Relocalization
+from nx_patrol_mission import PatrolMission
 from nx_patrol_route import PatrolRoute
 from nx_assistant_tools import execute as execute_assistant, TOOLS as ASSISTANT_TOOLS
 from nx_music import Music
 from nx_runtime_health import RuntimeHealth
 from nx_product_api import ProductAPI
 from nx_destination_catalog import customer_destinations
+from nx_follow import FollowController
+from nx_follow_acquire import FollowAcquisition
 from s100_boot_pose import save_verified_pose, navigation_verified
 from sensor_msgs.msg import Joy
+from nav2_msgs.msg import CollisionMonitorState
 from urllib.parse import urlparse, parse_qs
 import math, time, threading, secrets
 import os, subprocess
+from rclpy.action import ActionClient
+from nav2_msgs.action import NavigateToPose
 from std_srvs.srv import Empty, SetBool
 import lightweight_robot_dashboard as app
 from web_teleop_dashboard import WebTeleop
+from nx_escape_recovery import EscapeRecovery
 
 original_post = app.Handler.do_POST
 original_get = app.Handler.do_GET
@@ -61,14 +60,27 @@ def init(self):
     candidates = [m for m in self.available_maps if m['floor_id'] == 'floor_4']
     if candidates:
         self.select_map(candidates[0]['id'])
+    self.nx_nav=ActionClient(self,NavigateToPose,'/navigate_to_pose')
+    self.nx_gate=self.create_client(SetBool,'/nx/navigation_enable')
+    self.nx_handle=None
+    self.nx_nav_outcome=None
+    self.nx_status='导航待命'
+    self.nx_lock=threading.Lock()
+    self.nx_nav_match=None
+    self.nx_nav_retry=0
+    self.nx_nav_cancel_requested=False
+    self.nx_collision_active=False
+    self.nx_collision_since=0.0
+    self.nx_collision_last_at=0.0
+    self.nx_escape_attempted=False
+    self.nx_escape_active=False
+    self.create_subscription(CollisionMonitorState,'/collision_monitor_state',lambda msg:on_collision_state(self,msg),10)
     self.nx_voice_pub=self.create_publisher(app.String,'/voice/control',10)
     self.object_pose_context=ObjectPoseContext(self)
-    self.behaviors=BehaviorRegistry(self,lambda:destination_catalog(self),navigation_verified)
-    self.relocalization=self.behaviors.relocalize.legacy_controller
+    self.relocalization=Relocalization(self,lambda:stop_nav(self))
     self.create_timer(5.0,lambda:save_verified_pose(self))
     self.nx_speech_pub=self.create_publisher(app.String,'/llm_status',10)
-    self.missions=MissionManager(self,self.behaviors,lambda text:speak_nav(self,text))
-    self.patrol_mission=self.missions.patrol
+    self.patrol_mission=PatrolMission(self,lambda ident:send_nav(self,ident),lambda:stop_nav(self),lambda text:speak_nav(self,text))
     self.product=ProductAPI(self)
     self.raw_localization_status=self.product.localization_status
     self.product.localization_status=lambda:verified_localization_status(self)
@@ -80,11 +92,8 @@ def init(self):
     self.runtime_health=RuntimeHealth(self)
     legacy_diagnostics=self.diagnostics.snapshot
     self.diagnostics.snapshot=lambda:s100_diagnostics(self,legacy_diagnostics)
-    self.behaviors.initialize_follow()
-    self.follow_controller=self.behaviors.follow.legacy_controller
-    self.follow_acquisition=self.behaviors.follow.acquisition
-    from luka_capabilities.compatibility import create_dispatcher
-    self.capabilities=create_dispatcher(self,destination_catalog,send_nav,self.music)
+    self.follow_controller=FollowController(self)
+    self.follow_acquisition=FollowAcquisition(self.follow_controller)
     self.patrol_mission.route_store=PatrolRoute('/home/sunrise/luka_ws/common/state/patrol_route.json',lambda:destination_catalog(self),lambda:self.current_floor_id)
     self.product.navigate=lambda target:send_nav(self,None,target)
     self.patrol_mission.send_observation=lambda target:send_nav(self,None,target)
@@ -92,7 +101,7 @@ def init(self):
     self.create_subscription(Joy,'/joy',lambda msg:self.patrol_mission.cancel.set() if len(msg.buttons)>4 and msg.buttons[4] and self.patrol_mission.active() else None,app.qos_profile_sensor_data)
     if os.getenv('LUKA_SOFTWARE_ONLY') == '1':
         self.web_teleop=WebTeleop(self,lambda:stop_nav(self,wait_for_gate=False))
-        self.escape_recovery=self.behaviors.initialize_recovery()
+        self.escape_recovery=EscapeRecovery(self)
         threading.Thread(target=refresh_static_localization,args=(self,),daemon=True).start()
 
 def s100_diagnostics(node, legacy_snapshot):
@@ -129,20 +138,63 @@ def refresh_static_localization(node):
             node.relocalization.update_client.call_async(Empty.Request())
         time.sleep(1)
 
+def wait(future,seconds=4):
+    end=time.monotonic()+seconds
+    while not future.done() and time.monotonic()<end:time.sleep(.02)
+    if not future.done():raise ValueError('导航服务响应超时')
+    return future.result()
 
-
-
-
-
-def send_nav(self,poi_id,observation=None):
-    return self.behaviors.navigate.start(poi_id,observation=observation)
-
-def stop_nav(self,wait_for_gate=True):
-    return self.behaviors.navigate.cancel(wait_for_gate=wait_for_gate)
+def gate(self,enabled):
+    if not self.nx_gate.service_is_ready():raise ValueError('底盘导航开关未就绪')
+    result=wait(self.nx_gate.call_async(SetBool.Request(data=enabled)))
+    if not result.success:raise ValueError(result.message)
 
 def speak_nav(self,text):
-    from luka_behaviors.navigation_execution import speak_nav as speak
-    return speak(self,text)
+    """Send one navigation status sentence through the existing local TTS path."""
+    text=str(text or '').strip()
+    if text and hasattr(self,'nx_speech_pub'):
+        self.nx_speech_pub.publish(app.String(data='speech: '+text))
+
+def on_collision_state(self,msg):
+    """Translate Collision Monitor STOP transitions into user-facing voice status."""
+    # APPROACH/SLOWDOWN can also hold the commanded velocity at zero while the
+    # controller waits for a safe corridor, so every non-zero safety action is
+    # treated as an obstacle transition for speech purposes.
+    active=int(getattr(msg,'action_type',0)) != int(CollisionMonitorState.DO_NOTHING)
+    now=time.monotonic()
+    if active:
+        if self.nx_handle is not None:
+            self.nx_collision_last_at=now
+        if not self.nx_collision_active and self.nx_handle is not None:
+            self.nx_collision_active=True
+            self.nx_collision_since=now
+            name=(self.nx_nav_match or {}).get('display_name','目标位置')
+            speak_nav(self,'前方有人或障碍物，我先停车；清开后会继续前往'+name+'。')
+        return
+    if self.nx_collision_active:
+        self.nx_collision_active=False
+        if self.nx_handle is not None and self.nx_nav_match is not None and not self.nx_nav_cancel_requested:
+            speak_nav(self,'前方已清开，我继续前往'+self.nx_nav_match.get('display_name','目标位置')+'。')
+
+def stop_nav(self,wait_for_gate=True):
+    """Cancel the active action and disable the navigation gate."""
+    if hasattr(self,'escape_recovery'):
+        self.escape_recovery.cancel('用户已停止导航')
+    with self.nx_lock:
+        self.nx_nav_cancel_requested=True
+        self.nx_nav_retry=0
+        handle=self.nx_handle
+        if handle is not None:
+            try: handle.cancel_goal_async()
+            except Exception: pass
+            self.nx_nav_outcome=5
+        self.nx_status='导航已停止'
+    try:
+        if wait_for_gate:
+            gate(self,False)
+        elif self.nx_gate.service_is_ready():
+            self.nx_gate.call_async(SetBool.Request(data=False))
+    except Exception: pass
 
 def destination_catalog(node):
     custom=customer_destinations(node.product.store,node.current_floor_id)
@@ -150,6 +202,112 @@ def destination_catalog(node):
     legacy=[dict(r,floor_id=node.current_floor_id,source='legacy') for r in node.load_waypoints() if r['display_name'] not in names]
     return custom+legacy
 
+def send_nav(self,poi_id,observation=None):
+    with self.nx_lock:
+        if self.follow_controller.enabled:raise ValueError('请先停止人体跟随再导航')
+        if self.relocalization.running:raise ValueError('正在重定位，请完成并核对位置后再导航')
+        if self.current_floor_id!='floor_4':raise ValueError('当前导航仅开放四楼地图')
+        if self.nx_handle is not None:raise ValueError('请先停止当前导航再选择新航点')
+        if self.nx_escape_active:raise ValueError('脱困检查正在进行，请稍候或点击停车')
+        match=observation or next((w for w in destination_catalog(self) if w['id']==str(poi_id)),None)
+        if match is None:raise ValueError('四楼没有该航点')
+        if hasattr(self,'web_teleop') and self.web_teleop.status()['session_active']:
+            raise ValueError('请先松开网页摇杆，再启动导航')
+        if not self.nx_nav.server_is_ready():raise ValueError('导航服务未就绪')
+        localization=self.product.localization_status()
+        if not localization.get('ready'):
+            raise ValueError('定位未通过地图核验，暂不导航：'+str(localization.get('reason','状态未知')))
+        if not navigation_verified(localization):
+            raise ValueError('定位候选尚未通过高置信雷达与重复定位核验；暂不导航，请等待自动重定位完成')
+        if hasattr(self,'web_teleop'):self.web_teleop.force_stop()
+        gate(self,True)
+        self.nx_nav_match=match
+        self.nx_nav_retry=0
+        self.nx_nav_cancel_requested=False
+        self.nx_nav_outcome=None
+        self.nx_collision_last_at=0.0
+        self.nx_escape_attempted=False
+        def make_goal(target):
+            goal=NavigateToPose.Goal();goal.pose.header.frame_id='map'
+            goal.pose.header.stamp=self.get_clock().now().to_msg()
+            goal.pose.pose.position.x=float(target['x']);goal.pose.pose.position.y=float(target['y'])
+            yaw=float(target.get('yaw',0));goal.pose.pose.orientation.z=math.sin(yaw/2);goal.pose.pose.orientation.w=math.cos(yaw/2)
+            return goal
+        def submit(attempt=0):
+            if self.nx_nav_cancel_requested:return
+            try:
+                handle=wait(self.nx_nav.send_goal_async(make_goal(match)))
+                if not handle.accepted:raise ValueError('导航服务拒绝目标')
+                self.nx_handle=handle;self.nx_nav_retry=attempt
+                self.nx_status=('正在前往 ' if attempt==0 else '正在重新规划前往 ')+match['display_name']
+                def finished(f):
+                    try: result=f.result();status=int(result.status)
+                    except Exception:
+                        status=6
+                    recent_obstacle=(time.monotonic()-self.nx_collision_last_at < 20.)
+                    if (status == 6 and not self.nx_nav_cancel_requested
+                            and not self.nx_escape_attempted and recent_obstacle
+                            and hasattr(self,'escape_recovery') and self.escape_recovery.enabled):
+                        self.nx_escape_attempted=True
+                        self.nx_escape_active=True
+                        self.nx_handle=None
+                        self.nx_status='贴障停车，正在检查短距离脱困'
+                        def recover():
+                            try:
+                                gate(self,False)
+                                if self.nx_nav_cancel_requested:return
+                                outcome=self.escape_recovery.run(
+                                    lambda:self.web_teleop.status()['session_active'])
+                                if self.nx_nav_cancel_requested:return
+                                if outcome['ok']:
+                                    self.nx_status='已脱困，正在重新规划'
+                                    gate(self,True)
+                                    submit(attempt+1)
+                                    return
+                                self.nx_status='脱困未通过安全检查：'+outcome['reason']
+                            except Exception as exc:
+                                self.nx_status='脱困中止：'+str(exc)
+                            finally:
+                                self.nx_escape_active=False
+                            if not self.nx_nav_cancel_requested:
+                                self.nx_nav_outcome=6
+                                self.nx_collision_active=False
+                                if not self.patrol_mission.active():
+                                    speak_nav(self,'附近空间不足，我已停车，请帮我移开障碍。')
+                        threading.Thread(target=recover,daemon=True).start()
+                        return
+                    if (status != 4 and not self.nx_nav_cancel_requested and
+                            attempt < 2 and not self.nx_escape_attempted):
+                        self.nx_nav_outcome=None
+                        self.nx_nav_retry=attempt+1
+                        self.nx_status='障碍或路径暂不可用，正在第 '+str(attempt+1)+' 次重试'
+                        threading.Thread(target=lambda:(time.sleep(1.5),submit(attempt+1)),daemon=True).start()
+                        return
+                    self.nx_handle=None
+                    self.nx_nav_outcome=status
+                    self.nx_status={4:'已到达',5:'已取消',6:'导航失败，请检查路线或定位'}.get(status,'导航已结束')
+                    self.nx_collision_active=False
+                    try:self.nx_gate.call_async(SetBool.Request(data=False))
+                    except Exception:pass
+                    mission_active=hasattr(self,'patrol_mission') and self.patrol_mission.active()
+                    name=match.get('display_name','目标位置')
+                    if not mission_active:
+                        if status==4:speak_nav(self,'已到达'+name+'。接下来要我做什么？')
+                        elif status==6:speak_nav(self,'到不了'+name+'，我已停在当前位置。接下来要我做什么？')
+                        elif status==5 and not self.nx_nav_cancel_requested:speak_nav(self,'导航已停止。接下来要我做什么？')
+                handle.get_result_async().add_done_callback(finished)
+            except Exception:
+                if attempt < 2 and not self.nx_nav_cancel_requested:
+                    self.nx_nav_retry=attempt+1
+                    threading.Thread(target=lambda:(time.sleep(1.5),submit(attempt+1)),daemon=True).start()
+                    return
+                self.nx_handle=None
+                self.nx_nav_outcome=6;self.nx_status='导航失败，请检查路线或定位';gate(self,False)
+                if not (hasattr(self,'patrol_mission') and self.patrol_mission.active()):speak_nav(self,'到不了'+match.get('display_name','目标位置')+'，我已停在当前位置。接下来要我做什么？')
+        try: submit(0)
+        except Exception:
+            gate(self,False);raise
+        return dict(ok=True,id=match['id'],display_name=match['display_name'],floor_id='floor_4')
 
 def post(self):
     path=self.path.split('?',1)[0]
@@ -186,7 +344,7 @@ def post(self):
                 if not 0<=size<=1024:raise ValueError('请求过大')
                 body=app.json.loads(self.rfile.read(size) or b'{}')
                 if not isinstance(body,dict):raise ValueError('请求格式无效')
-                result=app.NODE.capabilities.select_follow(body.get('mode'),body.get('id'))
+                result=app.NODE.follow_acquisition.choose(body.get('mode'),body.get('id'))
             elif path.endswith('/start'):
                 result=app.NODE.follow_controller.start()
             else:
@@ -213,9 +371,9 @@ def post(self):
             body=app.json.loads(self.rfile.read(size) or b'{}')
             tool=body.get('tool')
             def run():return execute_assistant(app.NODE,tool,body.get('arguments',{}),body.get('source',''),destination_catalog,send_nav,app.NODE.music)
-            if tool in ('navigate','patrol_start','object_bring','localization_auto','cancel_all','patrol_stop','follow_start','follow_stop'):
+            if tool in ('navigate','patrol_start','object_bring','localization_auto','cancel_all','patrol_stop'):
                 with app.NODE.assistant_lock:
-                    if tool in ('cancel_all','patrol_stop','follow_stop'):app.NODE.assistant_generation+=1
+                    if tool in ('cancel_all','patrol_stop'):app.NODE.assistant_generation+=1
                     elif body.get('generation')!=app.NODE.assistant_generation:raise ValueError('指令已因停车或接管失效，请重新发出指令')
                     message=run()
             else:message=run()
