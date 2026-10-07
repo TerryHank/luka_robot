@@ -23,20 +23,20 @@ WS = Path(os.environ.get("DDSM_WS", "/home/sunrise/luka_ws"))
 ENV_FILE = WS / "config/runtime_tuning.env"
 NAV_FILE = (
     WS
-    / "src/ddsm_car_control/config/nav2_mecanum_mppi_params.yaml"
+    / "src/control/ddsm_car_control/config/nav2_mecanum_mppi_params.yaml"
 )
 OMNI_NAV_FILE = (
     WS
-    / "src/ddsm_car_control/config/nav2_mecanum_mppi_omni_params.yaml"
+    / "src/control/ddsm_car_control/config/nav2_mecanum_mppi_omni_params.yaml"
 )
-GAMEPAD_FILE = WS / "src/ddsm_car_control/config/flydigi_vader4pro.yaml"
+GAMEPAD_FILE = WS / "src/control/ddsm_car_control/config/flydigi_vader4pro.yaml"
 RESTART_SCRIPT = WS / "restart_nav_reset.sh"
 LIGHT_DASHBOARD_SCRIPT = WS / "tools/start_lightweight_dashboard.sh"
 EXPLORE_SCRIPT = WS / "restart_explore_mapping.sh"
 BUILDING_FILE = WS / "config/multifloor_building.yaml"
 ACTIVE_FLOOR_CONTEXT_FILE = WS / "config/active_floor_context.json"
 NAVIGATION_MOTION_MODE_FILE = WS / "config/navigation_motion_mode.txt"
-MAPS_DIR = WS / "maps"
+MAPS_DIR = Path(os.environ.get("LUKA_MAPS_DIR", str(Path.home() / "luka_data/maps")))
 UI_LOG = WS / "log/robot_tuning_ui_restart.log"
 MAP_SAVE_LOG = WS / "log/robot_tuning_ui_map_save.log"
 VISION_BRIDGE_SCRIPT = WS / "tools/vision_frontend_bridge.py"

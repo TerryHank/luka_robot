@@ -29,7 +29,7 @@ UPPER_LIDAR_SOURCE_IP="${UPPER_LIDAR_SOURCE_IP:-192.168.11.10}"
 UPPER_LIDAR_IP="${UPPER_LIDAR_IP:-192.168.11.2}"
 UPPER_LIDAR_PORT="${UPPER_LIDAR_PORT:-8089}"
 UPPER_LIDAR_PROXY_PORT="${UPPER_LIDAR_PROXY_PORT:-28089}"
-UPPER_LIDAR_PROXY_SCRIPT="${UPPER_LIDAR_PROXY_SCRIPT:-$WS/src/ddsm_car_control/ddsm_car_control/low_lidar_udp_proxy.py}"
+UPPER_LIDAR_PROXY_SCRIPT="${UPPER_LIDAR_PROXY_SCRIPT:-$WS/src/control/ddsm_car_control/ddsm_car_control/low_lidar_udp_proxy.py}"
 
 child_pid=""
 proxy_pid=""

@@ -10,7 +10,8 @@ MODEL_DIR="${QWEN3_MODEL_DIR:-${USER_HOME}/qwen3-serve/model}"
 VENV_PY="${QWEN3_PYTHON:-${USER_HOME}/qwen3-serve/.venv/bin/python}"
 HOST="${OLLAMA_HOST:-127.0.0.1}"
 PORT="${OLLAMA_PORT:-11434}"
-SCRIPT="${USER_HOME}/ros2_ws/src/nav_llm_agent/scripts/serve_qwen3.py"
+LUKA_WS="${LUKA_WS:-/home/sunrise/luka_ws}"
+SCRIPT="${LUKA_WS}/src/system/nav_llm_agent/scripts/serve_qwen3.py"
 
 if [[ ! -x "${VENV_PY}" ]]; then
   echo "找不到 Python: ${VENV_PY}" >&2

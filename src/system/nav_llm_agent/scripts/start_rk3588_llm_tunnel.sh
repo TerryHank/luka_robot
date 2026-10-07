@@ -9,7 +9,7 @@ REMOTE_PORT="${REMOTE_OLLAMA_PORT:-11434}"
 
 if ! ss -ltn | grep -q ":${LOCAL_PORT} "; then
   echo "本机 ${LOCAL_PORT} 未监听。请先启动:" >&2
-  echo "  bash ~/ros2_ws/src/nav_llm_agent/scripts/start_qwen3_server.sh" >&2
+  echo "  bash ${LUKA_WS:-/home/sunrise/luka_ws}/src/system/nav_llm_agent/scripts/start_qwen3_server.sh" >&2
   exit 1
 fi
 

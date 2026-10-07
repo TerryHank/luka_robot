@@ -26,7 +26,7 @@ def default_waypoints_path() -> str:
         # COLCON_PREFIX_PATH points at <ws>/install; strip to workspace root.
         root = ws[:-8] if ws.endswith('/install') else ws
         candidates.append(os.path.join(
-            root, 'src', 'nav_llm_agent', 'config', 'waypoints.yaml'))
+            root, 'src', 'system', 'nav_llm_agent', 'config', 'waypoints.yaml'))
 
     home = os.environ.get('ROS_USER_HOME') or os.path.expanduser('~')
     for ws_name in ('ddsm_car_ws', 'ros2_ws'):
@@ -36,7 +36,7 @@ def default_waypoints_path() -> str:
     candidates.append(
         '/home/yuxi/ros2_ws/src/nav_llm_agent/config/waypoints.yaml')
     candidates.append(
-        '/home/sunrise/luka_ws/system/nav_llm_agent/config/waypoints.yaml')
+        '/home/sunrise/luka_ws/src/system/nav_llm_agent/config/waypoints.yaml')
 
     for path in candidates:
         if path and os.path.isfile(path):

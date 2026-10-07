@@ -30,3 +30,21 @@ __pycache__/
 **/*.so
 **/*.so.*
 **/*.zip
+
+# Standard colcon workspace outputs everywhere
+**/build/
+**/install/
+**/log/
+**/Log/
+
+# IDE generated databases
+.vscode/browse.vc.db*
+.vscode/*.lock
+
+# Runtime data belongs in ~/luka_data
+*.bag
+*.db3
+*.mcap
+*.wav
+*.pcm
+*.audio

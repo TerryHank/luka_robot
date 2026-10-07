@@ -14,6 +14,6 @@ fi
 set -u
 
 echo "在 RViz 用 Publish Point 点地图后，本命令会提示输入名称。"
-echo "请先启动: bash ~/ros2_ws/src/nav_llm_agent/scripts/start_agent.sh"
+echo "请先启动: bash ${LUKA_WS:-/home/sunrise/luka_ws}/src/system/nav_llm_agent/scripts/start_agent.sh"
 echo "=============================================="
 exec ros2 run nav_llm_agent save_waypoint "$@"
