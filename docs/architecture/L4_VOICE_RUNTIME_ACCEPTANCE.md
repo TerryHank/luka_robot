@@ -78,3 +78,18 @@ export LUKA_VOICE_BARGE_IN=true
 - [ ] Full-duplex BLOCKED — keep guarded mode
 
 Notes:
+
+
+## E. Platform integration
+
+- [ ] `interaction_agent_gateway` is online.
+- [ ] `interaction_platform_status` is online.
+- [ ] Local voice text reaches `/luka/interaction/agent_input`.
+- [ ] D-Robotics voice text reaches the same input.
+- [ ] Gateway emits normalized `luka.interaction.text.v1` envelopes.
+- [ ] Duplicate transport delivery with the same turn ID is dropped.
+- [ ] `mcp_only` does not open a second microphone.
+- [ ] `exclusive_remote` refuses to start while Luka voice capture is active.
+- [ ] Xiaozhi MCP motion remains disabled unless
+      `LUKA_XIAOZHI_ALLOW_MOTION=1` is explicitly set.
+- [ ] All L4 contract CI checks pass.
