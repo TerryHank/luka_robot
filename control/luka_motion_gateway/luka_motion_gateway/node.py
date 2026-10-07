@@ -3,6 +3,7 @@ import threading
 import time
 
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Joy
@@ -79,4 +80,10 @@ class MotionGateway(Node):
 def main():
     rclpy.init();node=MotionGateway()
     try:rclpy.spin(node)
-    finally:node.stop();node.destroy_node();rclpy.try_shutdown()
+    except (KeyboardInterrupt,ExternalShutdownException):pass
+    except RuntimeError:
+        if rclpy.ok():raise
+    finally:
+        if rclpy.ok():node.stop()
+        else:node.arbiter.stop('gateway shutting down')
+        node.destroy_node();rclpy.try_shutdown()

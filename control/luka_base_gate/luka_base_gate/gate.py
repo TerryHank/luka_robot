@@ -5,7 +5,7 @@ from pathlib import Path
 
 import rclpy
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
-from rclpy.executors import MultiThreadedExecutor
+from rclpy.executors import MultiThreadedExecutor, ExternalShutdownException
 from sensor_msgs.msg import Joy, LaserScan
 from geometry_msgs.msg import Twist
 from std_msgs.msg import String
@@ -252,7 +252,9 @@ def main():
     executor=MultiThreadedExecutor(num_threads=5)
     executor.add_node(node.driver)
     try: executor.spin()
-    except KeyboardInterrupt: pass
+    except (KeyboardInterrupt,ExternalShutdownException): pass
+    except RuntimeError:
+        if rclpy.ok(): raise
     finally:
         executor.shutdown()
         node.checkpoint()
