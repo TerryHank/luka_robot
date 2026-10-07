@@ -1,0 +1,7 @@
+state: failed
+task_type: named_destination
+target_id: wp_003
+display_name: ''
+route_id: ''
+waypoint_index: 0
+use_final_approach: false

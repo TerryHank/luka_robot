@@ -1,0 +1,37 @@
+(() => {
+  const start = document.getElementById('nxFollowStart');
+  const stop = document.getElementById('nxFollowStop');
+  const label = document.getElementById('nxFollowStatus');
+  if (!start || !stop || !label) return;
+  let busy = false;
+  async function refresh() {
+    try {
+      const response = await fetch('/api/follow/status', {cache:'no-store'});
+      if (!response.ok) throw Error('状态读取失败');
+      const state = await response.json();
+      label.textContent = state.enabled ? '跟随已启动 · ' + state.reason + ' · 前进 ' + state.forward_m_s.toFixed(2) + ' m/s'
+        : '未跟随 · ' + (state.ready ? '可以启动' : state.ready_reason) + (state.front_clearance_m == null ? '' : ' · 前方最近 ' + state.front_clearance_m.toFixed(2) + ' m');
+      start.disabled = busy || state.enabled || !state.ready;
+      stop.disabled = busy;
+    } catch (_) {
+      label.textContent = '跟随状态连接中断；底盘会超时停车';
+      start.disabled = true;
+      stop.disabled = busy;
+    }
+  }
+  async function command(name) {
+    if (busy) return;
+    busy = true; start.disabled = true; stop.disabled = true;
+    try {
+      const response = await fetch('/api/follow/' + name, {method:'POST', credentials:'same-origin'});
+      const result = await response.json();
+      if (!response.ok) throw Error(result.error || '操作失败');
+      label.textContent = result.reason;
+    } catch (error) { label.textContent = '操作失败：' + error.message; }
+    finally { busy = false; setTimeout(refresh, 300); }
+  }
+  start.onclick = () => command('start');
+  stop.onclick = () => command('stop');
+  setInterval(refresh, 500);
+  refresh();
+})();

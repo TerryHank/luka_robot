@@ -1,0 +1,115 @@
+"""Persist only a stable, map-verified S100 pose for the next boot."""
+import hashlib
+import json
+import math
+import time
+from pathlib import Path
+
+ROOT=Path('/home/sunrise/luka_ws')
+POSE_FILE=ROOT/'config/verified_boot_pose_floor_4.json'
+CANDIDATE_FILE=ROOT/'config/candidate_boot_pose_floor_4.json'
+MAP_FILES=(ROOT/'maps/ddsm_map_floor_4.yaml',ROOT/'maps/ddsm_map_floor_4.pgm')
+
+
+def map_signature():
+    digest=hashlib.sha256()
+    for path in MAP_FILES:
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def strong_match(status):
+    alignment=status.get('scan_map') or {}
+    sigma=status.get('uncertainty') or []
+    if not (status.get('ready') and alignment.get('valid')
+            and alignment.get('heading_candidate_count')==1):
+        return False
+    if status.get('covariance_near_zero'):
+        # AMCL occasionally collapses the particle cloud in a static corner.
+        # This path requires a substantially stronger independent scan match.
+        return (status.get('covariance_status')=='roundoff_clamped'
+                and alignment.get('known_endpoints',0)>=160
+                and (alignment.get('median_m') or 1.)<=.08
+                and (alignment.get('within_15cm') or 0.)>=.78)
+    return (status.get('covariance_status')=='valid' and len(sigma)==3
+            and sigma[0]<.18 and sigma[1]<.18 and sigma[2]<.22
+            and alignment.get('known_endpoints',0)>=80
+            and (alignment.get('median_m') or 1.)<=.15
+            and (alignment.get('within_15cm') or 0.)>=.65)
+
+
+def write_pose(pose,verified):
+    target=POSE_FILE if verified else CANDIDATE_FILE
+    record={'floor_id':'floor_4','saved_at':time.time(),
+            'map_sha256':map_signature(),'verified':bool(verified),
+            'boot_id':Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
+            'pose':{key:float(pose[key]) for key in ('x','y','yaw')}}
+    temporary=target.with_suffix('.tmp')
+    temporary.write_text(json.dumps(record,ensure_ascii=False))
+    temporary.replace(target)
+
+
+def save_verified_pose(node):
+    try:
+        if node.current_floor_id!='floor_4' or node.relocalization.running:
+            return
+        status=node.raw_localization_status()
+        if not status.get('ready') or not status.get('pose'):
+            return
+        pose=status['pose']
+        if not all(math.isfinite(float(pose[key])) for key in ('x','y','yaw')):
+            return
+        verified=node.relocalization.localized() and strong_match(status)
+        target=POSE_FILE if verified else CANDIDATE_FILE
+        try:
+            previous=json.loads(target.read_text())
+            old=previous['pose']
+            unchanged=(math.hypot(float(pose['x'])-float(old['x']),
+                                  float(pose['y'])-float(old['y']))<.02 and
+                       abs(math.atan2(math.sin(float(pose['yaw'])-float(old['yaw'])),
+                                      math.cos(float(pose['yaw'])-float(old['yaw']))))<.02)
+            if unchanged and time.time()-float(previous['saved_at'])<60:
+                return
+        except (OSError,ValueError,KeyError,TypeError):
+            pass
+        write_pose(pose,verified)
+    except Exception as exc:
+        node.get_logger().warn('Verified boot pose was not saved: '+str(exc)[:160])
+
+
+def load_saved_pose():
+    choices=[]
+    for path in (POSE_FILE,CANDIDATE_FILE):
+        try:
+            record=json.loads(path.read_text())
+            pose=record['pose']
+            if record.get('floor_id')!='floor_4' or record.get('map_sha256')!=map_signature():
+                continue
+            if not all(math.isfinite(float(pose[key])) for key in ('x','y','yaw')):
+                continue
+            choices.append((float(record['saved_at']),
+                            {key:float(pose[key]) for key in ('x','y','yaw')}))
+        except (OSError,ValueError,KeyError,TypeError):
+            continue
+    return max(choices,key=lambda item:item[0])[1] if choices else None
+
+
+def navigation_verified(status):
+    if not strong_match(status):
+        return False
+    if not status.get('covariance_near_zero'):
+        return True
+    try:
+        record=json.loads(POSE_FILE.read_text())
+        if (record.get('map_sha256')!=map_signature() or
+                record.get('boot_id')!=Path('/proc/sys/kernel/random/boot_id').read_text().strip() or
+                time.time()-float(record['saved_at'])>86400):
+            return False
+        pose=status['pose'];saved=record['pose']
+        distance=math.hypot(float(pose['x'])-float(saved['x']),
+                            float(pose['y'])-float(saved['y']))
+        yaw=abs(math.atan2(math.sin(float(pose['yaw'])-float(saved['yaw'])),
+                           math.cos(float(pose['yaw'])-float(saved['yaw']))))
+        return distance<=.25 and yaw<=.25
+    except (OSError,ValueError,KeyError,TypeError):
+        return False

@@ -1,0 +1,13 @@
+(()=>{
+const box=document.getElementById('voiceprintPanel');if(!box)return;
+box.innerHTML='<h3>露卡认识谁在说话</h3><p class="muted">声纹仅保存在本机，用于辨认说话人，不用于登录或授权。已接入每人独立的短期聊天记忆：最近6轮，闲置10分钟失效，重启清空。识别不确定时不读取个人历史，网页聊天另行隔离。只保存声纹特征，不保存录入音频。请本人知情并录入。</p><div class="actions"><input id="vpName" maxlength="24" placeholder="姓名或称呼"><button id="vpEnroll">新建声纹</button><button id="vpRecord">录下一段</button></div><p id="vpHint" role="status">正在读取声纹状态…</p><p class="muted">每人需要三段：点击录下一段，等“在呢”后，用正常音量连续说 3–6 秒，每段说不同内容。例如“露卡你好，今天我想和你聊一聊天”。录入时这些话不会执行导航。</p><div id="vpProfiles"></div><p id="vpResult"></p>';
+const $=id=>document.getElementById(id);let busy=false;
+async function req(body){const c=new AbortController(),t=setTimeout(()=>c.abort(),8000);try{const r=await fetch('/product/api/voiceprints',{signal:c.signal,...(body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store'})});const d=await r.json();if(!r.ok)throw Error(d.error||'请求失败');return d}finally{clearTimeout(t)}}
+function render(d){$('vpHint').textContent=d.pending?`正在录入 ${d.pending.name}：${d.pending.samples}/3 段，五分钟内完成。`:'未在录入。录入后，唤醒露卡并说一句较长的话即可测试识别。';$('vpRecord').disabled=!d.pending;$('vpEnroll').disabled=!!d.pending||!d.model_available;
+$('vpProfiles').replaceChildren();for(const p of d.profiles){const row=document.createElement('p'),del=document.createElement('button');row.textContent=p.name+' · '+(p.ready?'已录入':p.expired?'录入超时':p.samples+'/3 段')+' ';del.textContent=p.ready?'删除声纹':'取消录入';del.onclick=async()=>{if(!confirm('删除 '+p.name+' 的本地声纹记录？'))return;try{render(await req({action:'delete',id:p.id}))}catch(e){$('vpHint').textContent=e.message}};row.append(del);$('vpProfiles').append(row)}
+const r=d.result,age=r?(Date.now()/1000-r.updated_at):Infinity;$('vpResult').textContent=r?(age>30?'上次结果（非当前说话人）：':'最近结果：')+(r.name||'未确定说话人')+'。'+(r.reason||'')+(r.seconds!=null?' 处理 '+r.seconds+' 秒。':''):'尚无识别记录。短口令、噪声或相似声音可能无法确定说话人。';}
+$('vpEnroll').onclick=async()=>{try{render(await req({action:'enroll',name:$('vpName').value.trim()}))}catch(e){$('vpHint').textContent=e.message}};
+$('vpRecord').onclick=async()=>{try{const r=await fetch('/product/api/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'wake'})});const d=await r.json();if(!r.ok)throw Error(d.error||'唤醒失败');$('vpHint').textContent='等待“在呢”后开始说话。'}catch(e){$('vpHint').textContent=e.message}};
+async function refresh(){if(busy||document.hidden||!box.getClientRects().length)return;busy=true;try{render(await req())}catch(e){$('vpHint').textContent=e.message}finally{busy=false}}
+setInterval(refresh,2500);refresh();
+})();

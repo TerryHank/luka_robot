@@ -1,0 +1,18 @@
+{
+  "running": true,
+  "query": "人",
+  "target": "person",
+  "frames": 3,
+  "captured_at": 1791044900.7521894,
+  "completed_at": 1791044901.4031718,
+  "inference_seconds": 0.621,
+  "image_size": [
+    640,
+    480
+  ],
+  "tiles": 1,
+  "detections": [],
+  "error": null,
+  "backend": "YOLO26m objv1 person-only ONNX CPU",
+  "vocabulary_size": 1
+}

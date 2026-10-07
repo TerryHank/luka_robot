@@ -1,0 +1,5 @@
+{
+  "exit_code": 0,
+  "stdout": "/home/sunrise/luka_ws/install/ddsm_car_control\n/home/sunrise/luka_ws/install/nav_llm_agent\nddsm_car_control\tcontrol/ddsm_car_control\t(ros.ament_python)\nexplore_lite\tplanning/explore\t(ros.ament_cmake)\nexplore_lite_msgs\tplanning/explore_lite_msgs\t(ros.ament_cmake)\nhotel_semantic_map\tmap/hotel_semantic_map\t(ros.ament_python)\nhotel_semantic_map_msgs\tmap/hotel_semantic_map_msgs\t(ros.ament_cmake)\nnav2_bringup\tsystem/nav2_bringup\t(ros.ament_cmake)\nnav_llm_agent\tsystem/nav_llm_agent\t(ros.ament_python)\nrplidar_ros\tsensing/rplidar_ros\t(ros.ament_cmake)\nteleop_twist_keyboard\tcontrol/teleop_twist_keyboard\t(ros.ament_python)\nwaterplus_map_tools\tmap/waterplus_map_tools\t(ros.ament_cmake)\n",
+  "stderr": ""
+}

@@ -1,0 +1,104 @@
+version: 1
+
+capabilities:
+  navigate:
+    description: 导航到已登记航点
+    handler: navigate
+    arguments:
+      waypoint: {type: string, required: true}
+  patrol_start:
+    description: 开始巡航，可循环或只巡航一圈
+    handler: patrol_start
+    arguments:
+      mode: {type: string, enum: [loop, once], default: loop}
+  patrol_stop:
+    description: 停止巡航
+    handler: patrol_stop
+  patrol_pause:
+    description: 暂停巡航
+    handler: patrol_pause
+  patrol_resume:
+    description: 恢复巡航
+    handler: patrol_resume
+  go_home:
+    description: 返回充电点
+    handler: go_home
+  mission_pause:
+    description: 暂停当前酒店任务
+    handler: mission_pause
+  mission_resume:
+    description: 恢复当前酒店任务
+    handler: mission_resume
+  cancel_all:
+    description: 取消当前导航、巡航、电梯和酒店任务
+    handler: cancel_all
+  elevator_enter:
+    description: 前往电梯、进梯并在目标楼层出梯后继续到目标地点
+    workflow: elevator_enter
+    arguments:
+      floor: {type: string, enum: [floor_1, floor_2, floor_3, floor_4], required: true}
+      destination: {type: string, default: ""}
+  elevator_cancel:
+    description: 取消进电梯流程
+    handler: elevator_cancel
+  elevator_resume:
+    description: 继续因路径规划失败而暂停的跨楼层出梯任务
+    handler: elevator_resume
+  robot_status:
+    description: 查询当前任务和电梯流程状态
+    handler: robot_status
+  volume_up:
+    description: 调大露卡播报音量
+    handler: volume_up
+  volume_down:
+    description: 调小露卡播报音量
+    handler: volume_down
+
+  elevator_command:
+    description: 内部电梯楼层命令
+    handler: elevator_command
+    exposed: false
+  elevator_entry_start:
+    description: 内部进梯启动
+    handler: elevator_entry_start
+    exposed: false
+  wait_elevator_entered:
+    description: 内部等待进梯完成
+    handler: wait_elevator_entered
+    exposed: false
+  wait_elevator_arrival:
+    description: 内部等待电梯到达目标楼层且门打开
+    handler: wait_elevator_arrival
+    exposed: false
+  switch_floor:
+    description: 内部切换目标楼层地图并恢复定位
+    handler: switch_floor
+    exposed: false
+
+workflows:
+  elevator_enter:
+    steps:
+      - handler: navigate
+        arguments: {waypoint: wp_006}
+      - handler: elevator_command
+        arguments: {floor: "$floor"}
+      - handler: elevator_entry_start
+        arguments: {}
+      - handler: wait_elevator_entered
+        arguments: {}
+      - handler: wait_elevator_arrival
+        arguments: {floor: "$floor", destination: "$destination"}
+      - handler: navigate
+        arguments: {waypoint: elevator_exit_stage}
+      - handler: navigate
+        arguments: {waypoint: wp_006}
+      - handler: switch_floor
+        arguments: {floor: "$floor", destination: "$destination"}
+  elevator_exit_resume:
+    steps:
+      - handler: navigate
+        arguments: {waypoint: elevator_exit_stage}
+      - handler: navigate
+        arguments: {waypoint: wp_006}
+      - handler: switch_floor
+        arguments: {floor: "$floor", destination: "$destination"}

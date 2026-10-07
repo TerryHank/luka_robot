@@ -1,0 +1,166 @@
+[INFO] [launch]: All log files can be found below /home/sunrise/.ros/log/2026-10-04-02-58-42-783932-ubuntu-31766
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [static_transform_publisher-1]: process started with pid [31848]
+[INFO] [static_transform_publisher-2]: process started with pid [31850]
+[INFO] [selected_bridge-3]: process started with pid [31852]
+[INFO] [tros_person_following-4]: process started with pid [31862]
+[static_transform_publisher-2] [INFO] [1791053923.228304016] [astra_body_mount]: Spinning until stopped - publishing transform
+[static_transform_publisher-2] translation: ('0.000000', '0.000000', '0.700000')
+[static_transform_publisher-2] rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+[static_transform_publisher-2] from 'base_footprint' to 'camera_link'
+[static_transform_publisher-1] [INFO] [1791053923.268633175] [body_ground_projection]: Spinning until stopped - publishing transform
+[static_transform_publisher-1] translation: ('0.000000', '0.000000', '0.000000')
+[static_transform_publisher-1] rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+[static_transform_publisher-1] from 'base_link' to 'base_footprint'
+[tros_person_following-4] [INFO] [1791053923.335321256] [luka_person_following.official.tros_person_following_node]: PersonFollowingNode starting
+[tros_person_following-4]           detect_result_topic_name: /luka/selected_seg_targets
+[tros_person_following-4]               goal_pose_topic_name: nearest_pose
+[tros_person_following-4]                       global_frame: map
+[tros_person_following-4]                        robot_frame: base_footprint
+[tros_person_following-4]              followed_target_topic: tros_person_followed
+[tros_person_following-4]         followed_target_pose_topic: tros_followed_target_pose
+[tros_person_following-4]                      cmd_vel_topic: /luka_follow_dryrun/cmd_vel
+[tros_person_following-4]                      costmap_topic: /global_costmap/costmap
+[tros_person_following-4]            target_filter_width_thr: 0.30
+[tros_person_following-4]           target_filter_height_thr: 0.50
+[tros_person_following-4]          target_filter_range_x_min: 0.10
+[tros_person_following-4]          target_filter_range_x_max: 4.00
+[tros_person_following-4]          target_filter_range_y_min: -3.00
+[tros_person_following-4]          target_filter_range_y_max: 3.00
+[tros_person_following-4]       target_filter_confidence_thr: 0.50
+[tros_person_following-4]                follow_distance_min: 1.80
+[tros_person_following-4]                follow_distance_max: 2.00
+[tros_person_following-4]                  follow_hysteresis: 0.10
+[tros_person_following-4]          follow_goal_dist_deadzone: 0.30
+[tros_person_following-4]           follow_goal_yaw_deadzone: 0.6000
+[tros_person_following-4]          static_target_timeout_sec: 8.00
+[tros_person_following-4]             static_target_move_thr: 0.20
+[tros_person_following-4]       static_switch_depth_diff_thr: 0.30
+[tros_person_following-4]  static_switch_activity_window_sec: 2.00
+[tros_person_following-4]                 predict_window_sec: 4.00
+[tros_person_following-4]                   predict_lead_sec: 2.00
+[tros_person_following-4]                   predict_max_dist: 3.00
+[tros_person_following-4]                  predict_stale_sec: 5.00
+[tros_person_following-4]      idle_search_start_timeout_sec: 5.00
+[tros_person_following-4]      idle_search_total_timeout_sec: 0.0
+[tros_person_following-4]          idle_observe_duration_sec: 3.0
+[tros_person_following-4]               observe_cooldown_sec: 3.00
+[tros_person_following-4]                        spin_radian: 3.14
+[tros_person_following-4]         explore_spin_angular_speed: 0.80
+[tros_person_following-4]       tracking_to_lost_timeout_sec: 1.00
+[tros_person_following-4]           lost_to_idle_timeout_sec: 5.00
+[tros_person_following-4]              costmap_free_cost_thr: 50.00
+[tros_person_following-4]       costmap_free_search_radius_m: 2.00
+[tros_person_following-4] [INFO] [1791053926.927000052] [luka_person_following.official.tros_person_following_node]: Received detect result.
+[tros_person_following-4] [INFO] [1791053928.047070621] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus IDLE_SEARCHING
+[tros_person_following-4] [INFO] [1791053928.047140968] [luka_person_following.official.tros_person_following_node]: Follow enabled
+[tros_person_following-4] [INFO] [1791053928.181336471] [luka_person_following.official.tros_person_following_node]: Valid person id=12, x=3.06, y=0.00, w=0.60, h=1.70, conf=0.95
+[tros_person_following-4] [INFO] [1791053928.181429666] [luka_person_following.official.tros_person_following_node]: Observing candidate target id=12 for up to 3.0s before follow/search
+[tros_person_following-4] [INFO] [1791053928.181471815] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus IDLE_OBSERVING:id=12
+[tros_person_following-4] [INFO] [1791053928.288818427] [luka_person_following.official.tros_person_following_node]: Valid person id=12, x=3.10, y=0.00, w=0.60, h=1.70, conf=0.95
+[tros_person_following-4] [INFO] [1791053928.418438306] [luka_person_following.official.tros_person_following_node]: Valid person id=12, x=3.13, y=0.00, w=0.60, h=1.70, conf=0.95
+[tros_person_following-4] [INFO] [1791053928.546270814] [luka_person_following.official.tros_person_following_node]: Valid person id=12, x=3.19, y=0.00, w=0.60, h=1.70, conf=0.95
+[tros_person_following-4] [INFO] [1791053928.677838757] [luka_person_following.official.tros_person_following_node]: Valid person id=12, x=3.26, y=0.00, w=0.60, h=1.70, conf=0.95
+[tros_person_following-4] [INFO] [1791053928.795647683] [luka_person_following.official.tros_person_following_node]: Valid person id=12, x=3.29, y=0.00, w=0.60, h=1.70, conf=0.95
+[tros_person_following-4] [INFO] [1791053928.795758703] [luka_person_following.official.tros_person_following_node]: Selected best target id=12 (score=0.574, x=3.29, conf=0.95, cx=320, move=0.225 over 2.0s).
+[tros_person_following-4] Candidates: id=12(x=3.288659,conf=0.950000,cx=320.000000,score=0.573918,move=0.224559)
+[tros_person_following-4] [INFO] [1791053928.795814801] [luka_person_following.official.tros_person_following_node]: Published enable_blind_zone_observing: false
+[tros_person_following-4] [INFO] [1791053928.795843974] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=-1.00
+[tros_person_following-4] [INFO] [1791053928.795854949] [luka_person_following.official.tros_person_following_node]: Selected target (id=12) for tracking.
+[tros_person_following-4] [INFO] [1791053928.795953669] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=3.29
+[tros_person_following-4] [INFO] [1791053928.796067214] [luka_person_following.official.tros_person_following_node]: Person id: 12, dist: 3.29 m, bbox xywh=(250,60,140,390), edges=[250,390] (img_w=640, margin=96, edge_band=[0,96] & [544,640])
+[tros_person_following-4] [INFO] [1791053928.796357677] [luka_person_following.official.tros_person_following_node]: Tracking person id: 12, confidence: 0.95, at cam frame xy: (3.29, 0.00), w: 0.60, h: 1.70. Pub goal pose at map frame xy: (3.29, 0.00), current_pose xy: (0.00, 0.00). should_nav: true, dist_diff: 3.29 (thr: 0.30), yaw_diff: 0.00 (0 deg, thr: 0.60), person_map_dist: 3.29, follow_band=[1.80, 2.00], nav_active: no, last_nav_goal: yes
+[tros_person_following-4] [INFO] [1791053928.918952866] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=3.35
+[tros_person_following-4] [INFO] [1791053928.919039287] [luka_person_following.official.tros_person_following_node]: should_nav=false: rate limit (since_last_send=0.12s < min_interval=0.40s)
+[tros_person_following-4] [INFO] [1791053929.042536536] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=3.38
+[tros_person_following-4] [INFO] [1791053929.042608058] [luka_person_following.official.tros_person_following_node]: should_nav=false: rate limit (since_last_send=0.25s < min_interval=0.40s)
+[tros_person_following-4] [INFO] [1791053929.167835064] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=3.45
+[tros_person_following-4] [INFO] [1791053929.168100052] [luka_person_following.official.tros_person_following_node]: should_nav=false: rate limit (since_last_send=0.37s < min_interval=0.40s)
+[tros_person_following-4] [INFO] [1791053929.301892786] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=3.49
+[tros_person_following-4] [INFO] [1791053929.417388390] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=3.55
+[tros_person_following-4] [INFO] [1791053929.556874575] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=3.58
+[tros_person_following-4] [INFO] [1791053929.669834465] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=3.65
+[tros_person_following-4] [INFO] [1791053929.669911411] [luka_person_following.official.tros_person_following_node]: Goal changed (dist: 0.36, yaw: 0.00 deg), sending new goal (no cancel for smooth transition)
+[tros_person_following-4] [INFO] [1791053929.796264443] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=3.68
+[tros_person_following-4] [INFO] [1791053929.796322241] [luka_person_following.official.tros_person_following_node]: Person id: 12, dist: 3.68 m, bbox xywh=(250,60,140,390), edges=[250,390] (img_w=640, margin=96, edge_band=[0,96] & [544,640])
+[tros_person_following-4] [INFO] [1791053929.796354489] [luka_person_following.official.tros_person_following_node]: should_nav=false: rate limit (since_last_send=0.13s < min_interval=0.40s)
+[tros_person_following-4] [INFO] [1791053929.796369189] [luka_person_following.official.tros_person_following_node]: Tracking person id: 12, confidence: 0.95, at cam frame xy: (3.68, 0.00), w: 0.60, h: 1.70. Pub goal pose at map frame xy: (3.68, 0.00), current_pose xy: (0.00, 0.00). should_nav: false, dist_diff: 3.68 (thr: 0.30), yaw_diff: 0.00 (0 deg, thr: 0.60), person_map_dist: 3.68, follow_band=[1.80, 2.00], nav_active: yes, last_nav_goal: yes
+[tros_person_following-4] [INFO] [1791053929.914707844] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=3.74
+[tros_person_following-4] [INFO] [1791053929.915330742] [luka_person_following.official.tros_person_following_node]: should_nav=false: rate limit (since_last_send=0.25s < min_interval=0.40s)
+[tros_person_following-4] [INFO] [1791053930.041827891] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=3.80
+[tros_person_following-4] [INFO] [1791053930.041902438] [luka_person_following.official.tros_person_following_node]: should_nav=false: rate limit (since_last_send=0.37s < min_interval=0.40s)
+[tros_person_following-4] [INFO] [1791053930.165782784] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=3.80
+[tros_person_following-4] [INFO] [1791053930.296197950] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=3.80
+[tros_person_following-4] [INFO] [1791053930.414757573] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=3.80
+[tros_person_following-4] [INFO] [1791053930.540073982] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=3.80
+[tros_person_following-4] [INFO] [1791053930.686824774] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=3.80
+[tros_person_following-4] [INFO] [1791053930.788600891] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=3.80
+[tros_person_following-4] [INFO] [1791053930.921779013] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=3.80
+[tros_person_following-4] [INFO] [1791053930.921842611] [luka_person_following.official.tros_person_following_node]: Person id: 12, dist: 3.80 m, bbox xywh=(250,60,140,390), edges=[250,390] (img_w=640, margin=96, edge_band=[0,96] & [544,640])
+[tros_person_following-4] [INFO] [1791053930.921876609] [luka_person_following.official.tros_person_following_node]: Tracking person id: 12, confidence: 0.95, at cam frame xy: (3.80, 0.00), w: 0.60, h: 1.70. Pub goal pose at map frame xy: (3.80, 0.00), current_pose xy: (0.00, 0.00). should_nav: true, dist_diff: 3.80 (thr: 0.30), yaw_diff: 0.00 (0 deg, thr: 0.60), person_map_dist: 3.80, follow_band=[1.80, 2.00], nav_active: yes, last_nav_goal: yes
+[tros_person_following-4] [INFO] [1791053931.042069236] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=3.80
+[tros_person_following-4] [INFO] [1791053931.180360980] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=1.50
+[tros_person_following-4] [INFO] [1791053931.180436777] [luka_person_following.official.tros_person_following_node]: Person 1.50 m < follow_distance_min 1.80 m, canceling nav to stop follow
+[tros_person_following-4] [INFO] [1791053931.190567900] [luka_person_following.official.tros_person_following_node]: NavigateToPose goal was canceled
+[tros_person_following-4] [INFO] [1791053931.300820126] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=1.50
+[tros_person_following-4] [INFO] [1791053931.429939606] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=1.50
+[tros_person_following-4] [INFO] [1791053931.540053863] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=1.50
+[tros_person_following-4] [INFO] [1791053931.677770330] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=1.50
+[tros_person_following-4] [INFO] [1791053931.790375407] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus TRACKING:id=12:dist=3.70
+[tros_person_following-4] [INFO] [1791053931.932050408] [luka_person_following.official.tros_person_following_node]: Cancelling all nav goals
+[tros_person_following-4] [INFO] [1791053931.932153079] [luka_person_following.official.tros_person_following_node]: Published enable_blind_zone_observing: true
+[tros_person_following-4] [INFO] [1791053931.932188702] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus DISABLED
+[tros_person_following-4] [INFO] [1791053931.932202277] [luka_person_following.official.tros_person_following_node]: Follow disabled, control returned to Nav2
+[tros_person_following-4] [INFO] [1791053931.951838698] [luka_person_following.official.tros_person_following_node]: NavigateToPose goal was canceled
+[tros_person_following-4] [INFO] [1791053931.981953179] [luka_person_following.official.tros_person_following_node]: NavigateToPose goal was canceled
+[tros_person_following-4] [INFO] [1791053932.795493933] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus IDLE_SEARCHING
+[tros_person_following-4] [INFO] [1791053932.795557106] [luka_person_following.official.tros_person_following_node]: Follow enabled
+[tros_person_following-4] [INFO] [1791053932.930326860] [luka_person_following.official.tros_person_following_node]: Valid person id=12, x=3.70, y=0.00, w=0.60, h=1.70, conf=0.95
+[tros_person_following-4] [INFO] [1791053932.930413456] [luka_person_following.official.tros_person_following_node]: Observing candidate target id=12 for up to 3.0s before follow/search
+[tros_person_following-4] [INFO] [1791053932.930493553] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus IDLE_OBSERVING:id=12
+[tros_person_following-4] [INFO] [1791053933.045367784] [luka_person_following.official.tros_person_following_node]: Cancelling all nav goals
+[tros_person_following-4] [INFO] [1791053933.045846764] [luka_person_following.official.tros_person_following_node]: Published enable_blind_zone_observing: true
+[tros_person_following-4] [INFO] [1791053933.045923586] [luka_person_following.official.tros_person_following_node]: follow status: FollowStatus DISABLED
+[tros_person_following-4] [INFO] [1791053933.045946410] [luka_person_following.official.tros_person_following_node]: Follow disabled, control returned to Nav2
+[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
+[tros_person_following-4] [INFO] [1791053933.350211121] [rclcpp]: signal_handler(signum=2)
+[INFO] [tros_person_following-4]: sending signal 'SIGINT' to process[tros_person_following-4]
+[INFO] [selected_bridge-3]: sending signal 'SIGINT' to process[selected_bridge-3]
+[INFO] [static_transform_publisher-2]: sending signal 'SIGINT' to process[static_transform_publisher-2]
+[INFO] [static_transform_publisher-1]: sending signal 'SIGINT' to process[static_transform_publisher-1]
+[static_transform_publisher-1] [INFO] [1791053933.350189497] [rclcpp]: signal_handler(signum=2)
+[ERROR] [static_transform_publisher-2]: process has died [pid 31850, exit code -2, cmd '/opt/ros/humble/lib/tf2_ros/static_transform_publisher --x 0 --y 0 --z 0.70 --roll 0 --pitch 0 --yaw 0 --frame-id base_footprint --child-frame-id camera_link --ros-args -r __node:=astra_body_mount'].
+[ERROR] [static_transform_publisher-1]: process has died [pid 31848, exit code -2, cmd '/opt/ros/humble/lib/tf2_ros/static_transform_publisher --x 0 --y 0 --z 0 --roll 0 --pitch 0 --yaw 0 --frame-id base_link --child-frame-id base_footprint --ros-args -r __node:=body_ground_projection'].
+[static_transform_publisher-2] [INFO] [1791053933.350925292] [rclcpp]: signal_handler(signum=2)
+[tros_person_following-4] [INFO] [1791053933.357644617] [rclcpp]: signal_handler(signum=2)
+[selected_bridge-3] Traceback (most recent call last):
+[selected_bridge-3]   File "/home/sunrise/luka_ws/install/luka_person_following/lib/python3.10/site-packages/luka_person_following/bridge.py", line 132, in main
+[selected_bridge-3]     rclpy.spin(node)
+[selected_bridge-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py", line 229, in spin
+[selected_bridge-3]     executor.spin_once()
+[selected_bridge-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 751, in spin_once
+[selected_bridge-3]     self._spin_once_impl(timeout_sec)
+[selected_bridge-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 740, in _spin_once_impl
+[selected_bridge-3]     handler, entity, node = self.wait_for_ready_callbacks(timeout_sec=timeout_sec)
+[selected_bridge-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 723, in wait_for_ready_callbacks
+[selected_bridge-3]     return next(self._cb_iter)
+[selected_bridge-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 620, in _wait_for_ready_callbacks
+[selected_bridge-3]     wait_set.wait(timeout_nsec)
+[selected_bridge-3] KeyboardInterrupt
+[selected_bridge-3] 
+[selected_bridge-3] During handling of the above exception, another exception occurred:
+[selected_bridge-3] 
+[selected_bridge-3] Traceback (most recent call last):
+[selected_bridge-3]   File "/home/sunrise/luka_ws/install/luka_person_following/lib/luka_person_following/selected_bridge", line 33, in <module>
+[selected_bridge-3]     sys.exit(load_entry_point('luka-person-following==0.1.0', 'console_scripts', 'selected_bridge')())
+[selected_bridge-3]   File "/home/sunrise/luka_ws/install/luka_person_following/lib/python3.10/site-packages/luka_person_following/bridge.py", line 134, in main
+[selected_bridge-3]     node.destroy_node()
+[selected_bridge-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 1686, in destroy_node
+[selected_bridge-3]     self.destroy_publisher(self._publishers[0])
+[selected_bridge-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 1566, in destroy_publisher
+[selected_bridge-3]     publisher.destroy()
+[selected_bridge-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/publisher.py", line 99, in destroy
+[selected_bridge-3]     self.__publisher.destroy_when_not_in_use()
+[selected_bridge-3] KeyboardInterrupt
+[INFO] [tros_person_following-4]: process has finished cleanly [pid 31862]
+[ERROR] [selected_bridge-3]: process has died [pid 31852, exit code -2, cmd '/home/sunrise/luka_ws/install/luka_person_following/lib/luka_person_following/selected_bridge --ros-args --params-file /tmp/launch_params_k6u6xye7'].

@@ -1,0 +1,8 @@
+geometry_msgs/PoseStamped pose
+---
+bool success
+string area_id
+string display_name
+string area_type
+string error_code
+string message

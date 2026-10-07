@@ -1,0 +1,304 @@
+"""A selected, uninterrupted body track is not a fresh face identification.
+
+The caller owns explicit selection and frame freshness.  Pass only currently
+visible tracks and call ``update`` for every processed frame.  An explicit,
+bounded tracker hold can preserve a selected body through a short detection
+miss, without presenting it as visible or motion-ready.  All other losses,
+ambiguity, or identity conflicts end the session; names cannot reacquire it.
+
+This module emits no motion commands and is unsuitable as an authentication
+decision.  A retained name merely records the face that was confirmed before
+the same uninterrupted body track turned away.
+"""
+from __future__ import annotations
+
+import math
+from collections.abc import Mapping
+
+
+class TargetSession:
+    """Keep a separate visual target, without changing input face identities.
+
+    ``valid_profiles`` is an optional current ``{face_id: profile}`` mapping.
+    Passing an empty mapping revokes any previously confirmed identity.  Passing
+    ``None`` skips catalog validation; production should pass a current mapping.
+
+    A changed selected ID starts a clean target.  To explicitly select the same
+    ID again after a loss/conflict, call ``reset('selected')`` before ``update``.
+    Merely repeating status updates never unlocks a cancelled target.
+    """
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self, reason="unlocked"):
+        """Clear all continuity, including the remembered selection transition."""
+        self._selected_id = None
+        self._last_update = None
+        self._clear(reason)
+        return self.status()
+
+    def _clear(self, reason):
+        # Keep _selected_id when called internally: this latches a failed
+        # selection until the caller explicitly releases/reselects it.
+        self._active = False
+        self._track_id = None
+        self._profile_id = None
+        self._name = None
+        self._selected_at = None
+        self._confirmed_at = None
+        self._last_seen = None
+        self._current_face = False
+        self._face_verified = False
+        self._confirmation_source = None
+        self._visible = False
+        self._hold_last_seen = None
+        self._hold_deadline = None
+        self._hold_reason = None
+        self._missing_age_s = None
+        self._reason = reason
+
+    def status(self):
+        if not self._active:
+            state, basis = "idle", "none"
+        elif self._profile_id is None:
+            state, basis = "body_locked", "explicit_selection"
+        elif self._current_face:
+            state, basis = "identity_confirmed", "current_face"
+        elif self._face_verified:
+            state, basis = "body_tracking", "face_then_body"
+        else:
+            state, basis = "body_tracking", "user_selection"
+        if self._active and not self._visible:
+            state = "waiting_occlusion" if self._hold_reason == 'occlusion_reid_wait' else "waiting_detection"
+        return dict(active=self._active, mode="visual_only", motion_enabled=False,
+                    state=state, reason=self._reason, track_id=self._track_id,
+                    profile_id=self._profile_id, name=self._name,
+                    face_profile_id=self._profile_id, confirmed_name=self._name,
+                    confirmation_source=self._confirmation_source,
+                    identity_basis=basis, face_currently_matched=self._current_face,
+                    current_face_verified=self._current_face,
+                    face_verified=self._face_verified, verified_face=self._face_verified,
+                    selected_at=self._selected_at, confirmed_at=self._confirmed_at,
+                    last_seen=self._last_seen, visible=self._visible,
+                    motion_ready=False, confirmation_available=self._active and self._visible,
+                    missing_age_s=self._missing_age_s,
+                    hold_remaining_s=(max(0, self._hold_deadline-self._hold_last_seen-self._missing_age_s)
+                                      if self._missing_age_s is not None else None))
+
+    def confirm(self, track_id, profile_id, profiles, now):
+        """Explicitly associate the active body target with an existing profile.
+
+        This records the user's selection, not a face or voice verification.
+        The caller must first update with the current fresh frame and reject
+        commands issued during enrollment.  Existing conflicting face/target
+        evidence cannot be overwritten: release and explicitly reselect first.
+        """
+        now = float(now)
+        if not math.isfinite(now):
+            self._clear("camera_stale")
+            raise ValueError("Target frame is stale; select the person again")
+        if not self._active or track_id != self._track_id:
+            raise ValueError("Confirmation must refer to the active selected target")
+        if not self._visible:
+            # Target absence and camera freshness are separate clocks.  The
+            # caller supplies a fresh camera update; rejecting this command
+            # must not erase an otherwise valid eight-second occlusion wait.
+            if self._hold_deadline is not None and now > self._hold_deadline:
+                self._clear(self._expired_hold_reason())
+            raise ValueError("Target is temporarily missing; wait for a visible body")
+        if self._last_seen is None or not 0 <= now-self._last_seen <= .7:
+            self._clear("camera_stale")
+            raise ValueError("Target frame is stale; select the person again")
+        if not isinstance(profiles, Mapping):
+            raise ValueError("A current profile catalog is required")
+        name = self._profile(profile_id, None, profiles)
+        if name is None:
+            raise ValueError("Face profile does not exist")
+        if self._profile_id is not None and self._profile_id != profile_id:
+            raise ValueError("Confirmed face or target identity conflicts with this profile")
+        self._profile_id = profile_id
+        self._name = name
+        self._confirmed_at = now
+        self._confirmation_source = "user_selection"
+        self._reason = "user_confirmed_target"
+        self._last_update = now
+        return self.status()
+
+    @staticmethod
+    def _profile(profile_id, fallback_name, valid_profiles):
+        if valid_profiles is None:
+            return fallback_name
+        profile = valid_profiles.get(profile_id)
+        if not isinstance(profile, Mapping):
+            return None
+        name = profile.get("name")
+        return name if isinstance(name, str) and name.strip() else None
+
+    def update(self, tracks, selected_track_id, now, fresh=True, valid_profiles=None, hold=None):
+        """Return a detached JSON-ready target status for the current frame.
+
+        Face identity must be an already-confirmed worker result with
+        ``state='matched', id=<face profile id>, name=<name>``. ``profile_id`` is
+        also accepted for callers using the IdentityRecognizer's result shape.
+        Unknown/absent faces preserve body continuity, not current face proof.
+        Voice claims, matching names, appearance, and unselected people never
+        establish an identity here.
+
+        ``hold`` may be the tracker's explicit ``selected_hold`` event, carrying
+        track_id, last_seen (monotonic seconds), missing_age_s, and reason
+        'temporary_detection_miss'.  It only preserves an already active target
+        for at most .6 seconds from the last actual observation, with no other
+        visible people.  An omitted hold keeps the immediate-loss behavior.
+
+        A separate 'occlusion_reid_wait' hold may last at most eight seconds,
+        with a fixed deadline_mono=last_seen+8. It requires the producer's
+        private appearance template. A returned body must then carry a fresh,
+        unique strong recovery_proof for that exact episode; a repeated track
+        number alone is not evidence of recovery. No proof is a face identity.
+        """
+        now = float(now)
+        if not math.isfinite(now):
+            self._clear("invalid_timestamp")
+            return self.status()
+        if self._last_update is not None and now < self._last_update:
+            self._clear("clock_reversed")
+            self._last_update = now
+            return self.status()
+        self._last_update = now
+        if valid_profiles is not None and not isinstance(valid_profiles, Mapping):
+            self._clear("profile_catalog_unavailable")
+            return self.status()
+
+        changed = selected_track_id != self._selected_id
+        if changed:
+            self._clear("selection_changed" if self._selected_id is not None else "selected")
+            self._selected_id = selected_track_id
+        if selected_track_id is None:
+            self._clear("unselected")
+            return self.status()
+        if not fresh:
+            self._clear("camera_stale")
+            return self.status()
+
+        if self._profile_id is not None:
+            name = self._profile(self._profile_id, self._name, valid_profiles)
+            if name is None:
+                self._clear("profile_deleted")
+                return self.status()
+            self._name = name
+        if self._hold_deadline is not None and now > self._hold_deadline:
+            self._clear(self._expired_hold_reason())
+            return self.status()
+
+        selected = [row for row in tracks if row.get("track_id") == selected_track_id]
+        if len(selected) != 1 or selected[0].get("visible") is False:
+            occlusion_wait = isinstance(hold, Mapping) and hold.get('reason') == 'occlusion_reid_wait'
+            if not selected and (not tracks or occlusion_wait) and self._hold_valid(hold, selected_track_id, now):
+                self._visible = False
+                self._current_face = False
+                self._hold_last_seen = float(hold['last_seen'])
+                self._hold_reason = hold['reason']
+                self._hold_deadline = (float(hold['deadline_mono']) if occlusion_wait
+                                       else self._hold_last_seen+.6)
+                self._last_seen = self._hold_last_seen
+                self._missing_age_s = now-self._hold_last_seen
+                self._reason = self._hold_reason
+                return self.status()
+            self._clear("target_lost" if not selected else "target_ambiguous")
+            return self.status()
+        row = selected[0]
+        if row.get("association_ambiguous"):
+            self._clear("association_ambiguous")
+            return self.status()
+        if self._hold_reason == 'occlusion_reid_wait' and not self._recovery_valid(row, now):
+            self._clear('occlusion_recovery_unverified')
+            return self.status()
+        if not self._active:
+            if not changed:
+                # Neither a renewed face match nor a status poll can silently
+                # restart a body target after its continuity was broken.
+                return self.status()
+            self._active = True
+            self._track_id = selected_track_id
+            self._selected_at = now
+        self._visible = True
+        self._hold_last_seen = None
+        self._hold_deadline = None
+        self._hold_reason = None
+        self._missing_age_s = None
+
+        identity = row.get("identity") or {}
+        profile_id = identity.get("id") or identity.get("profile_id")
+        name = identity.get("name")
+        matched = (identity.get("state") == "matched" and bool(profile_id) and
+                   isinstance(name, str) and bool(name.strip()))
+        self._current_face = False
+        self._last_seen = now
+        if matched:
+            if self._profile_id is not None and profile_id != self._profile_id:
+                self._clear("identity_conflict")
+                return self.status()
+            name = self._profile(profile_id, name, valid_profiles)
+            if name is None:
+                self._clear("profile_deleted")
+                return self.status()
+            if self._profile_id is None:
+                self._profile_id = profile_id
+                self._confirmed_at = now
+                self._confirmation_source = "face_match"
+            self._name = name
+            self._current_face = True
+            self._face_verified = True
+            self._reason = "face_confirmed"
+        elif self._profile_id is not None:
+            self._reason = "continuous_body_only"
+        else:
+            self._reason = "selected_body_identity_unknown"
+        return self.status()
+
+    def _hold_valid(self, hold, selected_track_id, now):
+        if (not self._active or self._track_id != selected_track_id or
+                not isinstance(hold, Mapping) or hold.get('track_id') != self._track_id or
+                hold.get('reason') not in ('temporary_detection_miss', 'occlusion_reid_wait') or
+                hold.get('association_ambiguous') or hold.get('ambiguous')):
+            return False
+        try:
+            stamp, declared_age = float(hold['last_seen']), float(hold['missing_age_s'])
+            occlusion = hold['reason'] == 'occlusion_reid_wait'
+            ttl = 8. if occlusion else .6
+            deadline = float(hold['deadline_mono']) if occlusion else stamp+ttl
+        except (KeyError, TypeError, ValueError, OverflowError):
+            return False
+        if (not all(math.isfinite(value) for value in (stamp, declared_age, deadline)) or
+                abs(deadline-(stamp+ttl)) > 1e-6 or
+                not 0 <= declared_age <= ttl or not 0 <= now-stamp <= ttl or
+                self._last_seen is None or stamp > self._last_seen):
+            return False
+        # Once waiting begins, no newer timestamp is evidence of a sighting.
+        # Only a real visible track may reset this anchor and resume the target.
+        return (self._hold_last_seen is None or
+                (stamp == self._hold_last_seen and hold['reason'] == self._hold_reason and
+                 deadline == self._hold_deadline))
+
+    def _expired_hold_reason(self):
+        return ('occlusion_hold_expired' if self._hold_reason == 'occlusion_reid_wait'
+                else 'detection_hold_expired')
+
+    def _recovery_valid(self, row, now):
+        proof = row.get('recovery_proof')
+        if (row.get('observation_strength') != 'strong' or row.get('visible') is False or
+                row.get('association_ambiguous') or not isinstance(proof, Mapping) or
+                proof.get('verified') is not True or
+                proof.get('method') != 'appearance_geometry_unique' or
+                type(proof.get('track_id')) is not int or proof['track_id'] != self._track_id or
+                type(proof.get('candidate_count')) is not int or proof['candidate_count'] != 1):
+            return False
+        try:
+            episode = float(proof['episode_last_seen'])
+            recovered = float(proof['recovered_mono'])
+        except (KeyError, TypeError, ValueError, OverflowError):
+            return False
+        return (math.isfinite(episode) and math.isfinite(recovered) and
+                episode == self._hold_last_seen and self._hold_deadline is not None and
+                episode < recovered <= now <= self._hold_deadline and now-recovered <= .7)

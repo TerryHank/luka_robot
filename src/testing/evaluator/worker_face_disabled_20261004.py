@@ -1,0 +1,1001 @@
+"""On-demand RGB-D recognition worker. Deliberately contains no motion output."""
+import io
+import base64
+import json
+import math
+import os
+from pathlib import Path
+from collections import deque
+import tempfile
+import threading
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlparse
+from urllib.error import HTTPError
+
+import cv2
+import numpy as np
+from identity import IdentityStore, IdentityRecognizer, EnrollmentManager
+from tracking import ConservativeTracker
+from target_session import TargetSession
+from face_reacquire import FaceReacquire
+from detection_cleanup import consolidate_people
+from appearance import BodyAppearance
+from vision import (PeopleNetDetector, PersonDetector, FaceFeatures,
+                    estimate_person_geometry, estimate_stereo_person_geometry)
+from stereo_person_fusion import person_visual_geometry
+from seg_depth_geometry import seg_mean_geometry
+from server import ROOT, DATA, BUDGET_GIB, fetch, memory
+from stereo_uvc import StereoUvc
+from stereo_box_mapper import StereoBoxMapper, combine_full_and_zoom
+CYCLE_S = .125
+CAMERA_RETAIN_S = 1.25
+
+REASONS = {
+    'no_face': '未看到人脸，请调整位置或光线', 'face_too_small': '人脸太小，请靠近或调整相机',
+    'multiple_faces': '同一人体框内有多张脸，请分开站立', 'blurred_face': '画面模糊，请保持片刻',
+    'low_quality': '人脸质量不足，请调整位置或光线', 'collecting': '请缓慢左右转头，保持脸在画面内',
+    'sample_added': '正在采集，请轻微左右转头', 'duplicate_sample': '请轻微改变角度，不要一直保持同一姿势',
+    'sample_too_soon': '正在采集', 'angle_jump': '转头过快，请回到上一个角度后慢慢转动',
+    'target_lost': '目标丢失，录入已取消',
+    'track_changed': '目标发生变化，录入已取消', 'face_changed': '人脸不一致，录入已取消',
+    'timeout': '录入超时，请重试', 'saved': '录入完成', 'cancelled': '录入已取消',
+    'camera_stale': '画面已过期，已清除锁定', 'unlocked': '已取消锁定与录入',
+    'face_clipped': '人脸未完整入镜，请调整站位',
+    'face_not_frontal': '请正对镜头', 'face_tilted': '请保持头部竖直',
+    'face_landmarks_unreliable': '人脸角度或遮挡影响识别，请正对镜头',
+    'face_low_confidence': '人脸检测不够确定，请调整位置或光线',
+    'face_outside_body': '人脸与人体框对应不确定，请稍微错开站位',
+    'face_blurry': '人脸画面模糊，请保持片刻',
+    'body_crop_too_small': '人体框太小，请适当靠近镜头',
+    'multiple_faces_in_body': '同一人体框内有多张脸，请分开站立',
+    'face_assignment_ambiguous': '多人重叠，无法确定人脸归属',
+    'weak_body_detection': '正在续接较弱的人体检测，暂不核对人脸',
+}
+
+
+class TrackingEventRecorder:
+    """Bounded geometry-only diagnostics; recording must never change tracking.
+
+    An explicit path is required so device-free tests can use a temporary
+    directory.  No image, face feature, profile UUID, name or speaker metadata
+    is admitted into the ring or the event file.
+    """
+
+    MAX_FRAMES = 160
+    MAX_WINDOW_S = 20.
+    MIN_WRITE_INTERVAL_S = 1.
+
+    def __init__(self, path):
+        self.path = Path(path)
+        self.frames = deque(maxlen=self.MAX_FRAMES)
+        self.last_written_mono = None
+        self.last_attempt_mono = None
+        self.last_error = None
+
+    @staticmethod
+    def _number(value):
+        try:
+            value = float(value)
+        except (TypeError, ValueError, OverflowError):
+            return None
+        return value if math.isfinite(value) else None
+
+    @staticmethod
+    def _id(value):
+        return value if type(value) is int and value >= 0 else None
+
+    @classmethod
+    def _ids(cls, values):
+        return sorted({value for value in values if cls._id(value) is not None})[:32]
+
+    @classmethod
+    def _geometry(cls, row, track=False, retained=False):
+        box = row.get('bbox')
+        try:
+            box = [cls._number(value) for value in box] if len(box) == 4 else None
+        except (TypeError, ValueError):
+            box = None
+        if box is not None and any(value is None for value in box):
+            box = None
+        result = dict(bbox=box, confidence=cls._number(row.get('confidence')),
+                      depth_m=cls._number(row.get('depth_m')))
+        if track:
+            strength = row.get('observation_strength')
+            result.update(track_id=cls._id(row.get('track_id')),
+                          observation_strength=strength if strength in ('strong', 'weak') else None,
+                          association_ambiguous=row.get('association_ambiguous') is True,
+                          visible=row.get('visible') is not False,
+                          last_strong_seen=cls._number(row.get('last_strong_seen')))
+            if retained:
+                result['last_seen'] = cls._number(row.get('last_seen'))
+                result['last_reliable_body_seen'] = cls._number(row.get('last_reliable_body_seen'))
+                result['body_continuity_streak'] = cls._number(row.get('body_continuity_streak'))
+                evidence = row.get('continuity_evidence')
+                result['continuity_evidence'] = evidence if evidence in (
+                    'strong_detection', 'stable_moderate_observation', 'bounded_weak_observation') else None
+        return result
+
+    @classmethod
+    def snapshot(cls, tracks, selected_track_id, retained_ids, retained_tracks=()):
+        return dict(tracks=[cls._geometry(row, track=True) for row in tracks[:8]],
+                    selected_track_id=cls._id(selected_track_id),
+                    retained_ids=cls._ids(retained_ids),
+                    retained_tracks=[cls._geometry(row, track=True, retained=True)
+                                     for row in list(retained_tracks)[:32]])
+
+    @staticmethod
+    def invalidation_reason(message):
+        if str(message).startswith('本帧处理延迟'):
+            return 'processing_delay'
+        if str(message).startswith('相机画面已过期'):
+            return 'camera_stale'
+        if str(message).startswith('相机或识别暂不可用'):
+            return 'camera_or_inference_error'
+        return 'unspecified_reset'
+
+    @classmethod
+    def _events(cls, events):
+        result = dict(retired_ids=cls._ids(events.get('retired_ids', [])),
+                      ambiguous=events.get('ambiguous') is True,
+                      selection_cleared=events.get('selection_cleared') is True,
+                      selected_hold=None)
+        hold = events.get('selected_hold')
+        if isinstance(hold, dict):
+            result['selected_hold'] = dict(track_id=cls._id(hold.get('track_id')),
+                last_seen=cls._number(hold.get('last_seen')),
+                missing_age_s=cls._number(hold.get('missing_age_s')),
+                reason=hold.get('reason') if hold.get('reason') in (
+                    'temporary_detection_miss', 'occlusion_reid_wait') else None)
+            if hold.get('reason') == 'occlusion_reid_wait':
+                result['selected_hold']['deadline_mono'] = cls._number(hold.get('deadline_mono'))
+        reason = events.get('hold_diagnostic_reason')
+        result['hold_diagnostic_reason'] = reason if reason == 'weak_runner_up_waiting_for_strong' else None
+        reason = events.get('occlusion_reid_reason')
+        result['occlusion_reid_reason'] = reason if reason in (
+            'waiting_for_observation', 'embedding_unavailable', 'confirming_same_candidate',
+            'recovered', 'occlusion_deadline_expired', 'appearance_template_expired',
+            'candidate_has_other_track', 'appearance_mismatch', 'recovery_candidates_ambiguous',
+            'other_tracks_ambiguous', 'manual_selection_changed', 'manual_unlock') else None
+        return result
+
+    def record(self, *, detections, before, after, events, frame_mono,
+               processed_mono, outcome='ok', invalidation_reason=None):
+        """Append one frame and atomically save only on bounded loss/ID events."""
+        now = self._number(processed_mono)
+        if now is None:
+            return False
+        if self.frames and now < self.frames[-1]['processed_mono']:
+            self.frames.clear()
+            self.last_written_mono = None
+            self.last_attempt_mono = None
+        # Re-sanitize snapshots so even a direct caller cannot inject identity
+        # metadata through these public diagnostic helpers.
+        before = self.snapshot(before.get('tracks', []), before.get('selected_track_id'),
+                               before.get('retained_ids', []), before.get('retained_tracks', []))
+        after = self.snapshot(after.get('tracks', []), after.get('selected_track_id'),
+                              after.get('retained_ids', []), after.get('retained_tracks', []))
+        event = self._events(events)
+        self.frames.append(dict(frame_mono=self._number(frame_mono), processed_mono=now,
+            outcome=outcome if outcome in ('ok', 'rejected', 'error', 'invalidated') else 'error',
+            invalidation_reason=invalidation_reason if invalidation_reason in (
+                'camera_stale', 'processing_delay', 'camera_or_inference_error', 'unspecified_reset') else None,
+            detections=[self._geometry(row) for row in detections[:8]],
+            before=before, after=after, events=event))
+        while self.frames and now-self.frames[0]['processed_mono'] > self.MAX_WINDOW_S:
+            self.frames.popleft()
+        old_visible = self._ids(row['track_id'] for row in before['tracks'])
+        new_visible = self._ids(row['track_id'] for row in after['tracks'])
+        old_ids, new_ids = set(before['retained_ids']), set(after['retained_ids'])
+        reasons = []
+        if before['selected_track_id'] is not None and after['selected_track_id'] is None:
+            reasons.append('selected_cleared')
+        if set(old_visible)-set(new_visible) and set(new_visible)-set(old_visible):
+            reasons.append('visible_id_changed')
+        if old_ids-new_ids or set(event['retired_ids']) & (old_ids | set(old_visible)):
+            reasons.append('track_retired')
+        if not reasons:
+            return False
+        general_due = (self.last_attempt_mono is None or
+                       now-self.last_attempt_mono >= self.MIN_WRITE_INTERVAL_S)
+        selected_loss = 'selected_cleared' in reasons
+        if not general_due and not selected_loss:
+            return False
+        payload = dict(schema_version=1, max_frames=self.MAX_FRAMES,
+                       max_window_s=self.MAX_WINDOW_S,
+                       trigger=dict(processed_mono=now, reasons=reasons,
+                                    selected_before=before['selected_track_id'],
+                                    selected_after=after['selected_track_id']),
+                       frames=list(self.frames))
+        # Keep the latest selected-target loss independently of noisy,
+        # unselected retirements.  This copy must survive general throttling,
+        # without resetting or extending the general file's one-second timer.
+        selected_saved = (self._persist(payload, self.path.with_name('tracking_selected_loss.json'))
+                          if selected_loss else False)
+        general_saved = False
+        if general_due:
+            self.last_attempt_mono = now
+            general_saved = self._persist(payload, self.path)
+            if general_saved:
+                self.last_written_mono = now
+        return selected_saved or general_saved
+
+    def _persist(self, payload, destination):
+        temporary = None
+        try:
+            destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            descriptor, name = tempfile.mkstemp(prefix='.tracking_event-', suffix='.tmp', dir=destination.parent)
+            temporary = Path(name)
+            with os.fdopen(descriptor, 'w', encoding='utf-8') as stream:
+                os.chmod(temporary, 0o600)
+                json.dump(payload, stream, ensure_ascii=False, allow_nan=False, separators=(',', ':'))
+                stream.flush()
+            os.replace(temporary, destination)
+            self.last_error = None
+            return True
+        except Exception as exc:
+            # Disk-full, permissions and other diagnostic failures must not
+            # cancel a healthy person track or enrollment session.
+            self.last_error = type(exc).__name__
+            return False
+        finally:
+            if temporary is not None:
+                try:
+                    temporary.unlink(missing_ok=True)
+                except OSError:
+                    pass
+
+
+def linked_identity(identity, profiles):
+    """Annotate a fresh face match; this never creates a speaker assertion."""
+    result = dict(identity or {})
+    for key in ('person_id', 'voice_profile_id', 'voice_name'):
+        result.pop(key, None)
+    profile = profiles.get(result.get('id')) if result.get('state') == 'matched' else None
+    link = profile.get('voice_link', {}) if profile else {}
+    if (link.get('state') == 'linked' and link.get('profile_id') and
+            profile.get('person_id') == link['profile_id']):
+        result.update(person_id=link['profile_id'], voice_profile_id=link['profile_id'],
+                      voice_name=link.get('name'))
+    return result
+
+
+class Monitor:
+    def __init__(self):
+        self.lock = threading.RLock()
+        self.store = IdentityStore(DATA / 'people.sqlite3')
+        self.recognizer = IdentityRecognizer(self.store)
+        # Guided enrollment needs time for the user to perform each prompted
+        # pose; avoid accepting several frames before the instruction changes.
+        self.enrollment = EnrollmentManager(self.store, target=12, min_interval_s=1.0)
+        self.tracker = ConservativeTracker(occlusion_reid=True)
+        self.target_session = TargetSession()
+        # Keep an enrolled follower parked while its face is briefly out of
+        # view; a fresh two-frame face match is still required to resume.
+        self.face_reacquire = FaceReacquire(window_s=20.0)
+        self.last_face_reacquired = None
+        self.tracking_recorder = TrackingEventRecorder(DATA / 'tracking_event.json')
+        self.tracks = []
+        self.face_recognition_enabled = os.getenv('NX_FACE_ENABLED', '1') == '1'
+        self.faces = {}
+        self.recent_face_confirmed = {}
+        self.jpeg = None
+        self.face_frame_width = 640
+        self.face_frame_height = 480
+        self.frame_at = None
+        self.frame_mono = None
+        self.error = None
+        self.loading = True
+        self.fps = 0
+        self.inference_s = None
+        self.enrollment_start = None
+        self.models = None
+        self.appearance_ready = False
+        self.appearance_error = None
+        self.appearance_s = None
+        self.person_detector = dict(requested=os.getenv('NX_PERSON_DETECTOR', 'yolo').lower(),
+                                    active=None, fallback_reason=None, monitor_only=True)
+        self.camera_source = os.getenv('NX_PEOPLE_CAMERA', 'orbbec').lower()
+        self.metric_depth_available = self.camera_source == 'orbbec'
+        self.full_fov_people = False
+        self.dual_view_ready = False
+        self.generation = 0
+        self.peak_memory = 0
+        threading.Thread(target=self.run, daemon=True).start()
+
+    def status(self, include_frame=True):
+        with self.lock:
+            profiles = [dict(p, samples=p['sample_count']) for p in self.store.list_profiles()]
+            by_id = {p['id']: p for p in profiles}
+            # Database reads precede the freshness check so their latency cannot
+            # make an expired frame look newly observed.
+            self.expire_locked()
+            now = time.monotonic()
+            age = None if self.frame_mono is None else max(0, now-self.frame_mono)
+            stale = age is None or age > 1.0
+            waiting_for_frame = age is not None and 1.0 < age <= CAMERA_RETAIN_S
+            tracks = [] if stale else [dict(row, selected=row['track_id'] == self.tracker.selected_track_id,
+                                           identity=linked_identity(row.get('identity'), by_id))
+                                        for row in self.tracks]
+            enrollment = self.enrollment.status()
+            enrollment['message'] = REASONS.get(enrollment.get('reason'), '等待清晰的人脸画面')
+            if waiting_for_frame:
+                # Never present the old body as visible, but preserve its
+                # identity briefly so a single late camera frame does not
+                # force the user to select it again. Motion sees age > .9 and
+                # must publish zero until a new frame passes all checks.
+                target = self.target_session.status()
+                if target['active']:
+                    target.update(state='waiting_detection', reason='camera_stale_pause',
+                                  visible=False, face_currently_matched=False,
+                                  current_face_verified=False)
+            else:
+                target = self.target_session.update(tracks, self.tracker.selected_track_id,
+                                                    now, fresh=not stale, valid_profiles=by_id,
+                                                    hold=self.tracker.last_events.get('selected_hold'))
+            proof = self.last_face_reacquired
+            recovery = (dict(track_id=proof['track_id'], profile_id=proof['profile_id'],
+                             age_s=round(now-proof['at'], 3))
+                        if proof and not stale and 0 <= now-proof['at'] <= 2.0 and
+                        target['active'] and target['track_id'] == proof['track_id'] and
+                        target['profile_id'] == proof['profile_id'] else None)
+            return dict(active=True, mode='monitor', motion_enabled=False, loading=self.loading,
+                        frame_at=self.frame_at, camera_age=age, frame_width=640, frame_height=480,
+                        face_frame_width=getattr(self, 'face_frame_width', 640),
+                        face_frame_height=getattr(self, 'face_frame_height', 480),
+                        frame_jpeg_base64=(base64.b64encode(self.jpeg).decode('ascii')
+                                           if include_frame and not stale and self.jpeg else None),
+                        fps=round(self.fps, 2), inference_s=self.inference_s,
+                        tracks=tracks, profiles=profiles,
+                        face_sample_limit=getattr(self.store, 'max_samples', 60),
+                        enrollment=enrollment, target_session=target,
+                        face_reacquire=self.face_reacquire.status(now),
+                        face_reacquire_proof=recovery,
+                        selected_track_id=None if stale else self.tracker.selected_track_id,
+                        error=self.error, memory=memory(), peak_memory_gib=round(self.peak_memory, 3),
+                        camera_mount='front_60cm', camera_source=getattr(self, 'camera_source', 'orbbec'),
+                        metric_depth_available=self.metric_depth_available,
+                        full_fov_people=self.full_fov_people,
+                        dual_view_ready=self.dual_view_ready,
+                        tracker='bounded_two_threshold_iou_depth_monitor_only',
+                        tracking_diagnostics=self.tracker.last_events,
+                        appearance_reid=dict(ready=getattr(self, 'appearance_ready', False),
+                            engine='osnet_x0_25_cpu', max_wait_s=8,
+                            face_anchor=self.tracker.face_appearance_status(),
+                            selected_recovery_ready=not stale and self.tracker.recovery_ready(
+                                self.tracker.selected_track_id, now),
+                            inference_s=getattr(self, 'appearance_s', None),
+                            error=getattr(self, 'appearance_error', None)),
+                        person_detector=dict(getattr(self, 'person_detector', {})),
+                        face_recognition=dict(enabled=self.face_recognition_enabled,
+                            loaded=self.models is not None and self.models[2] is not None))
+
+    def expire_locked(self):
+        if self.frame_mono is not None and time.monotonic()-self.frame_mono > CAMERA_RETAIN_S:
+            self.invalidate('相机画面已过期，已清除锁定')
+
+    def invalidate(self, message, diagnostic_detections=None, diagnostic_frame_mono=None):
+        with self.lock:
+            if (self.frame_mono is None and not self.tracks and
+                    self.tracker.selected_track_id is None and self.error == message):
+                return
+            recorder = getattr(self, 'tracking_recorder', None)
+            before = None
+            if recorder is not None:
+                try:
+                    before = recorder.snapshot(self.tracks, self.tracker.selected_track_id,
+                                               self.tracker._tracks.keys(), self.tracker._tracks.values())
+                except Exception:
+                    pass
+            self.generation += 1
+            self.error = message
+            self.tracks = []
+            self.faces.clear()
+            self.recent_face_confirmed.clear()
+            self.tracker.reset()
+            self.target_session.reset('camera_stale')
+            self.face_reacquire.cancel()
+            self.last_face_reacquired = None
+            self.recognizer.prune([])
+            if self.enrollment.status()['active']:
+                self.enrollment.cancel('camera_stale')
+            if recorder is not None and before is not None:
+                try:
+                    recorder.record(detections=diagnostic_detections or [], before=before,
+                        after=recorder.snapshot([], None, []),
+                        events=dict(retired_ids=before['retained_ids'],
+                                    selection_cleared=before['selected_track_id'] is not None),
+                        frame_mono=self.frame_mono if diagnostic_frame_mono is None else diagnostic_frame_mono,
+                        processed_mono=time.monotonic(),
+                        outcome='invalidated', invalidation_reason=recorder.invalidation_reason(message))
+                except Exception:
+                    pass
+            # One gap needs one reset. Repeated status polls during a stalled
+            # camera frame must not repeatedly clear and record the same loss.
+            self.frame_mono = None
+            self.frame_at = None
+            self.jpeg = None
+
+    def maybe_finish_enrollment(self, examined, tracks, frame_mono):
+        """Auto-save only while the enrolled person has a clear face this frame."""
+        enrollment = self.enrollment.status()
+        if not enrollment['active']:
+            return
+        ident = enrollment['track_id']
+        row = next((item for item in tracks if item['track_id'] == ident), None)
+        face_at, face = examined.get(ident, (0, {}))
+        now = time.monotonic()
+        if (ident != self.tracker.selected_track_id or row is None or
+                row.get('association_ambiguous') or row.get('observation_strength') == 'weak' or not face.get('accepted') or not face.get('enrollment_eligible', True) or
+                not 0 <= now - face_at <= .7 or not 0 <= now - frame_mono <= .7):
+            return
+        if (enrollment['samples'] >= enrollment['target'] or
+                (enrollment.get('mode') != 'supplement' and
+                 enrollment['samples'] >= enrollment['required'] and
+                 self.enrollment_start is not None and now-self.enrollment_start > 15)):
+            self.enrollment.finish()
+
+    def process_observations(self, detections, image, jpeg, stamp, mono, faces,
+                             appearance_embeddings=None, face_image=None):
+        """Commit tracker, face results, image and target continuity atomically."""
+        with self.lock:
+            # A fresh incoming image does not fill a gap in camera evidence.
+            # Enforce the same expiry as status/commands even when no client
+            # polled during the gap, before a tracker can recover an old ID.
+            self.expire_locked()
+            recorder = getattr(self, 'tracking_recorder', None)
+            before = None
+            if recorder is not None:
+                try:
+                    before = recorder.snapshot(self.tracks, self.tracker.selected_track_id,
+                                               self.tracker._tracks.keys(), self.tracker._tracks.values())
+                except Exception:
+                    pass
+            outcome = 'error'
+            try:
+                result = self._process_observations(detections, image, jpeg, stamp, mono,
+                                                    faces, appearance_embeddings, face_image)
+                outcome = 'ok' if result and self.frame_mono == mono else 'rejected'
+                return result
+            finally:
+                if recorder is not None and before is not None:
+                    try:
+                        recorder.record(detections=detections, before=before,
+                            after=recorder.snapshot(self.tracks, self.tracker.selected_track_id,
+                                                    self.tracker._tracks.keys(), self.tracker._tracks.values()),
+                            events=self.tracker.last_events, frame_mono=mono,
+                            processed_mono=time.monotonic(), outcome=outcome)
+                    except Exception:
+                        # Diagnostics are observational and never affect the
+                        # processing result, including unexpected schema data.
+                        pass
+
+    def _process_observations(self, detections, image, jpeg, stamp, mono, faces,
+                              appearance_embeddings=None, face_image=None):
+        """State mutation stays under the same reentrant frame-commit lock."""
+        with self.lock:
+            if appearance_embeddings is None:
+                tracks = self.tracker.update(detections, time.monotonic())
+            else:
+                tracks = self.tracker.update(detections, time.monotonic(),
+                                             appearance_embeddings=appearance_embeddings)
+            ids = {row['track_id'] for row in tracks}
+            self.recognizer.prune(ids)
+            self.recent_face_confirmed = {ident: proof for ident, proof in self.recent_face_confirmed.items()
+                                          if ident in ids and time.monotonic() - proof[1] <= 5.0}
+            self.enrollment.on_tracks(ids)
+            self.faces = {k:v for k,v in self.faces.items() if k in ids}
+            selected = self.tracker.selected_track_id
+            generation = self.generation
+            # At most two faces per cycle; selected target has priority.
+            eligible_faces = [row for row in tracks if faces is not None and row.get('observation_strength') != 'weak'
+                              and time.monotonic()-self.faces.get(row['track_id'],(0,{}))[0] >= .18]
+            ordered = sorted(eligible_faces, key=lambda row: (row['track_id'] != selected,
+                               self.faces.get(row['track_id'],(0,{}))[0]))[:2]
+            examined = {}
+            face_source = face_image if face_image is not None else image
+            scale_x = face_source.shape[1] / image.shape[1] if face_image is not None else 1.
+            scale_y = face_source.shape[0] / image.shape[0] if face_image is not None else 1.
+            for row in ordered:
+                face_box = ([round(row['bbox'][0] * scale_x), round(row['bbox'][1] * scale_y),
+                             round(row['bbox'][2] * scale_x), round(row['bbox'][3] * scale_y)]
+                            if face_image is not None else row['bbox'])
+                result = faces.face_features(face_source, face_box)
+                if face_image is not None and result.get('face_bbox') is not None:
+                    result['face_bbox'] = [round(value / (scale_x if i % 2 == 0 else scale_y))
+                                           for i, value in enumerate(result['face_bbox'])]
+                examined[row['track_id']] = (time.monotonic(), result)
+            # A face inside overlapping bodies cannot identify both people.
+            face_items = [(ident, result) for ident, (_, result) in examined.items()
+                          if result.get('accepted') and result.get('face_bbox') is not None]
+            for i, (ida, a) in enumerate(face_items):
+                for idb, b in face_items[:i]:
+                    aa, bb = np.asarray(a['face_bbox']), np.asarray(b['face_bbox'])
+                    area = np.prod(np.maximum(0, np.minimum(aa[2:],bb[2:])-np.maximum(aa[:2],bb[:2])))
+                    union = np.prod(aa[2:]-aa[:2])+np.prod(bb[2:]-bb[:2])-area
+                    if area/max(1,union) > .3:
+                        for item in (a,b):
+                            item.update(accepted=False, embedding=None, reason='face_assignment_ambiguous')
+            if generation != self.generation:
+                return False
+            if time.monotonic()-mono > 1.0:
+                self.invalidate('本帧处理延迟过高，未使用过期身份数据', diagnostic_detections=detections,
+                                diagnostic_frame_mono=mono)
+                return False
+            self.faces.update(examined)
+            for row in tracks:
+                ident = row['track_id']
+                face_at, face = self.faces.get(ident, (0, {}))
+                if row.get('observation_strength') == 'weak':
+                    self.faces.pop(ident, None)
+                    face_at = 0
+                    face = {'reason': 'weak_body_detection'}
+                identity = {'state': 'no_face', 'id': None, 'name': None,
+                            'similarity': None, 'reason': face.get('reason', 'no_face')}
+                fresh_face = time.monotonic()-face_at <= .7
+                if ident in examined and face.get('accepted') and not row.get('association_ambiguous'):
+                    distant = face.get('upscaled') is True
+                    match = self.recognizer.observe(ident, face['embedding'],
+                                                    confirmations=5 if distant else None,
+                                                    min_similarity=.60 if distant else None)
+                    identity.update(state='matched' if match['known'] else 'unknown',
+                                    id=match['profile_id'], name=match['name'],
+                                    similarity=match['similarity'], reason=match['reason'])
+                    face['_identity'] = identity.copy()
+                    enrollment = self.enrollment.status()
+                    if enrollment['active'] and enrollment['track_id'] == ident and face.get('enrollment_eligible', True):
+                        self.enrollment.add_sample(ident, face['embedding'], quality_ok=True)
+                elif fresh_face and face.get('accepted') and not row.get('association_ambiguous'):
+                    identity = dict(face.get('_identity', identity))
+                elif row.get('association_ambiguous') or row.get('observation_strength') == 'weak':
+                    # A weak or ambiguous body association cannot carry face
+                    # confirmation safely. A plain missing face, however, is
+                    # common when the person turns away for one frame. Keep
+                    # the pending evidence only until IdentityRecognizer's
+                    # short max_gap_s expires; a conflicting face clears it.
+                    self.recognizer.forget(ident)
+                if faces is None:
+                    identity['reason'] = 'face_disabled'
+                row['identity'] = identity
+                if (ident == self.tracker.selected_track_id and ident in examined and
+                        face.get('accepted') and identity.get('state') == 'matched' and
+                        appearance_embeddings):
+                    source_index = self.tracker._input_index(row, detections)
+                    if source_index is not None:
+                        self.tracker.anchor_face_appearance(
+                            ident, appearance_embeddings.get(source_index), time.monotonic())
+                if identity.get('state') == 'matched' and identity.get('id'):
+                    self.recent_face_confirmed[ident] = (identity['id'], time.monotonic())
+                elif (identity.get('state') == 'matched' and not identity.get('id')):
+                    self.recent_face_confirmed.pop(ident, None)
+                proof = self.recent_face_confirmed.get(ident)
+                row['recent_face_profile_id'] = proof[0] if proof else None
+                row['recent_face_age_s'] = round(time.monotonic() - proof[1], 2) if proof else None
+                row['face_quality'] = face.get('quality', 0) if fresh_face else 0
+                row['face_bbox'] = face.get('face_bbox') if fresh_face else None
+                row['face_source_px'] = face.get('source_face_px') if fresh_face else None
+                row['face_upscaled'] = face.get('upscaled') is True if fresh_face else False
+                row['face_enrollment_eligible'] = face.get('enrollment_eligible') is True if fresh_face else False
+                row['last_seen'] = stamp
+            self.maybe_finish_enrollment(examined, tracks, mono)
+            if time.monotonic()-mono > 1.0:
+                self.invalidate('本帧处理延迟过高，已清除锁定', diagnostic_detections=detections,
+                                diagnostic_frame_mono=mono)
+            else:
+                self.tracks = tracks
+                self.jpeg, self.frame_at, self.frame_mono = jpeg, stamp, mono
+                if face_source is not None:
+                    self.face_frame_height, self.face_frame_width = face_source.shape[:2]
+                self.error = None
+                # Update on every frame, including a missed detection,
+                # so polling cannot bridge a lost or crossing target.
+                now = time.monotonic()
+                prior_target = self.target_session.status()
+                current_target = self.target_session.update(tracks, self.tracker.selected_track_id,
+                                             now, hold=self.tracker.last_events.get('selected_hold'))
+                lost_reason = self.tracker.last_events.get('occlusion_reid_reason')
+                if (prior_target['active'] and not current_target['active'] and
+                        prior_target['profile_id'] and self.tracker.selected_track_id is None and
+                        (self.tracker.last_events.get('selection_cleared') or
+                         lost_reason in ('appearance_mismatch', 'occlusion_deadline_expired')) and
+                        not self.enrollment.status()['active']):
+                    self.face_reacquire.start(prior_target['profile_id'], now)
+                elif current_target['active']:
+                    self.face_reacquire.cancel()
+                recovered_id = self.face_reacquire.observe(tracks, examined.keys(), now)
+                if recovered_id is not None and self.tracker.selected_track_id is None:
+                    profiles = {p['id']: p for p in self.store.list_profiles()}
+                    self.tracker.select(recovered_id)
+                    self.target_session.reset('face_reacquired')
+                    recovered = self.target_session.update(tracks, recovered_id, now, valid_profiles=profiles)
+                    if recovered['active'] and recovered['current_face_verified']:
+                        self.last_face_reacquired = dict(track_id=recovered_id,
+                            profile_id=recovered['profile_id'], at=now)
+        return True
+
+    def run(self):
+        try:
+            cv2.setNumThreads(1)
+            if self.camera_source not in ('orbbec', 'stereo_uvc', 'stereo_shared'):
+                raise ValueError('NX_PEOPLE_CAMERA 来源无效')
+            requested = self.person_detector['requested']
+            if requested not in ('peoplenet', 'yolo', 'bpu', 'bpu_seg', 'yolo26_seg'):
+                raise ValueError('NX_PERSON_DETECTOR 只能是 peoplenet、yolo、bpu、bpu_seg 或 yolo26_seg')
+            if requested == 'yolo26_seg':
+                from yolo26_person import Yolo26PersonSegmenter, MODEL, HBM
+                from s100_bpu_person_pose import BpuPersonPose
+                detector = Yolo26PersonSegmenter(confidence=.35)
+                pose_model = BpuPersonPose(confidence=.35)
+                self.person_detector.update(active='yolo26m_objv1_seg_bpu', confidence=.35,
+                                            model=MODEL, runtime_model=str(HBM), classes=['person'], depth_method='seg_valid_arithmetic_mean')
+            elif requested == 'bpu_seg':
+                from s100_bpu_person_seg import BpuPersonSegmenter
+                from s100_bpu_person_pose import BpuPersonPose
+                detector = BpuPersonSegmenter(confidence=.35)
+                pose_model = BpuPersonPose(confidence=.35)
+                self.person_detector.update(active='s100_bpu_yolo11n_seg', confidence=.35)
+            elif requested == 'bpu':
+                from s100_bpu_person import BpuPersonDetector
+                detector = BpuPersonDetector(confidence=.35)
+                pose_model = None
+                self.person_detector.update(active='s100_bpu_yolo11n', confidence=.35)
+            elif requested == 'yolo':
+                detector = PersonDetector('/home/sunrise/luka_ws/perception/spatial_memory/models/yolo11n-fp16.engine', confidence=.18)
+                pose_model = None
+                self.person_detector.update(active='yolo11n_fp16', confidence=.18)
+            else:
+                pose_model = None
+                try:
+                    detector = PeopleNetDetector(ROOT/'models/resnet34_peoplenet_fp16.engine', confidence=.40)
+                    self.person_detector.update(active='nvidia_peoplenet_fp16', confidence=.40)
+                except Exception as exc:
+                    detector = PersonDetector('/home/sunrise/luka_ws/perception/spatial_memory/models/yolo11n-fp16.engine', confidence=.18)
+                    self.person_detector.update(active='yolo11n_fp16_fallback', confidence=.18,
+                                                fallback_reason='PeopleNet 未加载，已回退 YOLO：' + type(exc).__name__)
+            faces = (FaceFeatures(ROOT/'models/yunet.onnx', ROOT/'models/sface.onnx')
+                     if self.face_recognition_enabled else None)
+            appearance = None
+            try:
+                appearance = BodyAppearance(ROOT/'models/osnet_x0_25_msmt17.onnx')
+                self.appearance_ready = True
+            except Exception as exc:
+                self.appearance_error = '人体外观模型未就绪：' + type(exc).__name__
+            self.models = detector, pose_model, faces, appearance
+            mapper_path = os.getenv('NX_STEREO_CALIBRATION_JSON')
+            stereo_mapper = (StereoBoxMapper(mapper_path)
+                             if self.camera_source == 'stereo_shared' and mapper_path else None)
+            self.dual_view_ready = stereo_mapper is not None
+            self.loading = False
+            last_frame = None
+            frame_no = 0
+            last_frame_error = None
+            last_frame_error_logged = 0.
+            stereo = StereoUvc() if self.camera_source == 'stereo_uvc' else None
+            while True:
+                cycle = time.monotonic()
+                used = memory()['system_used_gib']
+                self.peak_memory = max(self.peak_memory, used)
+                if used > BUDGET_GIB:
+                    raise RuntimeError('设备内存接近上限，已停止人体识别并释放模型')
+                try:
+                    zoom_image = None
+                    if stereo is not None:
+                        sample = stereo.newest(after=last_frame)
+                        if sample is None:
+                            time.sleep(.01)
+                            continue
+                        stamp, mono, face_image = sample
+                        image = cv2.resize(face_image, (640, 480), interpolation=cv2.INTER_AREA)
+                        ok, encoded = cv2.imencode('.jpg', image, [cv2.IMWRITE_JPEG_QUALITY, 82])
+                        if not ok:
+                            raise ValueError('双目左目画面编码失败')
+                        jpeg = encoded.tobytes()
+                        depth = None
+                        skew = None
+                        intrinsics = None
+                        metric_depth_available = False
+                        full_fov_people = False
+                    else:
+                        raw, _ = fetch('/api/people/camera?zoom=0', timeout=.8)
+                        with np.load(io.BytesIO(raw), allow_pickle=False) as packet:
+                            stamp, mono = float(packet['stamp']), float(packet['monotonic_stamp'])
+                            if not 0 <= time.monotonic()-mono <= .9:
+                                raise ValueError('相机数据过期')
+                            if mono == last_frame:
+                                time.sleep(.03)
+                                continue
+                            image = cv2.imdecode(packet['jpeg'], cv2.IMREAD_COLOR)
+                            high_jpeg = packet['face_jpeg'] if 'face_jpeg' in packet else None
+                            face_image = (cv2.imdecode(high_jpeg, cv2.IMREAD_COLOR)
+                                          if high_jpeg is not None and high_jpeg.size else None)
+                            zoom_jpeg = packet['zoom_jpeg'] if 'zoom_jpeg' in packet else None
+                            zoom_image = (cv2.imdecode(zoom_jpeg, cv2.IMREAD_COLOR)
+                                          if os.getenv('NX_PEOPLE_ZOOM_DETECTION', '1') == '1'
+                                          and zoom_jpeg is not None and zoom_jpeg.size else None)
+                            depth = packet['depth'].astype(np.float32) / 1000
+                            metric_depth_available = (bool(packet['metric_depth_available'])
+                                if 'metric_depth_available' in packet else self.camera_source == 'orbbec')
+                            full_fov_people = (bool(packet['full_fov_people'])
+                                if 'full_fov_people' in packet else False)
+                            values, skew = packet['intrinsic'].copy(), float(packet['skew'])
+                            intrinsics = dict(zip(('fx','fy','cx','cy'), map(float, values)))
+                            if requested == 'yolo26_seg' and 'distortion' in packet:
+                                intrinsics['distortion'] = packet['distortion'].tolist()
+                            jpeg = packet['jpeg'].tobytes()
+                    if not 0 <= time.monotonic()-mono <= .9:
+                        raise ValueError('相机数据过期')
+                    if image is None or image.shape[:2] != (480, 640):
+                        raise ValueError('彩色画面无效')
+                    expected_faces = ((960, 1280),) if self.camera_source == 'orbbec' else (
+                        ((600, 800),) if self.camera_source == 'stereo_uvc' else
+                        ((600, 800), (960, 1280)))
+                    if face_image is not None and face_image.shape[:2] not in expected_faces:
+                        raise ValueError('高清人脸画面尺寸无效')
+                    last_frame = mono
+                    with self.lock:
+                        self.metric_depth_available = metric_depth_available
+                        self.full_fov_people = full_fov_people
+                    detections = detector.detect(image)
+                    poses = []
+                    if pose_model is not None:
+                        try:
+                            poses = pose_model.detect(image)
+                        except Exception as exc:
+                            # Pose loss must not erase the visible person or
+                            # accidentally reuse a previous distance.
+                            print('person_pose_error', type(exc).__name__, flush=True)
+                    if (requested not in ('bpu_seg', 'yolo26_seg') and full_fov_people and
+                            stereo_mapper is not None and zoom_image is not None):
+                        if zoom_image.shape[:2] != image.shape[:2]:
+                            raise ValueError('中央检测画面尺寸与宽视角不一致')
+                        zoom_detections = detector.detect(zoom_image)
+                        detections = combine_full_and_zoom(detections, zoom_detections,
+                            stereo_mapper, lambda box: faces.count_faces(image, box) if faces is not None else None)
+                    for index, row in enumerate(detections):
+                        # Bearing from the full left image remains observable
+                        # when stereo has no disparity at this body. It is a
+                        # direction only and never implies a valid distance.
+                        box = row['bbox']
+                        bbox_bearing = (math.atan2((box[0]+box[2])/2-intrinsics['cx'],
+                                                   intrinsics['fx'])
+                                        if intrinsics and intrinsics['fx'] > 0 else None)
+                        if not metric_depth_available:
+                            geo = {'valid': False, 'reason': 'stereo_not_calibrated'}
+                        elif requested == 'yolo26_seg':
+                            geo = seg_mean_geometry(depth, row['bbox'], row.get('person_mask'), intrinsics, skew)
+                        elif self.camera_source == 'orbbec':
+                            geo = estimate_person_geometry(depth, row['bbox'], intrinsics, skew_s=skew)
+                        elif pose_model is not None:
+                            geo = person_visual_geometry(depth, detections, poses, index,
+                                                         intrinsics, skew_s=skew)
+                        else:
+                            geo = estimate_stereo_person_geometry(depth, row['bbox'], intrinsics, skew_s=skew)
+                        row.pop('person_mask', None)
+                        row.update(depth_m=geo.get('distance_m') if geo['valid'] else None,
+                                   distance_m=geo.get('distance_m') if geo['valid'] else None,
+                                   depth_valid=geo['valid'], depth_reason=geo['reason'],
+                                   depth_diagnostic=geo.get('diagnostic'),
+                                   depth_source=geo.get('source'),
+                                   bearing_rad=geo.get('bearing_rad') if geo['valid'] else None,
+                                   bbox_bearing_rad=bbox_bearing)
+                    with self.lock:
+                        prior_selected = next((row.get('bbox') for row in self.tracks
+                            if row.get('track_id') == self.tracker.selected_track_id and
+                            row.get('observation_strength') == 'strong' and
+                            not row.get('association_ambiguous')), None)
+                        if self.frame_mono is None or time.monotonic() - self.frame_mono > .5:
+                            prior_selected = None
+                    detections = consolidate_people(detections, lambda box: faces.count_faces(image, box) if faces is not None else None,
+                                                    frame_size=(image.shape[1], image.shape[0]),
+                                                    preferred_bbox=prior_selected)
+                    embeddings = {}
+                    appearance_started = time.monotonic()
+                    if appearance is not None:
+                        # Bound CPU work. A nearby strong candidate without a
+                        # descriptor vetoes recovery in the tracker; truncation
+                        # never silently makes a crowded frame look unique.
+                        candidates = sorted((i for i, row in enumerate(detections)
+                            if row['confidence'] >= self.tracker.strong_confidence),
+                            key=lambda i: detections[i]['confidence'], reverse=True)[:4]
+                        try:
+                            for i in candidates:
+                                descriptor = appearance.embed(image, detections[i]['bbox'])
+                                if descriptor is not None:
+                                    embeddings[i] = descriptor
+                            self.appearance_error = None
+                        except Exception as exc:
+                            embeddings.clear()
+                            self.appearance_error = '人体外观核对暂不可用：' + type(exc).__name__
+                    self.appearance_s = round(time.monotonic()-appearance_started, 4)
+                    self.process_observations(detections, image, jpeg, stamp, mono, faces,
+                                              appearance_embeddings=embeddings,
+                                              face_image=face_image)
+                    with self.lock:
+                        elapsed = time.monotonic()-cycle
+                        self.inference_s = round(elapsed, 3)
+                        self.fps = .8*self.fps + .2/max(CYCLE_S, elapsed) if self.fps else 1/max(CYCLE_S, elapsed)
+                    frame_no += 1
+                except Exception as exc:
+                    if ((isinstance(exc, ValueError) and str(exc) in
+                         ('相机数据过期', '相机画面已过期')) or
+                            (isinstance(exc, HTTPError) and exc.code == 503) or
+                            isinstance(exc, TimeoutError)):
+                        with self.lock:
+                            self.expire_locked()
+                        time.sleep(.02)
+                        continue
+                    reason = '相机或识别暂不可用：' + str(exc)[:100]
+                    now = time.monotonic()
+                    if reason != last_frame_error or now-last_frame_error_logged >= 5.:
+                        print('people_frame_error', type(exc).__name__, str(exc)[:160], flush=True)
+                        last_frame_error, last_frame_error_logged = reason, now
+                    self.invalidate(reason)
+                time.sleep(max(.01, CYCLE_S-(time.monotonic()-cycle)))
+        except Exception as exc:
+            (DATA/'worker_failure.json').write_text(json.dumps({'error': str(exc)}, ensure_ascii=False))
+            print('people_worker_failed', str(exc), flush=True)
+            os._exit(2)
+
+    def command(self, action, data):
+        with self.lock:
+            self.expire_locked()
+            if not self.face_recognition_enabled and action in ('enroll', 'supplement', 'finish-enrollment'):
+                raise ValueError('CPU 人脸功能已关闭，不能进行人脸录入')
+            if action == 'unlock':
+                self.tracker.clear_selection()
+                self.target_session.reset('unlocked')
+                self.face_reacquire.cancel()
+                self.last_face_reacquired = None
+                self.enrollment.cancel('unlocked')
+            elif action == 'cancel-enrollment':
+                self.enrollment.cancel()
+            elif action == 'delete-profile':
+                self.face_reacquire.cancel()
+                self.last_face_reacquired = None
+                if not self.store.delete_profile(str(data.get('id', ''))):
+                    raise ValueError('档案不存在')
+                self.recognizer.prune([])
+                self.faces.clear()
+                self.recent_face_confirmed.clear()
+                for row in self.tracks:
+                    row['identity'] = {'state':'unknown', 'id':None, 'name':None}
+                self.target_session.update(self.tracks, self.tracker.selected_track_id,
+                                           time.monotonic(), valid_profiles={
+                                               p['id']: p for p in self.store.list_profiles()},
+                                           hold=self.tracker.last_events.get('selected_hold'))
+            elif action == 'finish-enrollment':
+                enrollment = self.enrollment.status()
+                if not enrollment['active'] or enrollment.get('track_id') != self.tracker.selected_track_id:
+                    raise ValueError('录入目标已丢失，请重新选择并录入')
+                row = next((r for r in self.tracks if r['track_id'] == enrollment['track_id']), None)
+                if row is None or row.get('association_ambiguous') or row.get('observation_strength') == 'weak':
+                    raise ValueError('请等待清晰、完整的当前目标，再完成录入')
+                face_at, face = self.faces.get(enrollment['track_id'], (0,{}))
+                if time.monotonic()-face_at > .7 or not face.get('accepted') or not face.get('enrollment_eligible', True):
+                    raise ValueError('请让登记对象的清晰人脸回到画面中，再完成录入')
+                self.enrollment.finish()
+            else:
+                if self.frame_mono is None or time.monotonic()-self.frame_mono > .9:
+                    raise ValueError('画面已过期，请等待实时画面')
+                ident = int(data.get('track_id', -1))
+                row = next((x for x in self.tracks if x['track_id'] == ident), None)
+                if row is None or row.get('association_ambiguous'):
+                    raise ValueError('目标已丢失或多人重叠，请重新选择')
+                if row.get('observation_strength') == 'weak':
+                    raise ValueError('正在续接较弱的人体检测，请等待清晰目标后再操作')
+                if action == 'select':
+                    self.face_reacquire.cancel()
+                    self.last_face_reacquired = None
+                    profiles = {p['id']: p for p in self.store.list_profiles()}
+                    now = time.monotonic()
+                    if not 0 <= now-self.frame_mono <= .9:
+                        self.invalidate('相机画面已过期，已清除锁定')
+                        raise ValueError('画面已过期，请重新选择目标')
+                    if self.tracker.selected_track_id != ident:
+                        self.enrollment.cancel('track_changed')
+                    self.tracker.select(ident)
+                    self.target_session.reset('selected')
+                    self.target_session.update(self.tracks, ident, now, valid_profiles=profiles)
+                elif action == 'confirm-target':
+                    if self.enrollment.status()['active']:
+                        raise ValueError('请先结束人脸录入，再指定观察目标身份')
+                    if self.tracker.selected_track_id != ident:
+                        raise ValueError('请先点选画面中的本人，再确认目标身份')
+                    profiles = {p['id']: p for p in self.store.list_profiles()}
+                    now = time.monotonic()
+                    if not 0 <= now-self.frame_mono <= .9:
+                        self.invalidate('相机画面已过期，已清除锁定')
+                        raise ValueError('画面已过期，请重新选择目标')
+                    target = self.target_session.update(self.tracks, ident, now,
+                                                        valid_profiles=profiles)
+                    profile_id = str(data.get('profile_id', ''))
+                    if profile_id not in profiles:
+                        raise ValueError('登记身份不存在，请刷新后选择')
+                    if not target['active']:
+                        raise ValueError('目标连续性已中断，请重新点选人体')
+                    if target['profile_id'] and target['profile_id'] != profile_id:
+                        raise ValueError('当前人脸或目标身份与指定人员不一致，请重新核对')
+                    self.target_session.confirm(ident, profile_id, profiles, now)
+                    return {'ok': True, 'message': '已按你的选择确认本次目标；保持人体锁定，不控制车轮',
+                            'target_session': self.target_session.status()}
+                elif action in ('enroll', 'supplement'):
+                    if self.tracker.selected_track_id != ident:
+                        raise ValueError('请先选中需要登记的人')
+                    face_at, face = self.faces.get(ident, (0, {}))
+                    if time.monotonic()-face_at > .7 or not face.get('accepted') or not face.get('enrollment_eligible', True):
+                        raise ValueError('未看到清晰人脸，请调整取景后再录入')
+                    if action == 'supplement':
+                        profile_id = str(data.get('profile_id', ''))
+                        profile = next((p for p in self.store.list_profiles() if p['id'] == profile_id), None)
+                        identity = row.get('identity') or {}
+                        proof = self.recent_face_confirmed.get(ident)
+                        if (profile is None or proof is None or proof[0] != profile_id or
+                                time.monotonic() - proof[1] > 5.0 or
+                                (identity.get('state') == 'matched' and identity.get('id') != profile_id)):
+                            raise ValueError('请先让已登记本人在画面中通过人脸确认，再补录侧脸')
+                        self.enrollment.start(profile['name'], ident, profile_id=profile_id)
+                    else:
+                        if len(self.store.list_profiles()) >= 32:
+                            raise ValueError('当前最多保存32个人物档案')
+                        self.enrollment.start(data.get('name',''), ident)
+                    self.enrollment_start = time.monotonic()
+                else:
+                    raise ValueError('当前版本不支持运动控制')
+            return {'ok': True, 'enrollment': self.enrollment.status()}
+
+
+class Handler(BaseHTTPRequestHandler):
+    monitor = None
+
+    def log_message(self, *_):
+        pass
+
+    def reply(self, value, code=200, mime='application/json'):
+        raw = value if isinstance(value, bytes) else json.dumps(value, ensure_ascii=False).encode()
+        self.send_response(code)
+        self.send_header('Content-Type', mime)
+        self.send_header('Content-Length', str(len(raw)))
+        self.send_header('Cache-Control', 'no-store')
+        self.end_headers()
+        try:
+            self.wfile.write(raw)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+
+    def do_GET(self):
+        path = urlparse(self.path).path
+        if path == '/api/people/status':
+            return self.reply(self.monitor.status())
+        if path == '/api/people/follow-state':
+            status = self.monitor.status(include_frame=False)
+            return self.reply({key: status.get(key) for key in
+                               ('active', 'loading', 'error', 'camera_age', 'frame_at',
+                                'frame_width', 'frame_height', 'tracks', 'profiles', 'target_session',
+                                'selected_track_id', 'metric_depth_available', 'enrollment',
+                                'face_reacquire', 'face_reacquire_proof')})
+        if path == '/api/people/frame.jpg':
+            with self.monitor.lock:
+                if self.monitor.jpeg and self.monitor.frame_mono is not None and time.monotonic()-self.monitor.frame_mono < 1.0:
+                    return self.reply(self.monitor.jpeg, mime='image/jpeg')
+            return self.reply({'error':'实时画面暂不可用'}, 503)
+        self.reply({'error':'接口不存在'}, 404)
+
+    def do_POST(self):
+        try:
+            size = int(self.headers.get('Content-Length', 0))
+            if not 0 <= size <= 4096:
+                raise ValueError('请求过大')
+            data = json.loads(self.rfile.read(size) or '{}')
+            if not isinstance(data, dict):
+                raise ValueError('请求格式无效')
+            path = urlparse(self.path).path
+            if not path.startswith('/api/people/'):
+                return self.reply({'error':'接口不存在'}, 404)
+            return self.reply(self.monitor.command(path.removeprefix('/api/people/'), data))
+        except (ValueError, TypeError) as exc:
+            self.reply({'error':str(exc)}, 400)
+
+
+if __name__ == '__main__':
+    Handler.monitor = Monitor()
+    ThreadingHTTPServer(('127.0.0.1', 8098), Handler).serve_forever()

@@ -1,0 +1,214 @@
+#!/usr/bin/env python3
+"""NX software-only dashboard: existing map UI, local camera, dry-run commands."""
+import urllib.request
+from pathlib import Path
+from object_pose_context import ObjectPoseContext
+from nx_function_start import FunctionStart
+from nx_relocalization import Relocalization
+from nx_patrol_mission import PatrolMission
+from nx_product_api import ProductAPI
+from sensor_msgs.msg import Joy
+from urllib.parse import urlparse, parse_qs
+import math, time, threading
+from rclpy.action import ActionClient
+from nav2_msgs.action import NavigateToPose
+from std_srvs.srv import SetBool
+import lightweight_robot_dashboard as app
+
+original_post = app.Handler.do_POST
+original_get = app.Handler.do_GET
+original_init = app.DashboardNode.__init__
+function_start=FunctionStart()
+
+def init(self):
+    original_init(self)
+    # NX uses encoder odometry; the migrated UI's /odometry/filtered is absent.
+    self.create_subscription(app.Odometry,'/wheel/odom',self.on_odom,app.qos_profile_sensor_data)
+    candidates = [m for m in self.available_maps if m['floor_id'] == 'floor_4']
+    if candidates:
+        self.select_map(candidates[0]['id'])
+    self.nx_nav=ActionClient(self,NavigateToPose,'/navigate_to_pose')
+    self.nx_gate=self.create_client(SetBool,'/nx/navigation_enable')
+    self.nx_handle=None
+    self.nx_nav_outcome=None
+    self.nx_status='导航待命'
+    self.nx_lock=threading.Lock()
+    self.nx_voice_pub=self.create_publisher(app.String,'/voice/control',10)
+    self.object_pose_context=ObjectPoseContext(self)
+    self.relocalization=Relocalization(self,lambda:gate(self,False))
+    self.nx_speech_pub=self.create_publisher(app.String,'/llm_status',10)
+    self.patrol_mission=PatrolMission(self,lambda ident:send_nav(self,ident),lambda:gate(self,False),lambda text:self.nx_speech_pub.publish(app.String(data='speech: '+text)))
+    self.product=ProductAPI(self)
+    self.product.navigate=lambda target:send_nav(self,None,target)
+    self.patrol_mission.send_observation=lambda target:send_nav(self,None,target)
+    self.create_subscription(Joy,'/joy',lambda msg:self.patrol_mission.cancel.set() if len(msg.buttons)>4 and msg.buttons[4] and self.patrol_mission.active() else None,app.qos_profile_sensor_data)
+
+def wait(future,seconds=4):
+    end=time.monotonic()+seconds
+    while not future.done() and time.monotonic()<end:time.sleep(.02)
+    if not future.done():raise ValueError('导航服务响应超时')
+    return future.result()
+
+def gate(self,enabled):
+    if not self.nx_gate.service_is_ready():raise ValueError('底盘导航开关未就绪')
+    result=wait(self.nx_gate.call_async(SetBool.Request(data=enabled)))
+    if not result.success:raise ValueError(result.message)
+
+def send_nav(self,poi_id,observation=None):
+    with self.nx_lock:
+        if self.relocalization.running:raise ValueError('正在重定位，请完成并核对位置后再导航')
+        if self.current_floor_id!='floor_4':raise ValueError('当前导航仅开放四楼地图')
+        if self.nx_handle is not None:raise ValueError('请先停止当前导航再选择新航点')
+        match=observation or next((w for w in self.load_waypoints() if w['id']==str(poi_id)),None)
+        if match is None:raise ValueError('四楼没有该航点')
+        if not self.nx_nav.server_is_ready():raise ValueError('导航服务未就绪')
+        goal=NavigateToPose.Goal();goal.pose.header.frame_id='map'
+        goal.pose.header.stamp=self.get_clock().now().to_msg()
+        goal.pose.pose.position.x=float(match['x']);goal.pose.pose.position.y=float(match['y'])
+        yaw=float(match.get('yaw',0));goal.pose.pose.orientation.z=math.sin(yaw/2);goal.pose.pose.orientation.w=math.cos(yaw/2)
+        gate(self,True)
+        self.nx_nav_outcome=None
+        try:
+            handle=wait(self.nx_nav.send_goal_async(goal))
+            if not handle.accepted:raise ValueError('导航服务拒绝目标')
+            self.nx_handle=handle;self.nx_status='正在前往 '+match['display_name']
+            def finished(f):
+                result=f.result();self.nx_handle=None
+                self.nx_nav_outcome=result.status
+                self.nx_status={4:'已到达',5:'已取消',6:'导航失败，请检查路线或定位'}.get(result.status,'导航已结束')
+                self.nx_gate.call_async(SetBool.Request(data=False))
+            handle.get_result_async().add_done_callback(finished)
+        except Exception:
+            gate(self,False);raise
+        return dict(ok=True,id=match['id'],display_name=match['display_name'],floor_id='floor_4')
+
+def post(self):
+    if self.path.startswith("/product/api/"):return app.NODE.product.handle(self,post=True)
+    path=self.path.split('?',1)[0]
+    if path in ('/api/patrol/start','/api/patrol/stop','/api/patrol/find','/api/patrol/bring'):
+        try:
+            origin=self.headers.get('Origin')
+            if origin and urlparse(origin).netloc!=self.headers.get('Host'):raise ValueError('请从小车前端操作')
+            size=int(self.headers.get('Content-Length',0))
+            if not 0<=size<=4096:raise ValueError('请求过大')
+            body=app.json.loads(self.rfile.read(size) or b'{}')
+            mission=app.NODE.patrol_mission
+            result=mission.start() if path.endswith('/start') else mission.stop() if path.endswith('/stop') else mission.bring(body) if path.endswith('/bring') else mission.search(body.get('query'))
+            self.send_json(result,202)
+        except Exception as exc:self.send_json({'error':str(exc)},400)
+        return
+    if path in ('/api/nav','/api/localization/manual','/api/localization/auto','/api/map/select') and app.NODE.patrol_mission.active():
+        self.send_json({'error':'请先停止当前巡航或查找任务'},409);return
+    if self.path.split('?',1)[0] in ('/api/localization/manual','/api/localization/auto'):
+        try:
+            origin=self.headers.get('Origin')
+            if origin and urlparse(origin).netloc!=self.headers.get('Host'):raise ValueError('请从小车网页操作')
+            size=int(self.headers.get('Content-Length',0))
+            if size<0 or size>4096:raise ValueError('请求过大')
+            body=app.json.loads(self.rfile.read(size) or b'{}')
+            mode=self.path.split('?',1)[0].rsplit('/',1)[-1]
+            with app.NODE.nx_lock:
+                result=app.NODE.relocalization.start(mode,body)
+                app.NODE.nx_status='定位操作中，导航已停止'
+            self.send_json(result,202)
+        except (ValueError,KeyError,TypeError) as exc:self.send_json({'error':str(exc)},400)
+        except Exception as exc:self.send_json({'error':str(exc)},503)
+        return
+    if self.path.split('?',1)[0] in ('/api/functions/start','/api/functions/restart'):
+        origin=self.headers.get('Origin')
+        if origin and urlparse(origin).netloc!=self.headers.get('Host'):
+            self.send_json({'error':'请从小车网页点击启动'},403);return
+        restart=self.path.split('?',1)[0]=='/api/functions/restart'
+        if restart:app.NODE.nx_status='正在重启功能，完成后请检查定位并重新选择目标'
+        self.send_json(function_start.start(restart=restart),202);return
+    if self.path.split('?',1)[0] in ('/api/voice/wake','/api/voice/test'):
+        if app.NODE.nx_voice_pub.get_subscription_count()==0:
+            self.send_json({'error':'语音服务未就绪，请在 NX 执行 nx-voice start，等待约 35 秒'},503)
+        else:
+            command='test_wake' if self.path.split('?',1)[0]=='/api/voice/test' else 'wake'
+            app.NODE.nx_voice_pub.publish(app.String(data=command))
+            self.send_json({'ok':True,'message':'已请求唤醒，请等“在呢”后说话'})
+        return
+    if self.path.split('?',1)[0]=='/api/nav/stop':
+        try:
+            app.NODE.patrol_mission.stop()
+            app.NODE.nx_status='已停止导航'
+            self.send_json({'ok':True})
+        except Exception as exc:self.send_json({'error':str(exc)},503)
+        return
+    # Only display selection and the isolated dry-run command topic are writable.
+    if self.path.split('?', 1)[0] not in ('/api/map/select', '/api/llm', '/api/nav'):
+        self.send_json({'error': '软件验证模式：运动、跟随和配置修改暂未开放'}, 409)
+        return
+    original_post(self)
+
+def get(self):
+    if self.path.split("?",1)[0]=="/api/sonar/status":return self.send_json(app.NODE.product.sonar_status())
+    if self.path.startswith("/product/api/"):return app.NODE.product.handle(self)
+    if self.path.split("?",1)[0] in ("/product","/product/"):
+        return self.send_bytes(Path(__file__).with_name("nx_product.html").read_bytes(),"text/html; charset=utf-8")
+    if self.path.split('?',1)[0] in ('/user','/user/'):
+        self.send_bytes(Path(__file__).with_name('nx_product.html').read_bytes(),'text/html; charset=utf-8');return
+    if self.path.split('?',1)[0]=='/api/patrol/target':
+        try:self.send_json(dict(ok=True,target=app.NODE.patrol_mission.target()))
+        except Exception as exc:self.send_json({'ok':False,'error':str(exc)})
+        return
+    if self.path.split('?',1)[0]=='/api/patrol/status':
+        self.send_json(app.NODE.patrol_mission.snapshot());return
+    if self.path.split('?',1)[0]=='/api/localization/status':
+        self.send_json(app.NODE.relocalization.snapshot());return
+    if self.path.split('?',1)[0]=='/api/functions/status':
+        self.send_json(function_start.status());return
+    if self.path.split('?',1)[0]=='/api/object/pose':
+        try:
+            stamp=float(parse_qs(urlparse(self.path).query)['stamp'][0])
+            if not math.isfinite(stamp):raise ValueError('invalid timestamp')
+            self.send_json(app.NODE.object_pose_context.snapshot(stamp))
+        except (KeyError,ValueError) as exc:self.send_json({'error':str(exc)},400)
+        return
+    if self.path.split('?',1)[0]=='/help':
+        try:self.send_bytes(Path('/home/nvidia/ddsm_car_ws/NX使用说明.html').read_bytes(),'text/html; charset=utf-8')
+        except OSError:self.send_json({'error':'说明文件暂不可用'},503)
+        return
+    if self.path.split('?',1)[0]=='/api/nav/state':
+        self.send_json({'status':app.NODE.nx_status});return
+    if self.path.split('?', 1)[0] == '/camera.jpg':
+        try:
+            with urllib.request.urlopen('http://127.0.0.1:8091/snapshot.jpg', timeout=3) as response:
+                self.send_bytes(response.read(), 'image/jpeg')
+        except Exception:
+            self.send_json({'error': '相机暂不可用'}, 503)
+        return
+    original_get(self)
+
+app.DashboardNode.__init__ = init
+app.DashboardNode.send_nav=send_nav
+app.DashboardNode.publish_navigation_mode = lambda self: None
+app.Handler.do_POST = post
+app.Handler.do_GET = get
+app.HTML = app.HTML.replace('Robot Monitor', 'NX 小车导航')
+app.HTML = app.HTML.replace('<header>', '<div style="padding:8px;background:#edf5ff"><button id="nxVoiceTest">测试语音识别（不执行动作）</button> 测试会保存本次语音片段用于排查，普通对话不新增音频保存。<span id="nxVoiceTestStatus"></span></div><header>',1)
+app.HTML = app.HTML.replace('</body>', '''<script>document.getElementById('nxVoiceTest').onclick=async()=>{const s=document.getElementById('nxVoiceTestStatus');try{const r=await fetch('/api/voice/test',{method:'POST'});const d=await r.json();s.textContent=r.ok?'等“在呢”后说一句话；本次只回读识别内容。':d.error;}catch(e){s.textContent='连接失败';}};</script></body>''')
+app.HTML = app.HTML.replace('<header>', '<section style="padding:14px;background:#eaf5ef"><button id="nxStartAll" style="font-size:18px;padding:10px 20px;background:#176b45;color:white;border:0;border-radius:6px">一键启动小车功能</button> <button id="nxRestartAll" style="font-size:18px;padding:10px;background:#ae4c16;color:white;border:0;border-radius:6px">一键重启功能</button> <span id="nxStartState">正在读取服务状态…</span><div id="nxServices" style="margin-top:8px"></div><small>启动不会自动行驶；重启功能会先停车、结束录像并重载服务，不是整机重启。重启后需检查定位并重新选择导航目标。</small></section><header>',1)
+app.HTML = app.HTML.replace('</body>', '''<script>
+async function nxRefreshServices(){const b=document.getElementById('nxStartAll'),s=document.getElementById('nxStartState'),list=document.getElementById('nxServices');try{const r=await fetch('/api/functions/status');if(!r.ok)throw Error('状态读取失败');const d=await r.json();b.disabled=d.running;document.getElementById('nxRestartAll').disabled=d.running;b.textContent=d.running?'正在启动…':'一键启动小车功能';s.textContent=(d.all_active?'全部服务进程已启动。 ':'')+(d.error||d.message);list.replaceChildren();for(const x of d.services){const e=document.createElement('span');e.style.cssText='display:inline-block;margin:3px 12px 3px 0';e.textContent=(x.state==='active'?'● ':'○ ')+x.name+'：'+({'active':'运行中','inactive':'未启动','activating':'启动中','failed':'启动失败'}[x.state]||x.state);e.style.color=x.state==='active'?'#176b45':'#a43b16';list.append(e);}}catch(e){s.textContent='无法连接服务状态，请检查小车网络';}}
+document.getElementById('nxStartAll').onclick=async()=>{const b=document.getElementById('nxStartAll');b.disabled=true;try{const r=await fetch('/api/functions/start',{method:'POST'});const d=await r.json();if(!r.ok)throw Error(d.error);document.getElementById('nxStartState').textContent=d.message;}catch(e){document.getElementById('nxStartState').textContent=e.message;}finally{await nxRefreshServices();}};
+document.getElementById('nxRestartAll').onclick=async()=>{document.getElementById('nxRestartAll').disabled=true;document.getElementById('nxStartAll').disabled=true;try{const r=await fetch('/api/functions/restart',{method:'POST'});const d=await r.json();if(!r.ok)throw Error(d.error);document.getElementById('nxStartState').textContent=d.message;}catch(e){document.getElementById('nxStartState').textContent=e.message;}finally{await nxRefreshServices();}};
+nxRefreshServices();setInterval(nxRefreshServices,3000);
+</script></body>''')
+app.HTML = app.HTML.replace('<header>', '<div style="padding:10px;background:#edf5ff"><button id="nxVoiceWake">手动唤醒露卡</button> <a href="/help" target="_blank">小车使用说明与全部指令</a> <span id="nxVoiceHint">语音已开放：去厨房／卧室／浴室、停止导航；先唤醒露卡。</span></div><header>', 1)
+app.HTML = app.HTML.replace('</body>', '<script>document.getElementById("nxVoiceWake").onclick=async()=>{const e=document.getElementById("nxVoiceHint");try{const r=await fetch("/api/voice/wake",{method:"POST"});const s=await r.json();e.textContent=s.error||s.message;}catch(err){e.textContent="连接失败，请检查小车网络";}};</script></body>')
+app.HTML = app.HTML.replace('<header>', '<div style="padding:10px;background:#174834;color:white">四楼导航已开放（前进最高 0.4 米/秒）：在航点列表点击前往；按 LB 接管会取消导航。网页文字框仍为解析测试；语音固定导航短句已开放。<button id="nxNavStop" style="background:#bc2525;color:white">停止导航</button> <span id="nxNavStatus"></span> <a style="color:white" href="http://192.168.3.251:8091/view">视觉与巡航录像</a> <a style="color:white" href="http://192.168.3.251:8091/memory">物体观察记忆</a></div><header>', 1)
+app.HTML = app.HTML.replace('</body>', '<script>document.getElementById("nxNavStop").onclick=async()=>{const r=await fetch("/api/nav/stop",{method:"POST"});if(!r.ok)alert((await r.json()).error);};setInterval(async()=>{try{const s=await(await fetch("/api/nav/state")).json();document.getElementById("nxNavStatus").textContent=s.status;}catch(e){document.getElementById("nxNavStatus").textContent="连接中断，请刷新并检查小车";}},1000);</script></body>')
+app.HTML = app.HTML.replace('</body>', '<script>for(const id of ["followStart","followStop","navMode","shutdown"]){const e=document.getElementById(id);if(e){e.disabled=true;e.title="软件验证模式未开放";}}</script></body>')
+
+app.HTML=app.HTML.replace('const e=log[i],d=document.createElement', "const e=log[i];if((e.msg||'').startsWith('chat_sentence:'))continue;const d=document.createElement")
+app.HTML=app.HTML.replace('<header>',Path(__file__).with_name('nx_localization_ui.html').read_text(encoding='utf-8')+'<header>',1)
+app.HTML=app.HTML.replace('<header>',Path(__file__).with_name('nx_patrol_ui.html').read_text(encoding='utf-8')+'<header>',1)
+app.HTML=app.HTML.replace('<header>','<header><a href="/user" style="padding:8px 14px;border:1px solid #718f5b;border-radius:8px;color:#c3ef8b">打开用户页面 ↗</a>',1)
+app.HTML=app.HTML.replace('</body>','<script>'+Path(__file__).with_name('nx_localization_ui.js').read_text(encoding='utf-8')+'</script></body>')
+
+app.HTML=app.HTML.replace('<header>',Path(__file__).with_name('nx_sonar_ui.html').read_text(encoding='utf-8')+'<header>',1)
+
+if __name__ == '__main__':
+    app.main()

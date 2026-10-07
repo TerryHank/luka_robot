@@ -1,0 +1,43 @@
+route_id: waterplus_route
+loop: false
+waypoints:
+- id: wp_001
+  name: wp_001
+  x: 0.5793659138309009
+  y: 1.0708411386434638
+  yaw: 0.024654157328866038
+  type: stop
+  dwell_sec: 0.0
+  final_approach: false
+- id: wp_002
+  name: wp_002
+  x: -2.1030356097688148
+  y: -0.6258260783786835
+  yaw: 1.5543606255302054
+  type: stop
+  dwell_sec: 0.0
+  final_approach: false
+- id: wp_003
+  name: wp_003
+  x: -1.230294817150984
+  y: -2.685498576690152
+  yaw: 1.929623425440331
+  type: stop
+  dwell_sec: 0.0
+  final_approach: false
+- id: wp_004
+  name: wp_004
+  x: -3.9898759296457915
+  y: 0.18848035027951093
+  yaw: -0.12885046763532726
+  type: stop
+  dwell_sec: 0.0
+  final_approach: false
+- id: wp_005
+  name: wp_005
+  x: -1.230294817150984
+  y: -2.685498576690152
+  yaw: 1.9298033797395049
+  type: stop
+  dwell_sec: 0.0
+  final_approach: false

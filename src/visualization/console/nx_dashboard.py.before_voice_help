@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+"""NX software-only dashboard: existing map UI, local camera, dry-run commands."""
+import urllib.request
+import math, time, threading
+from rclpy.action import ActionClient
+from nav2_msgs.action import NavigateToPose
+from std_srvs.srv import SetBool
+import lightweight_robot_dashboard as app
+
+original_post = app.Handler.do_POST
+original_get = app.Handler.do_GET
+original_init = app.DashboardNode.__init__
+
+def init(self):
+    original_init(self)
+    candidates = [m for m in self.available_maps if m['floor_id'] == 'floor_4']
+    if candidates:
+        self.select_map(candidates[0]['id'])
+    self.nx_nav=ActionClient(self,NavigateToPose,'/navigate_to_pose')
+    self.nx_gate=self.create_client(SetBool,'/nx/navigation_enable')
+    self.nx_handle=None
+    self.nx_status='导航待命'
+    self.nx_lock=threading.Lock()
+
+def wait(future,seconds=4):
+    end=time.monotonic()+seconds
+    while not future.done() and time.monotonic()<end:time.sleep(.02)
+    if not future.done():raise ValueError('导航服务响应超时')
+    return future.result()
+
+def gate(self,enabled):
+    if not self.nx_gate.service_is_ready():raise ValueError('底盘导航开关未就绪')
+    result=wait(self.nx_gate.call_async(SetBool.Request(data=enabled)))
+    if not result.success:raise ValueError(result.message)
+
+def send_nav(self,poi_id):
+    with self.nx_lock:
+        if self.current_floor_id!='floor_4':raise ValueError('当前导航仅开放四楼地图')
+        if self.nx_handle is not None:raise ValueError('请先停止当前导航再选择新航点')
+        match=next((w for w in self.load_waypoints() if w['id']==str(poi_id)),None)
+        if match is None:raise ValueError('四楼没有该航点')
+        if not self.nx_nav.server_is_ready():raise ValueError('导航服务未就绪')
+        goal=NavigateToPose.Goal();goal.pose.header.frame_id='map'
+        goal.pose.header.stamp=self.get_clock().now().to_msg()
+        goal.pose.pose.position.x=float(match['x']);goal.pose.pose.position.y=float(match['y'])
+        yaw=float(match.get('yaw',0));goal.pose.pose.orientation.z=math.sin(yaw/2);goal.pose.pose.orientation.w=math.cos(yaw/2)
+        gate(self,True)
+        try:
+            handle=wait(self.nx_nav.send_goal_async(goal))
+            if not handle.accepted:raise ValueError('导航服务拒绝目标')
+            self.nx_handle=handle;self.nx_status='正在前往 '+match['display_name']
+            def finished(f):
+                result=f.result();self.nx_handle=None
+                self.nx_status={4:'已到达',5:'已取消',6:'导航失败，请检查路线或定位'}.get(result.status,'导航已结束')
+                self.nx_gate.call_async(SetBool.Request(data=False))
+            handle.get_result_async().add_done_callback(finished)
+        except Exception:
+            gate(self,False);raise
+        return dict(ok=True,id=match['id'],display_name=match['display_name'],floor_id='floor_4')
+
+def post(self):
+    if self.path.split('?',1)[0]=='/api/nav/stop':
+        try:
+            with app.NODE.nx_lock:
+                gate(app.NODE,False)
+                app.NODE.nx_status='已停止导航'
+            self.send_json({'ok':True})
+        except Exception as exc:self.send_json({'error':str(exc)},503)
+        return
+    # Only display selection and the isolated dry-run command topic are writable.
+    if self.path.split('?', 1)[0] not in ('/api/map/select', '/api/llm', '/api/nav'):
+        self.send_json({'error': '软件验证模式：运动、跟随和配置修改暂未开放'}, 409)
+        return
+    original_post(self)
+
+def get(self):
+    if self.path.split('?',1)[0]=='/api/nav/state':
+        self.send_json({'status':app.NODE.nx_status});return
+    if self.path.split('?', 1)[0] == '/camera.jpg':
+        try:
+            with urllib.request.urlopen('http://127.0.0.1:8091/snapshot.jpg', timeout=3) as response:
+                self.send_bytes(response.read(), 'image/jpeg')
+        except Exception:
+            self.send_json({'error': '相机暂不可用'}, 503)
+        return
+    original_get(self)
+
+app.DashboardNode.__init__ = init
+app.DashboardNode.send_nav=send_nav
+app.DashboardNode.publish_navigation_mode = lambda self: None
+app.Handler.do_POST = post
+app.Handler.do_GET = get
+app.HTML = app.HTML.replace('Robot Monitor', 'NX 小车导航')
+app.HTML = app.HTML.replace('<header>', '<div style="padding:10px;background:#174834;color:white">四楼导航已开放（前进最高 0.4 米/秒）：在航点列表点击前往；按 LB 接管会取消导航。中文指令仍为解析测试。<button id="nxNavStop" style="background:#bc2525;color:white">停止导航</button> <span id="nxNavStatus"></span> <a style="color:white" href="http://192.168.3.251:8091/view">视觉与巡航录像</a></div><header>', 1)
+app.HTML = app.HTML.replace('</body>', '<script>document.getElementById("nxNavStop").onclick=async()=>{const r=await fetch("/api/nav/stop",{method:"POST"});if(!r.ok)alert((await r.json()).error);};setInterval(async()=>{try{const s=await(await fetch("/api/nav/state")).json();document.getElementById("nxNavStatus").textContent=s.status;}catch(e){document.getElementById("nxNavStatus").textContent="连接中断，请刷新并检查小车";}},1000);</script></body>')
+app.HTML = app.HTML.replace('</body>', '<script>for(const id of ["followStart","followStop","navMode","shutdown"]){const e=document.getElementById(id);if(e){e.disabled=true;e.title="软件验证模式未开放";}}</script></body>')
+
+if __name__ == '__main__':
+    app.main()

@@ -1,0 +1,18 @@
+{
+  "exit_code": 1,
+  "files": [
+    "test_detection_cleanup.py",
+    "test_face_anchored_appearance.py",
+    "test_face_reacquire.py",
+    "test_identity_links.py",
+    "test_identity_tracking.py",
+    "test_occlusion_reid.py",
+    "test_stereo_box_mapper.py",
+    "test_stereo_geometry.py",
+    "test_target_occlusion.py",
+    "test_target_session.py",
+    "test_tracking_stages.py"
+  ],
+  "stdout": "................F....................................................... [ 41%]\n........................................................................ [ 82%]\n...............................                                          [100%]\n=================================== FAILURES ===================================\n______ FaceReacquireTests.test_ambiguous_or_weak_body_breaks_confirmation ______\n\nself = <test_face_reacquire.FaceReacquireTests testMethod=test_ambiguous_or_weak_body_breaks_confirmation>\n\n    def test_ambiguous_or_weak_body_breaks_confirmation(self):\n        pending = FaceReacquire()\n        pending.start('owner', 0.)\n        self.assertIsNone(pending.observe([person()], {3}, .1))\n        self.assertIsNone(pending.observe([person(), person(4)], {3, 4}, .2))\n        self.assertIsNone(pending.observe([person()], {3}, .3))\n        self.assertIsNone(pending.observe([person(strength='weak')], {3}, .4))\n        self.assertIsNone(pending.observe([person(score=.55)], {3}, .5))\n>       self.assertIsNone(pending.observe([person()], {3}, .6))\nE       AssertionError: 3 is not None\n\ntest_face_reacquire.py:35: AssertionError\n=========================== short test summary info ============================\nFAILED test_face_reacquire.py::FaceReacquireTests::test_ambiguous_or_weak_body_breaks_confirmation\n1 failed, 174 passed in 5.58s\n",
+  "stderr": ""
+}

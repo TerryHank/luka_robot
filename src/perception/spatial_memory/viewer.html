@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>相机实时预览</title>
+<style>body{margin:0;background:#111827;color:#eef2ff;font:16px system-ui;text-align:center}main{max-width:1000px;margin:auto;padding:20px}h1{font-size:24px}img{display:block;max-width:100%;max-height:72vh;margin:16px auto;border-radius:12px;background:#000}p{color:#cbd5e1}#status{color:#7dd3fc}</style>
+<main><h1>相机实时预览</h1><p>当前识别：YOLO · 自动刷新约 2 帧/秒</p><div id="status">正在连接相机…</div><img id="camera" alt="等待相机画面"><p>移动相机可观察识别框；旧记忆位置仅适用于原来的固定视角。</p></main>
+<script>
+const camera=document.getElementById('camera'),status=document.getElementById('status');
+async function update(){
+ try{const [pic,state]=await Promise.all([fetch('/snapshot.jpg?t='+Date.now(),{cache:'no-store'}),fetch('/health',{cache:'no-store'})]);
+ if(!pic.ok)throw Error('画面暂不可用');const health=await state.json();const url=URL.createObjectURL(await pic.blob());const old=camera.dataset.url;camera.src=url;camera.dataset.url=url;if(old)URL.revokeObjectURL(old);
+ status.textContent=health.ok?'画面在线 · '+new Date(health.last_frame_at*1000).toLocaleTimeString()+' · 检测到 '+health.detections+' 个物体':'相机画面已停止更新，正在重试…';
+ }catch(e){status.textContent='连接中断，正在重试…';}
+ setTimeout(update,500);
+}update();
+</script></html>

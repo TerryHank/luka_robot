@@ -1,0 +1,21 @@
+#nxWebTeleop{border-color:#3a6c70!important;background:#112933!important}
+#nxWebTeleop .wt-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+#nxWebTeleop h2{margin:0;color:#b9f8e8}
+#nxWebTeleop p{margin:4px 0;color:#a8bac5}
+#wtState{color:#f5d69e;font-size:14px}
+#nxWebTeleop .wt-controls{display:flex;gap:24px;align-items:center;flex-wrap:wrap;margin:16px 0}
+#nxWebTeleop .wt-sticks{display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap}
+#nxWebTeleop .wt-stick-group{display:flex;flex-direction:column;align-items:center;gap:8px;color:#d8fff1;font-weight:700}
+#nxWebTeleop .wt-stick-group small{font-size:11px;color:#a8bac5;font-weight:400;text-align:center}
+#nxWebTeleop .wt-stick{position:relative;width:168px;height:168px;border:2px solid #4b8795;border-radius:50%;background:radial-gradient(circle,#235161 0%,#163a48 65%,#102c39 100%);box-shadow:inset 0 0 0 12px #0d273477,0 10px 24px #06171f99;touch-action:none;user-select:none;cursor:grab}
+#nxWebTeleop .wt-stick.wt-held{border-color:#a0f6cc;box-shadow:inset 0 0 0 12px #0d273477,0 0 0 3px #a0f6cc55}
+#nxWebTeleop .wt-stick:active{cursor:grabbing}
+#nxWebTeleop .wt-cross{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,transparent calc(50% - 1px),#7eb1b244 50%,transparent calc(50% + 1px)),linear-gradient(0deg,transparent calc(50% - 1px),#7eb1b244 50%,transparent calc(50% + 1px));border-radius:50%}
+#nxWebTeleop .wt-thumb{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;border:2px solid #c0f4e5;background:radial-gradient(circle at 35% 30%,#6cb6a1,#327563);box-shadow:0 5px 13px #061b22a8;pointer-events:none}
+#nxWebTeleop.wt-offline .wt-stick{opacity:.4;cursor:not-allowed}
+#nxWebTeleop .wt-actions{display:flex;flex-direction:column;align-items:stretch;gap:10px}
+#wtGear{padding:14px 18px;background:#27556b;color:#e4f8ff;border:1px solid #5e9aaa;border-radius:12px;font-weight:700;cursor:pointer}
+#wtGear:disabled{opacity:.5;cursor:not-allowed}
+#wtStop{padding:16px 22px;background:#b32d33;color:white;border:0;border-radius:12px;font-weight:700;cursor:pointer}
+#nxWebTeleop .wt-foot{font-size:12px}
+@media(max-width:620px){#nxWebTeleop .wt-sticks{gap:14px;justify-content:center;width:100%}#nxWebTeleop .wt-stick{width:136px;height:136px}#nxWebTeleop .wt-stick-group{font-size:13px}#nxWebTeleop .wt-actions{width:100%;flex-direction:row}#nxWebTeleop .wt-actions button{flex:1}}

@@ -1,0 +1,8 @@
+[UCP]: log level = 3
+[UCP]: UCP version = 3.13.6
+[VP]: log level = 3
+[DNN]: log level = 3
+[HPL]: log level = 3
+[UCPT]: log level = 6
+[BPU][[BPU_MONITOR]][281473118564640][INFO]BPULib verison(2, 2, 15)[f21ee84]!
+[DNN]: 3.13.6_(4.7.5 HBRT)

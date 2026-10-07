@@ -1,0 +1,32 @@
+body.nc-ready{background:#0b1017;color:#dbe7f0;font:14px/1.5 system-ui,sans-serif}
+#nxConsole{max-width:1800px;margin:auto}#nxConsole *{box-sizing:border-box}
+.nc-top{display:flex;align-items:center;gap:20px;padding:14px 22px;background:#111b27;border-bottom:1px solid #2c3c4c;flex-wrap:wrap}
+.nc-brand{font-size:21px;font-weight:750;letter-spacing:3px;color:#86e2cb}.nc-brand small{font-size:13px;letter-spacing:1px;color:#98acbd;margin-left:12px}
+.nc-actions{display:flex;gap:8px;flex:1;flex-wrap:wrap}.nc-top a,#nxConsole a{color:#8cc9eb}
+#nxConsole .nc-actions button{font:13px system-ui!important;padding:8px 12px!important;border-radius:7px!important}
+.nc-tabs{display:flex;gap:6px;padding:10px 22px 0;border-bottom:1px solid #293a4a;overflow:auto}
+.nc-tabs button{white-space:nowrap;padding:11px 22px;border:0;border-bottom:3px solid transparent;border-radius:6px 6px 0 0;background:transparent;color:#9fb0c1}
+.nc-tabs button[aria-pressed=true]{background:#192a37;border-bottom-color:#72d7c0;color:#b3f6e5}
+.nc-status{display:flex;gap:24px;flex-wrap:wrap;padding:7px 22px;color:#9aafc1;font-size:12px;background:#101923;min-height:32px}
+.nc-content{padding:16px 22px}.nc-view[hidden]{display:none!important}.nc-view{min-width:0}
+.nc-view>section,.nc-view>div:not(main){background:#131f2b!important;color:#dbe7f0!important;border:1px solid #2c3c4c!important;border-radius:10px;margin:0 0 14px!important;padding:16px!important}
+#nxConsole h2{font-size:18px}#nxConsole p{margin:8px 0}#nxConsole button,#nxConsole input,#nxConsole select{font-family:inherit}
+#nxConsole details{border:1px solid #2c3c4c;border-radius:8px;margin:10px 0;background:#111b26}#nxConsole summary{cursor:pointer;padding:10px 12px;color:#b6ccdc;font-size:13px}#nxConsole details>.panel{border:0;margin:0}
+#nc-navigation>header{background:#131f2b;padding:10px 12px;border:1px solid #2c3c4c;border-radius:10px 10px 0 0;gap:10px}
+#nc-navigation>header strong,#nc-navigation>header>a,#shutdown{display:none}
+#nc-navigation main{height:calc(100vh - 260px);min-height:560px;grid-template-columns:minmax(0,1fr) 330px;border:1px solid #2c3c4c;border-radius:0 0 10px 10px;overflow:hidden}
+#nc-navigation aside{padding:12px;background:#101923}#nc-navigation aside>section{padding:12px!important;background:#142332!important;border:1px solid #2c3c4c!important;border-radius:8px}
+#nc-navigation .panel{padding:10px}.nc-view .llm-log{max-height:340px}
+#nc-voice,#nc-system,#nc-patrol{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+#nc-patrol>section:first-child{grid-column:1/-1}
+#nxConsole #nxPeople{margin:0!important;padding:16px!important;font-size:13px}
+#nxPeople .np-grid{grid-template-columns:minmax(0,1.5fr) minmax(320px,1fr);gap:16px;margin-top:12px}
+#nxPeople .np-grid>div:first-child{align-self:start;position:sticky;top:12px}
+#nxPeople .np-camera{max-width:800px;margin:auto}#nxPeople .np-card{padding:12px;margin-bottom:10px}
+#nxPeople h2{font-size:19px}#nxPeople h3{font-size:14px}#nxPeople .np-tracks{height:auto;max-height:130px;grid-template-columns:repeat(2,minmax(0,1fr))}
+#nxPeopleState{height:auto;min-height:20px}#nxPeopleTarget{height:auto;min-height:22px}#nxPeopleSession{height:auto;max-height:72px;min-height:22px}
+#nxPeople .np-muted{font-size:12px}#nxPeople .np-target-details{height:auto;max-height:100px;padding:0 12px}
+#nxPeople input,#nxPeople select{padding:8px;margin:4px 0 8px}#nxPeople button{padding:7px 10px;font-size:13px}
+#nxServices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}#nxServices span{padding:5px;background:#e4eeea;border-radius:4px;font-size:12px}
+#nxStartState{display:block;padding:10px;background:#e4eeea;border-radius:6px;margin-bottom:10px}
+@media(max-width:900px){.nc-content{padding:10px}.nc-top{padding:12px;gap:10px}.nc-tabs{padding:8px 10px 0}.nc-tabs button{padding:10px 14px}#nc-voice,#nc-system,#nc-patrol{grid-template-columns:1fr}#nxPeople .np-grid{grid-template-columns:1fr}#nxPeople .np-grid>div:first-child{position:static}#nc-navigation main{height:auto;grid-template-columns:1fr;grid-template-rows:60vh auto}#nc-navigation aside{overflow:visible}.nc-brand{width:100%}}

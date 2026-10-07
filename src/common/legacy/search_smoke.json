@@ -1,0 +1,1 @@
+{"image": "/home/sunrise/luka_ws/search_smoke.png", "prompt": "沙发", "backend": "s100-bpu-yolo11n-coco80", "inference_seconds": 0.0084, "top_scores": [], "detections": []}

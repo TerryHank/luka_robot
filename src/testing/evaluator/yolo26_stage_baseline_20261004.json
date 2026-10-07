@@ -1,0 +1,57 @@
+{
+  "live_scene": {
+    "pre_ms": 1.647,
+    "forward_ms": 30.617,
+    "post_ms": 60.703,
+    "total_ms": 83.106,
+    "mask_ms": 57.001,
+    "mask_count": 6,
+    "persons": 0,
+    "all_detections": 6,
+    "class_ids": [
+      2,
+      2,
+      2,
+      11,
+      35,
+      99
+    ]
+  },
+  "bus": {
+    "pre_ms": 1.905,
+    "forward_ms": 27.699,
+    "post_ms": 86.884,
+    "total_ms": 135.157,
+    "mask_ms": 82.624,
+    "mask_count": 11,
+    "persons": 4,
+    "all_detections": 11,
+    "class_ids": [
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      9,
+      85
+    ]
+  },
+  "zidane": {
+    "pre_ms": 1.612,
+    "forward_ms": 24.755,
+    "post_ms": 21.131,
+    "total_ms": 54.06,
+    "mask_ms": 17.709,
+    "mask_count": 2,
+    "persons": 2,
+    "all_detections": 2,
+    "class_ids": [
+      0,
+      0
+    ]
+  }
+}

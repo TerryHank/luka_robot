@@ -1,0 +1,37 @@
+{
+  "vision": {
+    "camera_online": true,
+    "camera_source": "uvc_mono",
+    "metric_depth_available": false,
+    "camera_error": null
+  },
+  "people": {
+    "active": true,
+    "loading": false,
+    "motion_enabled": false,
+    "metric_depth_available": false,
+    "camera_source": "stereo_shared",
+    "error": null,
+    "fps": 8.0
+  },
+  "chat": {
+    "status": "ok"
+  },
+  "active_units": "luka-ws-agent.service        loaded active running Luka S100 local command agent (validated dashboard tools)\nluka-ws-chat.service         loaded active running Luka S100 local Qwen3 chat (CPU)\nluka-ws-dashboard.service    loaded active running Luka S100 software-only dashboard\nluka-ws-object-api.service   loaded active running Luka S100 BPU COCO detector API\nluka-ws-people.service       loaded active running Luka S100 person and face monitor (requires connected camera)\nluka-ws-vision.service       loaded active running Luka S100 stereo camera and object memory (requires connected camera)\nluka-ws-yoloe26-live.service loaded active running Luka S100 YOLOE-26n live object search\n",
+  "no_hardware_started": true,
+  "chat_completion": {
+    "message": {
+      "role": "assistant",
+      "content": "测试通过"
+    },
+    "elapsed_seconds": 1.3146250710005916,
+    "usage": {
+      "completion_tokens": 3,
+      "prompt_tokens": 13,
+      "total_tokens": 16,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      }
+    }
+  }
+}

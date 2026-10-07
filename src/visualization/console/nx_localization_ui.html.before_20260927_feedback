@@ -1,0 +1,16 @@
+<section style="padding:14px;background:#172330;color:#e6edf3;border:1px solid #446078">
+  <b>定位与雷达</b>
+  <p id="nxPoseHint">正在读取定位…</p>
+  <button id="nxPosePick">手动粗定位：地图选位置和朝向</button>
+  <label>X（米）<input id="nxPoseX" type="number" step="0.05" style="width:85px"></label>
+  <label>Y（米）<input id="nxPoseY" type="number" step="0.05" style="width:85px"></label>
+  <label>朝向（度）<input id="nxPoseYaw" type="number" step="5" style="width:75px"></label>
+  <button id="nxPoseApply">应用粗定位</button>
+  <button id="nxPoseAuto">自动重定位</button>
+  <p id="nxPoseResult">手动：先点小车所在位置，再点车头朝向。自动：先检查现有定位；需要时缓慢自转扫描，定位稳定即停。</p>
+  <label><input id="nxRadarLines" type="checkbox" checked>显示地图雷达线</label>
+  <details open><summary>局部雷达（无需地图定位；上方是车头，左侧是车身左侧）</summary>
+    <canvas id="nxLocalRadar" width="320" height="240" style="width:320px;height:240px;max-width:100%;background:#0b111a"></canvas>
+    <span id="nxRadarState"></span>
+  </details>
+</section>

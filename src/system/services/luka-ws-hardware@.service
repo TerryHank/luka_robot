@@ -1,0 +1,17 @@
+# /etc/systemd/system/luka-ws-hardware@.service
+[Unit]
+Description=Luka S100 hardware stack: %i (commissioning only)
+After=network-online.target
+
+[Service]
+Type=simple
+User=sunrise
+Group=sunrise
+WorkingDirectory=/home/sunrise/luka_ws
+EnvironmentFile=-/home/sunrise/luka_ws/audio.env
+ExecStart=/bin/bash /home/sunrise/luka_ws/start_nx_%i.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

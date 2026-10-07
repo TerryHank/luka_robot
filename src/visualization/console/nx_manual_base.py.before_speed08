@@ -1,0 +1,151 @@
+"""Manual-only NX adapter. No navigation commands, measured odometry only."""
+import json, math, os, socket, sys, time
+from pathlib import Path
+sys.path.insert(0, '/home/nvidia/ddsm_car_ws/src/ddsm_car_control')
+import rclpy
+from sensor_msgs.msg import Joy, LaserScan
+from std_srvs.srv import SetBool
+from action_msgs.srv import CancelGoal
+from tf2_ros import Buffer, TransformListener
+from rclpy.qos import qos_profile_sensor_data
+from ddsm_car_control.zdt_mecanum_rs485_bridge import ZDTMecanumRS485Bridge
+
+STATE=Path('/home/nvidia/ddsm_car_ws/config/nx_manual_odom.json')
+
+class ManualBase(ZDTMecanumRS485Bridge):
+    def __init__(self):
+        self.armed=False
+        self.joy_at=self.cmd_at=self.feedback_at=0.
+        self.held=False
+        self.nav_allowed=False
+        self.nav_at=0.
+        self.nav_bad_since=None
+        self.scan_times={}
+        super().__init__()
+        if STATE.exists():
+            state=json.loads(STATE.read_text())
+            self.odom.x,self.odom.y,self.odom.yaw=state['x'],state['y'],state['yaw']
+        self.create_subscription(Joy, '/joy', self.joy_input, qos_profile_sensor_data)
+        self.create_timer(.5,self.checkpoint)
+        self.nav_cancel=self.create_client(CancelGoal,'/navigate_to_pose/_action/cancel_goal')
+        self.create_service(SetBool,'/nx/navigation_enable',self.enable_navigation)
+        self.tf_buffer=Buffer()
+        self.tf_node=rclpy.create_node('nx_base_tf_listener')
+        self.tf_listener=TransformListener(self.tf_buffer,self.tf_node,spin_thread=True)
+        for topic in ('/scan','/scan_low_filtered'):
+            self.create_subscription(LaserScan,topic,lambda m,t=topic:self.scan_input(t,m),qos_profile_sensor_data)
+
+    def scan_input(self,topic,msg):
+        age=(self.get_clock().now().nanoseconds-msg.header.stamp.sec*10**9-msg.header.stamp.nanosec)/1e9
+        if -.1<age<.5 and any(math.isfinite(x) and msg.range_min<x<msg.range_max for x in msg.ranges):
+            self.scan_times[topic]=time.monotonic()
+
+    def navigation_ready(self):
+        now=time.monotonic()
+        self.nav_reason='ready'
+        if self.held or now-self.feedback_at>.5:
+            self.nav_reason=f'LB={self.held}, encoder_age={now-self.feedback_at:.3f}'
+            return False
+        if any(now-self.scan_times.get(t,0)>.5 for t in ('/scan','/scan_low_filtered')):
+            self.nav_reason='scan ages: '+str({t:round(now-self.scan_times.get(t,0),3) for t in ('/scan','/scan_low_filtered')})
+            return False
+        try:
+            tf=self.tf_buffer.lookup_transform('map','base_link',rclpy.time.Time())
+            age=(self.get_clock().now().nanoseconds-tf.header.stamp.sec*10**9-tf.header.stamp.nanosec)/1e9
+            self.nav_reason=f'TF age={age:.3f}'
+            return -.5<age<.6
+        except Exception as exc:
+            self.nav_reason='TF: '+str(exc)
+            return False
+
+    def cancel_navigation(self):
+        if self.nav_allowed:self.get_logger().warn('Navigation cancelled: '+getattr(self,'nav_reason','manual/stop request'))
+        self.nav_allowed=False
+        self.latest_nav_cmd=None
+        if self.nav_cancel.service_is_ready():self.nav_cancel.call_async(CancelGoal.Request())
+
+    def enable_navigation(self,request,response):
+        self.latest_nav_cmd=None
+        if not request.data:
+            self.cancel_navigation();response.success=True
+        else:
+            self.nav_allowed=self.navigation_ready()
+            self.nav_bad_since=None
+            response.success=self.nav_allowed
+        response.message='导航已允许' if self.nav_allowed else ('导航已停止' if not request.data else '导航未就绪: '+self.nav_reason)
+        return response
+
+    def joy_input(self,msg):
+        self.joy_at=time.monotonic()
+        self.held=len(msg.buttons)>4 and bool(msg.buttons[4])
+        if self.held and self.nav_allowed:
+            self.nav_reason='LB manual takeover'
+            self.cancel_navigation()
+        if not self.held and len(msg.axes)>3 and all(abs(msg.axes[i])<.1 for i in (0,1,3)):
+            self.armed=True
+
+    def on_manual_cmd_vel(self,msg):
+        self.cmd_at=time.monotonic()
+        super().on_manual_cmd_vel(msg)
+
+    def on_nav_cmd_vel(self,msg):
+        if self.nav_allowed:
+            self.nav_at=time.monotonic()
+            super().on_nav_cmd_vel(msg)
+
+    def _ensure_bus(self):
+        ok=super()._ensure_bus()
+        if ok: self.bus._serial.write_timeout=.15
+        return ok
+
+    def on_command_timer(self):
+        now=time.monotonic()
+        if now-self.joy_at>.25: self.armed=False
+        if not (self.armed and self.held and now-self.cmd_at<.25 and now-self.feedback_at<.5):
+            self.latest_manual_cmd=None
+        if self.nav_allowed:
+            if not self.navigation_ready():
+                self.latest_nav_cmd=None
+                if self.nav_bad_since is None:
+                    self.nav_bad_since=now
+                    self.get_logger().warn('Navigation paused: '+self.nav_reason)
+                if now-self.nav_bad_since>2.:self.cancel_navigation()
+            else:
+                if self.nav_bad_since is not None:self.get_logger().info('Fresh navigation inputs restored')
+                self.nav_bad_since=None
+        if not self.nav_allowed or now-self.nav_at>.25:self.latest_nav_cmd=None
+        super().on_command_timer()
+        address=os.environ.get('NOTIFY_SOCKET')
+        if address:
+            with socket.socket(socket.AF_UNIX,socket.SOCK_DGRAM) as sock:
+                sock.sendto(b'WATCHDOG=1', '\0'+address[1:] if address.startswith('@') else address)
+
+    def publish_command_integrated_odom(self,*args):
+        # Do not turn failed encoder reads into apparently measured movement.
+        self.feedback_at=0.
+
+    def on_feedback_timer(self):
+        super().on_feedback_timer()
+        if self.bus is not None and not self.last_feedback_error and not self.last_send_error:
+            if self.latest_feedback_by_corner and all(f.valid for f in self.latest_feedback_by_corner.values()):
+                self.feedback_at=time.monotonic()
+
+    def checkpoint(self):
+        tmp=STATE.with_suffix('.tmp')
+        tmp.write_text(json.dumps(dict(x=self.odom.x,y=self.odom.y,yaw=self.odom.yaw)))
+        tmp.replace(STATE)
+
+def main():
+    rclpy.init(); node=ManualBase()
+    address=os.environ.get('NOTIFY_SOCKET')
+    if address:
+        with socket.socket(socket.AF_UNIX,socket.SOCK_DGRAM) as sock:
+            sock.sendto(b'READY=1', '\0'+address[1:] if address.startswith('@') else address)
+    try: rclpy.spin(node)
+    except KeyboardInterrupt: pass
+    finally:
+        node.checkpoint()
+        node.destroy_node()
+        rclpy.try_shutdown()
+
+if __name__=='__main__': main()

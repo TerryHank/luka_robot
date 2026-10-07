@@ -1,0 +1,30 @@
+"""Start read-only person monitoring after the stereo camera is ready."""
+import json
+import time
+import urllib.error
+import urllib.request
+
+
+def get_json(url):
+    with urllib.request.urlopen(url, timeout=2) as response:
+        return json.load(response)
+
+
+for _ in range(45):
+    try:
+        camera = get_json("http://127.0.0.1:8091/health")
+        if camera.get("camera_online"):
+            request = urllib.request.Request(
+                "http://127.0.0.1:8097/api/people/start",
+                data=b"{}",
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(request, timeout=4) as response:
+                result = json.load(response)
+            print(f"person monitor startup: {result}", flush=True)
+            break
+    except (OSError, ValueError, urllib.error.HTTPError) as exc:
+        last_error = str(exc)
+    time.sleep(1)
+else:
+    print(f"person monitor not started: {locals().get('last_error', 'camera offline')}", flush=True)

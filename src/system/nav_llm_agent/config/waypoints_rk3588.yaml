@@ -1,0 +1,56 @@
+# Named goals in the map frame. Coordinates must match the static map
+# used by Nav2 on the robot (e.g. ~/ddsm_car_ws/maps/ddsm_map.yaml).
+# RK3588: recalibrate with Publish Point + save_waypoint.sh before live nav.
+# Placeholder coords below are NOT valid for the real map — dry_run LLM only.
+frame_id: map
+waypoints:
+  home:
+    aliases:
+    - 起点
+    - 门口
+    - 入口
+    - 家
+    - spawn
+    x: 0.0
+    y: 0.0
+    yaw: 0.0
+    description: 待标定 — 地图原点附近 / 充电点
+  kitchen:
+    aliases:
+    - 厨房
+    x: 1.0
+    y: 0.0
+    yaw: 0.0
+    description: 待标定 — 厨房
+  living_room:
+    aliases:
+    - 客厅
+    - 起居室
+    x: 2.0
+    y: 0.0
+    yaw: 0.0
+    description: 待标定 — 客厅
+  hallway:
+    aliases:
+    - 走廊
+    - 过道
+    x: 0.5
+    y: 0.0
+    yaw: 0.0
+    description: 待标定 — 走廊
+  bedroom:
+    aliases:
+    - 卧室
+    - 房间
+    x: 3.0
+    y: 0.0
+    yaw: 0.0
+    description: 待标定 — 卧室
+  study:
+    aliases:
+    - 书房
+    - 角落
+    x: -1.0
+    y: 0.0
+    yaw: 0.0
+    description: 待标定 — 书房

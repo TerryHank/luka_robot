@@ -1,0 +1,104 @@
+{
+  "http://127.0.0.1:8091/health": {
+    "http_status": 200,
+    "bytes": 542,
+    "keys": [
+      "ready",
+      "busy",
+      "result",
+      "error",
+      "tracking",
+      "model_loaded",
+      "model_backend",
+      "camera_online",
+      "camera_error",
+      "camera_source",
+      "metric_depth_available",
+      "people_full_fov",
+      "stereo_depth_error",
+      "stereo_depth_valid_fraction",
+      "people_depth_valid_fraction",
+      "stereo_depth_processing_s"
+    ],
+    "error": null,
+    "camera_online": true,
+    "camera_error": null,
+    "model_loaded": false
+  },
+  "http://127.0.0.1:8091/view": {
+    "http_status": 200,
+    "bytes": 8312
+  },
+  "http://127.0.0.1:8091/memory": {
+    "http_status": 200,
+    "bytes": 6345
+  },
+  "http://127.0.0.1:8097/api/people/status": {
+    "http_status": 200,
+    "bytes": 66178,
+    "keys": [
+      "active",
+      "mode",
+      "motion_enabled",
+      "loading",
+      "frame_at",
+      "camera_age",
+      "frame_width",
+      "frame_height",
+      "face_frame_width",
+      "face_frame_height",
+      "frame_jpeg_base64",
+      "fps",
+      "inference_s",
+      "tracks",
+      "profiles",
+      "face_sample_limit",
+      "enrollment",
+      "target_session",
+      "face_reacquire",
+      "face_reacquire_proof",
+      "selected_track_id",
+      "error",
+      "memory",
+      "peak_memory_gib",
+      "camera_mount",
+      "camera_source",
+      "metric_depth_available",
+      "full_fov_people",
+      "dual_view_ready",
+      "tracker",
+      "tracking_diagnostics",
+      "appearance_reid",
+      "person_detector"
+    ],
+    "error": null
+  },
+  "http://127.0.0.1:8503/api/live-object/status": {
+    "http_status": 200,
+    "bytes": 251,
+    "keys": [
+      "running",
+      "query",
+      "target",
+      "frames",
+      "captured_at",
+      "completed_at",
+      "inference_seconds",
+      "image_size",
+      "tiles",
+      "detections",
+      "error",
+      "backend",
+      "vocabulary_size"
+    ],
+    "error": null
+  },
+  "http://127.0.0.1:8503/api/live-object/classes": {
+    "http_status": 200,
+    "bytes": 639,
+    "keys": [
+      "backend",
+      "classes"
+    ]
+  }
+}

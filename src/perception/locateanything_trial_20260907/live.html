@@ -1,0 +1,36 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>小车视觉识别</title>
+<style>body{background:#111827;color:#eef2ff;font:16px system-ui;margin:0}main{max-width:1100px;margin:auto;padding:20px}h1{font-size:25px}p{color:#cbd5e1}input,button{font:inherit;padding:12px;border-radius:8px;border:0}button{background:#38bdf8;cursor:pointer}button:disabled{opacity:.5}section{display:flex;gap:20px;flex-wrap:wrap}article{flex:1;min-width:280px}img{width:100%;border-radius:10px}#status{margin:16px 0;color:#7dd3fc}</style>
+<main><h1>S100 相机与物体识别</h1><p><a id="navlink" href="#">返回导航监控界面 ↗</a>　当前为 BPU 常见物体识别；颜色、方位描述和开放词表仍在移植中。</p>
+<form id="form"><input id="query" value="瓶子" placeholder="例如：瓶子、椅子、沙发" maxlength="200" required><button id="run" disabled>拍照识别</button></form><p>相机预览直接显示最新帧，识别与测距在后台处理。</p><div><input id="trackquery" value="椅子" placeholder="连续识别目标" maxlength="200"><button id="starttrack" type="button">开始连续识别</button> <button id="stoptrack" type="button" disabled>停止连续识别</button> <span id="trackstate">未运行</span></div><div id="status">正在加载模型…</div>
+<section><article><h2>当前相机画面</h2><img id="camera" alt="等待相机画面"></article><article><h2>识别结果</h2><p id="details">尚未识别</p><img id="result" alt="拍照识别后显示目标框"></article></section></main>
+<style>select{font:inherit;padding:10px;max-width:100%}.hit{display:inline-block;width:290px;margin:10px;vertical-align:top}.hit img{width:100%}a{color:#7dd3fc}</style>
+<main><h1>巡航录像与查找</h1><p>点击开始录像后，缓慢移动相机巡视；结束后选择录像，输入物体名称或描述搜索。每 2 秒检查一张画面，可能漏掉短暂出现或被遮挡的物体。单段最多 30 分钟。</p>
+<button id="startrec">开始录像</button> <button id="stoprec" disabled>停止录像</button><p id="recstate">正在读取录像状态…</p>
+<select id="sessions"></select> <a id="download">下载录像 AVI</a><p>录像可用 VLC 等播放器打开；结果同时列出拍摄经过时间与录像播放时间。</p>
+<form id="searchform"><input id="searchquery" value="瓶子" required maxlength="200"><button id="searchbtn">搜索录像</button> <button type="button" id="cancelsearch">取消搜索</button></form>
+<p id="searchstate">搜索结果是模型候选，请查看图片确认；“未检出”不代表录像里一定没有。</p><div id="hits"></div></main>
+<script>
+const $=id=>document.getElementById(id);let version=0;
+$('navlink').href=`${location.protocol}//${location.hostname}:8503/#nc-navigation`;
+async function refresh(){try{const s=await(await fetch('/health')).json();$('run').disabled=!s.ready||s.busy||!s.camera_online;$('status').textContent=s.error||s.camera_error||(s.busy?'正在加载或识别，请稍候…':s.ready?(s.model_loaded?'模型已加载 · 空闲 30 秒自动卸载':'模型已卸载 · 点击识别时自动加载'):'正在加载模型…');if(s.result&&!s.busy&&version!==s.result.completed_at){version=s.result.completed_at;$('result').src='/result.png?t='+version;$('details').textContent=s.result.query+' · '+(s.result.backend||'视觉模型')+' · '+s.result.inference_seconds.toFixed(2)+' 秒 · '+s.result.detections.length+' 个目标 · 拍摄于 '+new Date(s.result.captured_at*1000).toLocaleTimeString();}}catch(e){$('status').textContent='连接中断，正在重试…';$('run').disabled=true;}setTimeout(refresh,600)}
+async function preview(){if(document.hidden){setTimeout(preview,500);return}try{const r=await fetch('/preview.jpg',{cache:'no-store'});if(r.ok){const u=URL.createObjectURL(await r.blob()),img=$('camera'),old=img.dataset.url;img.onload=()=>{if(old)URL.revokeObjectURL(old)};img.src=u;img.dataset.url=u;}}catch(e){}setTimeout(preview,120)}
+$('form').onsubmit=async e=>{e.preventDefault();$('run').disabled=true;try{const r=await fetch('/locate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:$('query').value})});if(!r.ok)$('status').textContent='暂时无法识别，请稍后重试';}catch(e){$('status').textContent='连接失败';}};refresh();preview();
+
+async function post(path,data={}){const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const d=await r.json();if(!r.ok)throw Error(d.error||'操作失败');return d}
+async function trackPoll(){try{const t=await(await fetch('/track/status')).json();$('starttrack').disabled=t.running||$('run').disabled;$('stoptrack').disabled=!t.running;$('trackstate').textContent=t.running?'连续识别中 · '+t.query+' · '+t.frames+' 帧 · 命中 '+t.recognized+' · 跳过 '+t.skipped:(t.error?'连续识别错误：'+t.error:'未运行');}catch(e){$('trackstate').textContent='连续识别状态连接中断';}setTimeout(trackPoll,800)}
+$('starttrack').onclick=async()=>{try{await post('/track/start',{query:$('trackquery').value});}catch(e){alert(e.message)}};
+$('stoptrack').onclick=async()=>{try{await post('/track/stop');}catch(e){alert(e.message)}};trackPoll();
+let sessionSignature='',jobSignature='';
+function showJob(j){if(!j)return;const sig=j.id+':'+j.done+':'+j.status;if(sig===jobSignature)return;jobSignature=sig;
+ $('searchstate').textContent=j.query+' · '+({searching:'搜索中',complete:'搜索完成',cancelled:'已取消',failed:'搜索失败'}[j.status]||j.status)+' · '+j.done+'/'+j.total+' 张 · '+j.hits.length+' 张候选画面'+(j.error?' · '+j.error:'');$('hits').replaceChildren();
+ for(const h of j.hits){const card=document.createElement('div');card.className='hit';const img=document.createElement('img');img.src=h.image;img.loading='lazy';const label=document.createElement('p');label.textContent='拍摄 '+h.seconds.toFixed(1)+' 秒 · 录像 '+h.video_seconds.toFixed(1)+' 秒 · '+h.detections.length+' 个候选';card.append(img,label);$('hits').append(card);}}
+async function history(){const id=$('sessions').value;$('download').href='/patrol/file/'+id+'/video.avi';if(!id)return;try{const jobs=await(await fetch('/patrol/searches?session='+id)).json();jobSignature='';$('hits').replaceChildren();$('searchstate').textContent='已选择录像，请输入物体名称开始搜索';if(jobs.length)showJob(jobs[jobs.length-1]);}catch(e){}}
+async function patrolPoll(){try{const d=await(await fetch('/patrol/status')).json();$('startrec').disabled=!!d.recording;$('stoprec').disabled=!d.recording;$('recstate').textContent=d.recording?'正在录像 · '+d.recording.duration.toFixed(1)+' 秒 · '+d.recording.keyframes+' 张关键帧':'未在录像';
+ const sig=d.sessions.map(x=>x.id+x.status).join();if(sig!==sessionSignature){sessionSignature=sig;const old=$('sessions').value,known=new Set([...$('sessions').options].map(o=>o.value));$('sessions').replaceChildren();for(const x of d.sessions.filter(x=>x.status!=='recording')){const o=document.createElement('option');o.value=x.id;o.textContent=new Date(x.started_at*1000).toLocaleString()+' · '+x.duration.toFixed(0)+' 秒'+(x.error?' · '+x.error:'');$('sessions').append(o);}if(known.has($('sessions').value)&&[...$('sessions').options].some(o=>o.value===old))$('sessions').value=old;await history();}
+ const running=d.job&&d.job.status==='searching';$('searchbtn').disabled=running||!$('sessions').value;$('cancelsearch').disabled=!running;if(d.job&&d.job.session===$('sessions').value)showJob(d.job);
+ }catch(e){$('recstate').textContent='连接中断，正在重试…';}setTimeout(patrolPoll,1000)}
+ $('startrec').onclick=async()=>{try{await post('/patrol/start')}catch(e){alert(e.message)}};
+ $('stoprec').onclick=async()=>{try{await post('/patrol/stop')}catch(e){alert(e.message)}};
+ $('cancelsearch').onclick=()=>post('/patrol/cancel').catch(e=>alert(e.message));$('sessions').onchange=history;
+ $('searchform').onsubmit=async e=>{e.preventDefault();try{showJob(await post('/patrol/search',{session:$('sessions').value,query:$('searchquery').value}));}catch(e){alert(e.message)}};patrolPoll();
+</script></html>
