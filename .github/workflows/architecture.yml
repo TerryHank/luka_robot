@@ -1,0 +1,22 @@
+name: Luka architecture contracts
+permissions:
+  contents: read
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  contracts:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: python -m pip install pytest numpy pyyaml pyflakes
+      - name: Existing contracts and architecture boundaries
+        run: python -m pytest evaluator/suite evaluator/architecture visualization/console/test_patrol_route.py visualization/console/test_object_bring_voice.py -q
+      - name: Name resolution in extracted product packages
+        run: python -m pyflakes system/luka_capabilities behavior/luka_behaviors mission/luka_mission control/luka_motion_gateway control/luka_base_gate system/luka_bringup
+      - name: Canonical root layout
+        run: python system/scripts/check_workspace_root.py
