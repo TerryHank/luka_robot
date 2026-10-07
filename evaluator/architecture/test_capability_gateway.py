@@ -26,3 +26,10 @@ def test_grounding_and_negative_motion_requests_remain_rejected():
                             ('navigate',{'name':'厨房'},'不要去厨房'),
                             ('music_volume',{'volume':90},'音量设置30')]:
         with pytest.raises(ValueError):validate(tool,args,text)
+
+
+def test_explicit_negative_follow_stop_is_not_mistaken_for_denied_motion():
+    for phrase in ('不要跟着我','别跟着我','停止跟随'):
+        validate('follow_stop',{},phrase)
+    with pytest.raises(ValueError):validate('follow_stop',{},'他说不要跟着我')
+    with pytest.raises(ValueError):validate('cancel_all',{},'不要停车')

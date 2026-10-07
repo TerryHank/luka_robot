@@ -9,6 +9,11 @@ def http(path,body=None):
   except json.JSONDecodeError:raise ValueError('小车接口拒绝请求')
 
 def execute_remote(tool,arguments,source,generation=None):
+ from .policy import validate
+ validate(tool,arguments,source)
+ if generation is None and tool in {'navigate','patrol_start','object_bring','localization_auto','follow_start'}:
+  generation=http('/api/assistant/tools').get('generation')
+  if type(generation) is not int:raise ValueError('Assistant generation unavailable')
  body={'tool':tool,'arguments':arguments,'source':source}
  if generation is not None:body['generation']=generation
  return http('/api/assistant/execute',body)

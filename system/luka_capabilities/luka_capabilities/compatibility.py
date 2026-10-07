@@ -36,6 +36,11 @@ class LegacyStatusService:
 
 
 def execute(node,tool,args,source,catalog,send_nav,music):
+ if hasattr(node,'capabilities'):return node.capabilities.execute(tool,args,source)
+ return create_dispatcher(node,catalog,send_nav,music).execute(tool,args,source)
+
+
+def create_dispatcher(node,catalog,send_nav,music):
  dispatcher=CapabilityDispatcher(node.patrol_mission,LegacyBehaviorService(node,send_nav),
                                  LegacyStatusService(node,catalog),music,node.product)
- return dispatcher.execute(tool,args,source)
+ return dispatcher

@@ -144,6 +144,7 @@ def send_nav(self,poi_id,observation=None):
                                 if self.nx_nav_cancel_requested:return
                                 if outcome['ok']:
                                     self.nx_status='已脱困，正在重新规划'
+                                    self.motion.acquire('nav')
                                     gate(self,True)
                                     submit(attempt+1)
                                     return
@@ -181,7 +182,7 @@ def send_nav(self,poi_id,observation=None):
                         elif status==5 and not self.nx_nav_cancel_requested:speak_nav(self,'导航已停止。接下来要我做什么？')
                 handle.get_result_async().add_done_callback(finished)
             except Exception:
-                if attempt < 2 and not self.nx_nav_cancel_requested:
+                if attempt < 2 and not self.nx_nav_cancel_requested and self.motion.valid('nav'):
                     self.nx_nav_retry=attempt+1
                     threading.Thread(target=lambda:(time.sleep(1.5),submit(attempt+1)),daemon=True).start()
                     return

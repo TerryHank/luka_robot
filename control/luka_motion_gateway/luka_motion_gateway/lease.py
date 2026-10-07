@@ -25,7 +25,7 @@ class SourceLease:
 
     def request(self, command):
         self.expire()
-        if command.get('boot')!=self.boot or command.get('generation')!=self.generation:
+        if command.get('boot')!=self.boot or type(command.get('generation')) is not int or command.get('generation')!=self.generation:
             raise ValueError('stale gateway boot/generation')
         source=command.get('source');owner=command.get('owner');mode=command.get('mode')
         if source not in SOURCES or not isinstance(owner,str) or not 1<=len(owner)<=80:

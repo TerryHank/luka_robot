@@ -6,7 +6,7 @@ from .source_checks import ROOT, sources, tree, twist_publishers
 CONSOLE_TWIST_SOURCES = {
     "behavior/luka_behaviors/luka_behaviors/follow_controller.py": ["/luka/motion/follow"],
     "behavior/luka_behaviors/luka_behaviors/relocalization.py": ["/luka/motion/relocalize"],
-    "visualization/console/nx_escape_recovery.py": ["/luka/motion/recovery"],
+    "behavior/luka_behaviors/luka_behaviors/recovery.py": ["/luka/motion/recovery"],
     "visualization/console/web_teleop_dashboard.py": ["/nx/web_teleop_cmd_vel"],
     "visualization/console/mecanum_dance_demo.py": ["topic"],
     "visualization/console/person_follow_demo.py": ["args.cmd_topic"],

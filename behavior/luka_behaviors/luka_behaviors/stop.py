@@ -7,6 +7,7 @@ class StopBehavior(Behavior):
   errors=[];result={}
   operations=[('follow',self.registry.follow.cancel),('patrol',self.mission().stop),
               ('navigate',self.registry.navigate.cancel),('relocalize',self.registry.relocalize.cancel)]
+  if getattr(self.registry,'recovery',None):operations.append(('recovery',self.registry.recovery.cancel))
   for name,operation in operations:
    try:result[name]=operation()
    except Exception as error:errors.append(name+': '+str(error))

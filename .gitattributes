@@ -1,3 +1,4 @@
 common/legacy/snapshots/** -text -diff
 evaluator/fixtures/legacy_images/** -text -diff
 evaluator/artifacts/legacy_results/** -text -diff
+visualization/console/nx_voice_gateway.py whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

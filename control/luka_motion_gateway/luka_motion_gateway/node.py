@@ -32,14 +32,17 @@ class MotionGateway(Node):
 
     def request(self,msg):
         with self.lock:
+            command={}
             try:
                 if len(msg.data)>2048:raise ValueError('lease request too large')
-                command=json.loads(msg.data)
+                payload=json.loads(msg.data)
+                if not isinstance(payload,dict):raise ValueError('lease request must be an object')
+                command=payload
                 if command.get('mode')!='release' and not self.base_ready():raise ValueError('base safety gate unavailable or stale')
                 self.arbiter.lease.request(command)
                 self.ack={'request_id':command.get('request_id'),'accepted':True,'error':''}
             except Exception as error:
-                self.ack={'request_id':locals().get('command',{}).get('request_id'),'accepted':False,'error':str(error)}
+                self.ack={'request_id':command.get('request_id'),'accepted':False,'error':str(error)}
             self.tick()
 
     def joy(self,msg):
@@ -59,6 +62,7 @@ class MotionGateway(Node):
     def base_status(self,msg):
         try:state=json.loads(msg.data)
         except (ValueError,TypeError):return
+        if not isinstance(state,dict):return
         with self.lock:
             self.base_state=state;self.base_received=time.monotonic()
             self.arbiter.lease.manual_input('base',bool(state.get('manual_active')))

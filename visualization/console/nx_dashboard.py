@@ -28,7 +28,6 @@ import os, subprocess
 from std_srvs.srv import Empty, SetBool
 import lightweight_robot_dashboard as app
 from web_teleop_dashboard import WebTeleop
-from nx_escape_recovery import EscapeRecovery
 
 original_post = app.Handler.do_POST
 original_get = app.Handler.do_GET
@@ -84,6 +83,8 @@ def init(self):
     self.behaviors.initialize_follow()
     self.follow_controller=self.behaviors.follow.legacy_controller
     self.follow_acquisition=self.behaviors.follow.acquisition
+    from luka_capabilities.compatibility import create_dispatcher
+    self.capabilities=create_dispatcher(self,destination_catalog,send_nav,self.music)
     self.patrol_mission.route_store=PatrolRoute('/home/sunrise/luka_ws/common/state/patrol_route.json',lambda:destination_catalog(self),lambda:self.current_floor_id)
     self.product.navigate=lambda target:send_nav(self,None,target)
     self.patrol_mission.send_observation=lambda target:send_nav(self,None,target)
@@ -91,7 +92,7 @@ def init(self):
     self.create_subscription(Joy,'/joy',lambda msg:self.patrol_mission.cancel.set() if len(msg.buttons)>4 and msg.buttons[4] and self.patrol_mission.active() else None,app.qos_profile_sensor_data)
     if os.getenv('LUKA_SOFTWARE_ONLY') == '1':
         self.web_teleop=WebTeleop(self,lambda:stop_nav(self,wait_for_gate=False))
-        self.escape_recovery=EscapeRecovery(self)
+        self.escape_recovery=self.behaviors.initialize_recovery()
         threading.Thread(target=refresh_static_localization,args=(self,),daemon=True).start()
 
 def s100_diagnostics(node, legacy_snapshot):
@@ -185,7 +186,7 @@ def post(self):
                 if not 0<=size<=1024:raise ValueError('请求过大')
                 body=app.json.loads(self.rfile.read(size) or b'{}')
                 if not isinstance(body,dict):raise ValueError('请求格式无效')
-                result=app.NODE.follow_acquisition.choose(body.get('mode'),body.get('id'))
+                result=app.NODE.capabilities.select_follow(body.get('mode'),body.get('id'))
             elif path.endswith('/start'):
                 result=app.NODE.follow_controller.start()
             else:

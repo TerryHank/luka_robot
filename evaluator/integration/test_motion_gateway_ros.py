@@ -31,7 +31,7 @@ def test_real_ros_lease_control_stop_manual_takeover_and_base_timeout():
     import os
     assert os.environ.get('ROS_DOMAIN_ID')=='187','Use isolated ROS_DOMAIN_ID=187'
     rclpy.init();gateway=MotionGateway();probe=Node('motion_gateway_transport_probe')
-    lease=MotionLeaseClient(probe);received=[]
+    lease=MotionLeaseClient(probe);received=[];revoked=[];lease.on_revoked=revoked.append
     pub=probe.create_publisher(Twist,'/luka/motion/nav',1)
     manual=probe.create_publisher(Joy,'/joy',10)
     base=probe.create_publisher(String,'/luka/base/status',10)
@@ -48,12 +48,14 @@ def test_real_ros_lease_control_stop_manual_takeover_and_base_timeout():
         until(lambda:received[-1]==.1)
         joy=Joy();joy.buttons=[0,0,0,0,1];manual.publish(joy)
         until(lambda:received[-1]==0. and lease.desired is None)
+        assert 'nav' in revoked
         with pytest.raises(ValueError):lease.acquire('nav')
         joy.buttons=[0]*5;manual.publish(joy)
         until(lambda:not lease.status.get('manual_sources'));lease.acquire('nav');pub.publish(command)
         until(lambda:received[-1]==.1)
         probe.destroy_timer(health_timer)
         until(lambda:received[-1]==0. and lease.desired is None)
+        assert len(revoked)>=2
     finally:
         lease.stop();executor.shutdown();worker.join(timeout=3)
         probe.destroy_node();gateway.destroy_node();rclpy.try_shutdown()

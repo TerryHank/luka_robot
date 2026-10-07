@@ -5,6 +5,11 @@ class CapabilityDispatcher:
   self.mission_service=mission_service;self.behavior_service=behavior_service
   self.status_service=status_service;self.music_service=music_service;self.product_service=product_service
 
+ def select_follow(self,mode,target_id):
+  # This explicit local selection API retains the existing identity policy;
+  # it is not a model-exposed tool or a new permanent person identifier.
+  return self.behavior_service.acquisition.choose(mode,target_id)
+
  def execute(self,tool,args,source):
   validate(tool,args,source)
   mission=self.mission_service

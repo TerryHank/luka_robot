@@ -802,6 +802,22 @@ class NavLlmAgent(Node):
         self, handler: str, arguments: Dict[str, Any], workflow_step: bool = False
     ) -> bool:
         del workflow_step
+        if not self._dry_run:
+            # Legacy metadata/workflow callbacks share the same gateway and
+            # cannot wake old placeholder executors or manufacture authority.
+            from luka_capabilities import TOOLS,execute_remote
+            if handler not in TOOLS:
+                self._publish_status('executor_error: 此流程尚未接通能力 '+handler)
+                return False
+            values=dict(arguments)
+            if handler=='navigate' and 'waypoint' in values:
+                waypoint=self._waypoints.get(str(values.pop('waypoint')),{})
+                values={'name':waypoint.get('description','')}
+            try:
+                result=execute_remote(handler,values,self._llm_text)
+                self._publish_status('submitted: '+result.get('message',''))
+            except Exception as error:self._publish_status('executor_error: '+str(error))
+            return False
         if self._dry_run:
             self._publish_status(f"dry_run: {handler} {arguments}")
             return False

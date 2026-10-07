@@ -11,6 +11,7 @@ class MotionLeaseClient:
     def __init__(self,node):
         self.node=node;self.owner=uuid.uuid4().hex;self.status={};self.received=0.
         self.desired=None;self.pending=None;self.cancelled_requests=set();self.lock=threading.RLock()
+        self.on_revoked=lambda source:None
         self.publisher=node.create_publisher(String,'/luka/motion/lease',10)
         self.stop_pub=node.create_publisher(Empty,'/luka/motion/stop',10)
         node.create_subscription(String,'/luka/motion/status',self.observe,10)
@@ -19,7 +20,11 @@ class MotionLeaseClient:
     def observe(self,msg):
         try:state=json.loads(msg.data)
         except (TypeError,ValueError):return
+        if not isinstance(state,dict) or not isinstance(state.get('ack',{}),dict):return
+        revoked=None
         with self.lock:
+            old_boot=self.status.get('boot')
+            if old_boot and old_boot!=state.get('boot'):revoked=self.desired or 'gateway_restart'
             self.status=state;self.received=time.monotonic()
             ack=state.get('ack',{})
             if ack.get('request_id') in self.cancelled_requests and state.get('owner')==self.owner:
@@ -31,7 +36,9 @@ class MotionLeaseClient:
                     self.desired=source;future.set_result(True)
                 else:
                     self.desired=None;future.set_exception(ValueError(ack.get('error') or 'source lease not confirmed'))
-            if self.desired and (state.get('owner')!=self.owner or state.get('active_source')!=self.desired):self.desired=None
+            if self.desired and (state.get('owner')!=self.owner or state.get('active_source')!=self.desired):
+                revoked=self.desired;self.desired=None
+        if revoked:self.on_revoked(revoked)
 
     def send(self,source,mode,request_id=None):
         self.publisher.publish(String(data=json.dumps({'source':source,'owner':self.owner,'mode':mode,
@@ -72,9 +79,11 @@ class MotionLeaseClient:
         self.release();self.stop_pub.publish(Empty())
 
     def heartbeat(self):
+        revoked=None
         with self.lock:
             if self.pending and time.monotonic()-self.pending[3]>1.5:
                 self.release();return
             if self.desired:
                 if self.valid(self.desired):self.send(self.desired,'renew')
-                else:self.release()
+                else:revoked=self.desired;self.release()
+        if revoked:self.on_revoked(revoked)
