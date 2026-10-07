@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import glob
+import json
 import os
 import re
 import signal
@@ -19,6 +20,7 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import String
 from nx_tts_backend import create_tts, validate_speaker_id
+from nav_llm_agent.interaction import AudioFrontendPolicy, VoiceRuntime, VoiceState
 
 
 TAG_RE = re.compile(r"<\|[^|]+\|>")
@@ -124,6 +126,12 @@ class VoiceGateway(Node):
         # synthesis/playback and briefly afterwards so Luca never treats her
         # own voice as a new wake word or command.
         self.declare_parameter("tts_echo_guard", 0.7)
+        # xiaozhi-style interaction runtime. Full-duplex is opt-in because the
+        # default USB capture path has no proven acoustic echo cancellation.
+        self.declare_parameter("duplex_mode", "guarded_half_duplex")
+        self.declare_parameter("aec_provider", "none")
+        self.declare_parameter("barge_in_enabled", True)
+        self.declare_parameter("continuous_dialogue", False)
         self.declare_parameter("speak_llm_status", True)
         self.declare_parameter("llm_status_topic", "/llm_status")
         self.declare_parameter(
@@ -177,6 +185,25 @@ class VoiceGateway(Node):
         self.noise_floor = 0.002
         self._ambient_levels = deque(maxlen=50)
         self._reset_command_capture()
+        self._tts_generation_lock = threading.Lock()
+        self._tts_generation = 0
+        self._playback_lock = threading.Lock()
+        self._playback_proc = None
+        self.voice_runtime = VoiceRuntime(
+            AudioFrontendPolicy.build(
+                duplex_mode=str(self.get_parameter("duplex_mode").value),
+                aec_provider=str(self.get_parameter("aec_provider").value),
+                kws_engine="sherpa_onnx",
+                vad_engine="sherpa_onnx",
+                pre_roll_ms=max(100, int(self.command_pre_roll * 1000)),
+                barge_in_enabled=bool(
+                    self.get_parameter("barge_in_enabled").value
+                ),
+            ),
+            continuous_dialogue=bool(
+                self.get_parameter("continuous_dialogue").value
+            ),
+        )
 
         status_qos = QoSProfile(depth=10)
         status_qos.reliability = ReliabilityPolicy.RELIABLE
@@ -184,6 +211,7 @@ class VoiceGateway(Node):
         self.command_pub = self.create_publisher(String, "/llm_command", 10)
         self.text_pub = self.create_publisher(String, "/voice/recognized_text", 10)
         self.status_pub = self.create_publisher(String, "/voice/status", status_qos)
+        self.runtime_pub = self.create_publisher(String, "/voice/runtime", status_qos)
         self.create_subscription(String, "/voice/control", self._on_voice_control, 10)
         self._last_spoken_status = ""
         self._last_spoken_at = 0.0
@@ -285,6 +313,8 @@ class VoiceGateway(Node):
 
         self.audio_thread = threading.Thread(target=self._audio_loop, daemon=True)
         self.audio_thread.start()
+        self.voice_runtime.ready()
+        self._runtime_status("ready")
         self._status(f"ready wake_word={self.wake_word} device={self.audio_device}")
 
     def _status(self, text: str) -> None:
@@ -292,6 +322,57 @@ class VoiceGateway(Node):
         msg.data = text
         self.status_pub.publish(msg)
         self.get_logger().info(text)
+
+    def _runtime_status(self, event: str, **details) -> None:
+        payload = self.voice_runtime.snapshot()
+        payload["event"] = str(event)
+        if details:
+            payload["details"] = details
+        msg = String()
+        msg.data = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+        self.runtime_pub.publish(msg)
+
+    def _runtime_utterance_final(self, text: str) -> None:
+        try:
+            self.voice_runtime.utterance_final(text)
+        except ValueError as exc:
+            self._runtime_status("invalid_transition", error=str(exc))
+            return
+        self._runtime_status("utterance_final")
+
+    def _arm_command_capture(self, reason: str) -> None:
+        self.mode = "command"
+        self.command_deadline = time.monotonic() + self.command_timeout
+        self.last_partial = ""
+        self.command_parts = []
+        self._reset_command_capture()
+        try:
+            self.voice_runtime.continue_listening(reason)
+        except ValueError as exc:
+            self._runtime_status("invalid_transition", error=str(exc))
+        else:
+            self._runtime_status("listening", reason=reason)
+
+    def _interrupt_tts(self, reason: str) -> int:
+        with self._tts_generation_lock:
+            self._tts_generation += 1
+            generation = self._tts_generation
+        dropped = 0
+        while True:
+            try:
+                self.speak_queue.get_nowait()
+                dropped += 1
+            except queue.Empty:
+                break
+        with self._playback_lock:
+            proc = self._playback_proc
+            if proc is not None and proc.poll() is None:
+                proc.kill()
+        self._status(
+            f"tts_interrupted reason={reason} generation={generation} "
+            f"dropped_text={dropped}"
+        )
+        return generation
 
     def _start_audio(self) -> subprocess.Popen:
         if not self.mixer_configured:
@@ -350,6 +431,8 @@ class VoiceGateway(Node):
         self.command_parts = []
         self._reset_command_capture()
         self.kws_stream = self.kws.create_stream()
+        self.voice_runtime.end_session(reason)
+        self._runtime_status("session_end", reason=reason)
         self._status(reason)
 
     def _publish_command(self, text: str) -> None:
@@ -363,9 +446,16 @@ class VoiceGateway(Node):
             return
         recognized = String()
         recognized.data = command
+        self._runtime_utterance_final(command)
         self.text_pub.publish(recognized)
         self.command_pub.publish(recognized)
-        self._return_to_wake(f"command_sent text={command}")
+        # The command is THINKING now; only reset acoustic capture to KWS.
+        self.mode = "wake"
+        self.last_partial = ""
+        self.command_parts = []
+        self._reset_command_capture()
+        self.kws_stream = self.kws.create_stream()
+        self._status(f"command_sent text={command}")
 
     def _process_wake(self, samples: np.ndarray) -> None:
         level = float(np.sqrt(np.mean(np.square(samples)) + 1e-12))
@@ -382,13 +472,32 @@ class VoiceGateway(Node):
             result = self.kws.get_result(self.kws_stream)
             if result:
                 self.kws.reset_stream(self.kws_stream)
+                during_playback = self.tts_playing.is_set()
+                accepted = self.voice_runtime.wake_detected(
+                    result, during_playback=during_playback
+                )
+                if not accepted:
+                    self._runtime_status(
+                        "wake_ignored",
+                        word=result,
+                        during_playback=during_playback,
+                    )
+                    return
+                if during_playback:
+                    self._interrupt_tts("wake_word")
                 self.mode = "command"
                 self.command_deadline = time.monotonic() + self.command_timeout
                 self.last_partial = ""
                 self.command_parts = []
                 self._reset_command_capture()
+                self._runtime_status(
+                    "wake_detected",
+                    word=result,
+                    during_playback=during_playback,
+                )
                 self._status(f"wake_detected word={result}; listening")
-                self.say(self.wake_response)
+                if not during_playback:
+                    self.say(self.wake_response)
                 return
 
     def _process_command(self, samples: np.ndarray) -> None:
@@ -471,6 +580,8 @@ class VoiceGateway(Node):
             self.get_logger().warning("speak queue full; dropped: %s" % text[:24])
 
     def _capture_blocked_by_tts(self) -> bool:
+        if self.voice_runtime.frontend.capture_during_playback:
+            return False
         if self.tts_playing.is_set():
             return True
         with self._tts_guard_lock:
@@ -501,12 +612,19 @@ class VoiceGateway(Node):
             proc = None
             playback_started = False
             started_at = time.monotonic()
+            with self._tts_generation_lock:
+                generation = self._tts_generation
+            kind = "wake_ack" if text == self.wake_response else "response"
+            runtime_started = False
             try:
                 is_wake_response = text == self.wake_response and self._wake_audio is not None
                 segments = [text] if is_wake_response else speech_segments(text)
                 for index, segment in enumerate(segments):
                     if self.stop_event.is_set():
                         break
+                    with self._tts_generation_lock:
+                        if generation != self._tts_generation:
+                            break
                     synth_start = time.monotonic()
                     audio, cached = (self._wake_audio, True) if is_wake_response else self._speech_audio(segment)
                     synthesis_seconds = time.monotonic() - synth_start
@@ -518,8 +636,24 @@ class VoiceGateway(Node):
                     # Remain half-duplex across ALL segments and synthesis gaps.
                     self.tts_playing.set()
                     playback_started = True
+                    if not runtime_started:
+                        try:
+                            self.voice_runtime.playback_started(kind)
+                        except ValueError as exc:
+                            self._runtime_status(
+                                "invalid_transition", error=str(exc)
+                            )
+                        else:
+                            self._runtime_status(
+                                "playback_started",
+                                kind=kind,
+                                generation=generation,
+                            )
+                        runtime_started = True
                     self._status(f"tts_play_start segment={index+1}/{len(segments)} synthesis={synthesis_seconds:.3f} wait={time.monotonic()-started_at:.3f} cached={cached} lead={lead:.2f}")
                     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
+                    with self._playback_lock:
+                        self._playback_proc = proc
                     proc.communicate(input=pcm, timeout=30)
                 self._status(f"tts_timing total={time.monotonic() - started_at:.3f} segments={len(segments)}")
             except Exception as exc:
@@ -528,8 +662,11 @@ class VoiceGateway(Node):
                     proc.communicate()
                 self.get_logger().warning("tts playback failed: %r" % (exc,))
             finally:
-                # Keep discarding microphone samples after output stops; this
-                # absorbs acoustic reverberation and the aplay tail.
+                with self._playback_lock:
+                    if self._playback_proc is proc:
+                        self._playback_proc = None
+                # Guarded mode discards reverberation after playback; an
+                # externally validated AEC source intentionally bypasses this.
                 if playback_started:
                     with self._tts_guard_lock:
                         self._tts_resume_at = (
@@ -539,6 +676,19 @@ class VoiceGateway(Node):
                             )
                         )
                     self.tts_playing.clear()
+                if runtime_started:
+                    state = self.voice_runtime.playback_drained(kind)
+                    self._runtime_status(
+                        "playback_drained",
+                        kind=kind,
+                        generation=generation,
+                    )
+                    if (
+                        kind == "response"
+                        and state is VoiceState.LISTENING
+                        and self.voice_runtime.continuous_dialogue
+                    ):
+                        self._arm_command_capture("continuous_dialogue")
 
     def _on_llm_status(self, msg) -> None:
         text = (msg.data or "").strip()
@@ -565,6 +715,13 @@ class VoiceGateway(Node):
 
     def _on_voice_control(self, msg: String) -> None:
         command = (msg.data or "").strip().lower()
+        if command in {"interrupt", "barge_in", "stop_speaking"}:
+            interrupted = self.voice_runtime.manual_barge_in(command)
+            self._interrupt_tts(command)
+            if interrupted:
+                self._runtime_status("manual_barge_in", command=command)
+                self._arm_command_capture("manual_barge_in")
+            return
         if command == "volume_up":
             self.tts_volume = min(1.0, self.tts_volume + 0.1)
         elif command == "volume_down":
