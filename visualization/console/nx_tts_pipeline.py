@@ -131,8 +131,14 @@ class TTSPipelineMixin:
                     self._tts_resume_at=time.monotonic()+(self.wake_echo_guard if wake else self.tts_echo_guard)
                 self.tts_playing.clear()
                 if index==count:
-                    state=self.voice_runtime.playback_drained(kind)
-                    self._runtime_status('playback_drained',kind=kind,generation=generation)
-                    if (kind=='response' and state.value=='listening' and
-                            self.voice_runtime.continuous_dialogue):
-                        self._arm_command_capture('continuous_dialogue')
+                    with self._tts_generation_lock:current_generation=self._tts_generation
+                    if generation==current_generation:
+                        state=self.voice_runtime.playback_drained(kind)
+                        self._runtime_status('playback_drained',kind=kind,generation=generation)
+                        if (kind=='response' and state.value=='listening' and
+                                self.voice_runtime.continuous_dialogue):
+                            self._arm_command_capture('continuous_dialogue')
+                    else:
+                        self._runtime_status('stale_playback_drained',
+                            kind=kind,generation=generation,
+                            current_generation=current_generation)

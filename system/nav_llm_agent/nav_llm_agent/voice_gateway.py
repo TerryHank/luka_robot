@@ -311,10 +311,10 @@ class VoiceGateway(Node):
                     f"speed={self.tts_speed:.2f} {exc}"
                 )
 
-        self.audio_thread = threading.Thread(target=self._audio_loop, daemon=True)
-        self.audio_thread.start()
         self.voice_runtime.ready()
         self._runtime_status("ready")
+        self.audio_thread = threading.Thread(target=self._audio_loop, daemon=True)
+        self.audio_thread.start()
         self._status(f"ready wake_word={self.wake_word} device={self.audio_device}")
 
     def _status(self, text: str) -> None:
@@ -677,18 +677,28 @@ class VoiceGateway(Node):
                         )
                     self.tts_playing.clear()
                 if runtime_started:
-                    state = self.voice_runtime.playback_drained(kind)
-                    self._runtime_status(
-                        "playback_drained",
-                        kind=kind,
-                        generation=generation,
-                    )
-                    if (
-                        kind == "response"
-                        and state is VoiceState.LISTENING
-                        and self.voice_runtime.continuous_dialogue
-                    ):
-                        self._arm_command_capture("continuous_dialogue")
+                    with self._tts_generation_lock:
+                        current_generation = self._tts_generation
+                    if generation == current_generation:
+                        state = self.voice_runtime.playback_drained(kind)
+                        self._runtime_status(
+                            "playback_drained",
+                            kind=kind,
+                            generation=generation,
+                        )
+                        if (
+                            kind == "response"
+                            and state is VoiceState.LISTENING
+                            and self.voice_runtime.continuous_dialogue
+                        ):
+                            self._arm_command_capture("continuous_dialogue")
+                    else:
+                        self._runtime_status(
+                            "stale_playback_drained",
+                            kind=kind,
+                            generation=generation,
+                            current_generation=current_generation,
+                        )
 
     def _on_llm_status(self, msg) -> None:
         text = (msg.data or "").strip()
