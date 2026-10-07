@@ -1,0 +1,3 @@
+common/legacy/snapshots/** -text
+evaluator/fixtures/legacy_images/** -text
+evaluator/artifacts/legacy_results/** -text
