@@ -11,7 +11,7 @@ from luka_capabilities.dispatcher import CapabilityDispatcher
 
 def dispatcher():
     mission=Mock();mission.active.return_value=False
-    behavior=Mock();status=Mock();product=Mock()
+    behavior=Mock(spec=['navigate','follow','acquisition','relocalize']);status=Mock();product=Mock()
     status.destinations.return_value=[{'id':'kitchen','display_name':'厨房'}]
     return CapabilityDispatcher(mission,behavior,status,Mock(),product)
 

@@ -26,6 +26,10 @@ class CapabilityDispatcher:
    if mission.active():raise ValueError('请先停止当前巡航或找物任务')
    self.behavior_service.navigate(hits[0]['id']);return '已提交前往'+hits[0]['display_name']+'的导航。'
   if tool=='cancel_all':
+   if hasattr(self.behavior_service,'cancel_all'):
+    result=self.behavior_service.cancel_all()
+    if not result['ok']:raise ValueError('停止未完全确认：'+'；'.join(result['errors']))
+    return result['results']['patrol']['message']
    self.behavior_service.acquisition.cancel()
    self.behavior_service.follow.stop('已通过助手停止全部运动')
    return mission.stop()['message']

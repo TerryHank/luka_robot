@@ -45,7 +45,7 @@ def direct(text):
   return {'tool':'music_play','arguments':{'query':m[1]}}
  for phrase,tool in [('停止','cancel_all'),('停车','cancel_all'),('停下','cancel_all'),('急停','cancel_all'),('停止导航','cancel_all'),('取消导航','cancel_all'),('别走了','cancel_all'),('停止跟随','follow_stop'),('结束跟随','follow_stop'),('开始录像','record_start'),('停止录像','record_stop'),('查看录像状态','record_status'),('启动小车功能','functions_start'),('查询服务状态','functions_status')]:
   if t==phrase:return {'tool':tool,'arguments':{}}
- from nx_voice_commands import route
+ from .voice_commands import route
  a=route(t)
  if a:
   routed={'stop':'cancel_all','object_where':'object_where','object_bring':'object_bring','patrol_start':'patrol_start','patrol_stop':'patrol_stop','find_object':'find_object'}

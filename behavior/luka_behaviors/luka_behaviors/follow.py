@@ -2,8 +2,8 @@ from .interfaces import Behavior
 
 class FollowBehavior(Behavior):
  def __init__(self,node):
-  from nx_follow import FollowController
-  from nx_follow_acquire import FollowAcquisition
+  from .follow_controller import FollowController
+  from .follow_acquisition import FollowAcquisition
   self.legacy_controller=FollowController(node)
   self.acquisition=FollowAcquisition(self.legacy_controller)
  def start(self,*args,**kwargs):return self.legacy_controller.start(*args,**kwargs)

@@ -4,8 +4,8 @@ from .source_checks import ROOT, sources, tree, twist_publishers
 
 
 CONSOLE_TWIST_SOURCES = {
-    "visualization/console/nx_follow.py": ["/nx/follow_safe"],
-    "visualization/console/nx_relocalization.py": ["/nx/nav_guarded"],
+    "behavior/luka_behaviors/luka_behaviors/follow_controller.py": ["/nx/follow_safe"],
+    "behavior/luka_behaviors/luka_behaviors/relocalization.py": ["/nx/nav_guarded"],
     "visualization/console/nx_escape_recovery.py": ["/nx/web_teleop_cmd_vel"],
     "visualization/console/web_teleop_dashboard.py": ["/nx/web_teleop_cmd_vel"],
     "visualization/console/mecanum_dance_demo.py": ["topic"],
@@ -16,7 +16,7 @@ CONSOLE_TWIST_SOURCES = {
 
 def test_existing_console_motion_sources_are_explicitly_inventoried():
     found = {}
-    for path in sources(ROOT / "visualization/console"):
+    for path in [*sources(ROOT / "visualization/console"),*sources(ROOT / "behavior")]:
         topics = twist_publishers(tree(path))
         if topics:
             found[path.relative_to(ROOT).as_posix()] = topics

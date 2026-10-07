@@ -7,7 +7,12 @@ class LegacyBehaviorService:
   self.node=node;self.send_nav=send_nav
   self.follow=node.follow_controller;self.acquisition=node.follow_acquisition
   self.relocalize=node.relocalization
- def navigate(self,ident):return self.send_nav(self.node,ident)
+ def navigate(self,ident):return self.node.behaviors.navigate.start(ident) if hasattr(self.node,"behaviors") else self.send_nav(self.node,ident)
+ def cancel_all(self):
+  if hasattr(self.node,'behaviors'):return self.node.behaviors.stop.start()
+  self.acquisition.cancel();self.follow.stop('已通过助手停止全部运动')
+  result=self.node.patrol_mission.stop();self.relocalize.stop_rotation()
+  return {'ok':True,'errors':[],'results':{'patrol':result}}
 
 
 class LegacyStatusService:
@@ -23,7 +28,7 @@ class LegacyStatusService:
   from std_msgs.msg import String
   self.node.nx_voice_pub.publish(String(data='volume_'+direction))
  def vision(self,path,body=None):
-  from nx_patrol_mission import vision
+  from luka_mission.adapters import vision
   return vision(path,body)
  def voiceprint_status(self):
   from nx_voiceprint import VoiceprintStore
