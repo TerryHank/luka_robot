@@ -113,3 +113,11 @@ def test_drobotics_backend_uses_same_runtime_contract_without_claiming_aec():
     assert 'duplex_mode="guarded_half_duplex"' in text
     assert 'aec_provider="none"' in text
     assert '"playback_timing"] = "estimated"' in text
+
+
+def test_drobotics_backend_drops_asr_while_estimated_tts_is_speaking():
+    text = (
+        ROOT / "system/nav_llm_agent/nav_llm_agent/voice_suite_bridge.py"
+    ).read_text(encoding="utf-8")
+    assert "self.runtime.state is VoiceState.SPEAKING" in text
+    assert "asr_ignored reason=playback_guard" in text

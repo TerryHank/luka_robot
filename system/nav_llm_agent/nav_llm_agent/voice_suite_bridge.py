@@ -160,7 +160,13 @@ class DRoboticsVoiceSuiteBridge(Node):
         if not text:
             return
         now = time.monotonic()
+        if self.runtime.state is VoiceState.SPEAKING:
+            self.status("asr_ignored reason=playback_guard")
+            self.runtime_status("asr_ignored", reason="playback_guard")
+            return
         if now > self.armed_until:
+            self.runtime.end_session("follow_up_timeout")
+            self.runtime_status("session_end", reason="follow_up_timeout")
             self.status("asr_ignored reason=not_woken")
             return
         normalized = "".join(text.split())
