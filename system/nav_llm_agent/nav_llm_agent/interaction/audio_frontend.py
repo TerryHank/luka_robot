@@ -18,8 +18,10 @@ class AudioFrontendPolicy:
     state machine.  On S100 the actual engines remain replaceable.
     """
 
+    profile: str = "guarded"
     duplex_mode: DuplexMode = DuplexMode.GUARDED_HALF_DUPLEX
     aec_provider: str = "none"
+    ns_provider: str = "none"
     kws_engine: str = "sherpa_onnx"
     vad_engine: str = "sherpa_onnx"
     noise_suppression: bool = False
@@ -29,8 +31,10 @@ class AudioFrontendPolicy:
     @classmethod
     def build(
         cls,
+        profile: str = "guarded",
         duplex_mode: str = DuplexMode.GUARDED_HALF_DUPLEX.value,
         aec_provider: str = "none",
+        ns_provider: str = "none",
         kws_engine: str = "sherpa_onnx",
         vad_engine: str = "sherpa_onnx",
         noise_suppression: bool = False,
@@ -38,7 +42,11 @@ class AudioFrontendPolicy:
         barge_in_enabled: bool = True,
     ) -> "AudioFrontendPolicy":
         mode = DuplexMode(str(duplex_mode).strip().lower())
+        profile_name = str(profile or "guarded").strip().lower()
+        if profile_name not in {"guarded", "pulse_webrtc", "external_aec"}:
+            raise ValueError(f"unsupported audio frontend profile: {profile_name}")
         provider = str(aec_provider or "none").strip().lower()
+        ns = str(ns_provider or "none").strip().lower()
         if mode is DuplexMode.AEC_FULL_DUPLEX and provider in {
             "",
             "none",
@@ -52,9 +60,15 @@ class AudioFrontendPolicy:
         pre_roll = int(pre_roll_ms)
         if not 100 <= pre_roll <= 3000:
             raise ValueError("pre_roll_ms must be within 100..3000")
+        if bool(noise_suppression) and ns in {"", "none", "disabled"}:
+            raise ValueError(
+                "noise_suppression=true requires a named NS provider"
+            )
         return cls(
+            profile=profile_name,
             duplex_mode=mode,
             aec_provider=provider,
+            ns_provider=ns,
             kws_engine=str(kws_engine or "unknown"),
             vad_engine=str(vad_engine or "unknown"),
             noise_suppression=bool(noise_suppression),

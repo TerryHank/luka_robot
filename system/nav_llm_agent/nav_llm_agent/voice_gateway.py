@@ -128,8 +128,13 @@ class VoiceGateway(Node):
         self.declare_parameter("tts_echo_guard", 0.7)
         # xiaozhi-style interaction runtime. Full-duplex is opt-in because the
         # default USB capture path has no proven acoustic echo cancellation.
+        self.declare_parameter("audio_frontend_profile", "guarded")
         self.declare_parameter("duplex_mode", "guarded_half_duplex")
         self.declare_parameter("aec_provider", "none")
+        self.declare_parameter("ns_provider", "none")
+        self.declare_parameter("noise_suppression", False)
+        self.declare_parameter("kws_engine", "sherpa_onnx")
+        self.declare_parameter("vad_engine", "sherpa_onnx")
         self.declare_parameter("barge_in_enabled", True)
         self.declare_parameter("continuous_dialogue", False)
         self.declare_parameter("speak_llm_status", True)
@@ -191,10 +196,15 @@ class VoiceGateway(Node):
         self._playback_proc = None
         self.voice_runtime = VoiceRuntime(
             AudioFrontendPolicy.build(
+                profile=str(self.get_parameter("audio_frontend_profile").value),
                 duplex_mode=str(self.get_parameter("duplex_mode").value),
                 aec_provider=str(self.get_parameter("aec_provider").value),
-                kws_engine="sherpa_onnx",
-                vad_engine="sherpa_onnx",
+                ns_provider=str(self.get_parameter("ns_provider").value),
+                kws_engine=str(self.get_parameter("kws_engine").value),
+                vad_engine=str(self.get_parameter("vad_engine").value),
+                noise_suppression=bool(
+                    self.get_parameter("noise_suppression").value
+                ),
                 pre_roll_ms=max(100, int(self.command_pre_roll * 1000)),
                 barge_in_enabled=bool(
                     self.get_parameter("barge_in_enabled").value
