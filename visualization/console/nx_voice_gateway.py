@@ -229,6 +229,11 @@ class NXVoiceGateway(TTSPipelineMixin, VoiceGateway):
             started=time.monotonic()
             segment=self.speech_vad.feed(samples)
             if not self.command_started and self.speech_vad.vad.is_speech_detected():
+                # ESP-Skainet-style full-duplex rule: once AEC has been
+                # explicitly asserted, VAD speech-start interrupts TTS without
+                # throwing away the VAD cache/pre-roll that contains the first
+                # user syllable.
+                self._barge_in_from_speech('sherpa_vad')
                 self.command_started=True
                 self._status('vad_speech_started')
             if segment is not None:

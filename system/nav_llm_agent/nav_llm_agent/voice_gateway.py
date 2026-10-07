@@ -353,6 +353,17 @@ class VoiceGateway(Node):
         else:
             self._runtime_status("listening", reason=reason)
 
+    def _barge_in_from_speech(self, source: str) -> bool:
+        if not self.tts_playing.is_set():
+            return False
+        if not self.voice_runtime.frontend.acoustic_barge_in:
+            return False
+        if not self.voice_runtime.manual_barge_in(source):
+            return False
+        self._interrupt_tts(source)
+        self._runtime_status("speech_barge_in", source=source)
+        return True
+
     def _interrupt_tts(self, reason: str) -> int:
         with self._tts_generation_lock:
             self._tts_generation += 1
@@ -518,6 +529,10 @@ class VoiceGateway(Node):
                 self.command_hot_frames + 1 if level >= start_threshold else 0
             )
             if self.command_hot_frames >= self.command_start_frames:
+                # With an externally validated AEC source, speech itself is
+                # the barge-in trigger while an active conversation is
+                # speaking. Keep the pre-roll buffer intact; only stop TTS.
+                self._barge_in_from_speech("energy_vad")
                 self.command_started = True
                 self.command_audio = list(self.command_preroll)
                 self.command_audio_samples = sum(len(x) for x in self.command_audio)
