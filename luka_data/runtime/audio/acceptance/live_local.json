@@ -1,0 +1,23 @@
+{
+  "tts_request_sent": true,
+  "tts_playback_completed": true,
+  "state": {
+    "state": "waiting_hardware_wake",
+    "cloud": "unconfigured",
+    "frontend": "xfm_adb",
+    "frontend_ready": true,
+    "backend_mode": "rdk",
+    "dispatch_commands": false,
+    "timestamp": 1791434794.3016958,
+    "last_completed": {
+      "operation": "tts",
+      "backend": "rdk",
+      "timestamp": 1791434766.869048,
+      "samples": 37888
+    }
+  },
+  "fresh_hardware_wakes": 0,
+  "recognized_text": [],
+  "llm_command_count": 0,
+  "observed_seconds": 35.06085705757141
+}

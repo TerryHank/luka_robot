@@ -1,0 +1,29 @@
+[
+  {
+    "operation": "chat",
+    "exit": 5,
+    "seconds": 0.72,
+    "ok": false,
+    "error_code": 20001,
+    "error_scope": "nlp",
+    "text": ""
+  },
+  {
+    "operation": "asr",
+    "exit": 5,
+    "seconds": 2.23,
+    "ok": false,
+    "error_code": 10010116,
+    "error_scope": "other",
+    "text": ""
+  },
+  {
+    "operation": "tts",
+    "exit": 5,
+    "seconds": 12.23,
+    "ok": false,
+    "error_code": 0,
+    "error_scope": "",
+    "text": ""
+  }
+]

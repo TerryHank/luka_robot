@@ -1,0 +1,14 @@
+{
+  "status": "BLOCKED_AIUI_TOOL_LOOP",
+  "production_source_matches_backup": {
+    "src/system/luka_xiaozhi/luka_xiaozhi/ros_client.py": true,
+    "src/system/luka_xiaozhi/luka_xiaozhi/dialogue.py": true,
+    "src/visualization/console/nx_assistant_tools.py": true,
+    "src/visualization/console/nx_voice_commands.py": true
+  },
+  "services": [
+    "active",
+    "active"
+  ],
+  "real_robot_commands": 0
+}
