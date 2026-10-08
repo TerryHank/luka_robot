@@ -1,0 +1,277 @@
+[
+  {
+    "time": 1791451812.0963395,
+    "topic": "/xiaozhi/status",
+    "data": {
+      "state": "speech_backend_failed",
+      "enabled": true,
+      "busy": false,
+      "local_model_state": "not_requested"
+    }
+  },
+  {
+    "time": 1791451812.2032366,
+    "topic": "/voice/status",
+    "data": {
+      "state": "waiting_hardware_wake",
+      "frontend_ready": true,
+      "network_state": "online",
+      "enabled": true,
+      "busy": false,
+      "last_completed": {
+        "operation": "asr",
+        "backend": "aiui",
+        "timestamp": 1791451574.2549074
+      }
+    }
+  },
+  {
+    "time": 1791451859.0976863,
+    "topic": "/voice/hardware_wake",
+    "data": {
+      "observed_at": 1791451859.0962884,
+      "keyword": "lu4 ka3"
+    }
+  },
+  {
+    "time": 1791451859.0984023,
+    "topic": "/xiaozhi/status",
+    "data": {
+      "state": "hardware_wake",
+      "enabled": true,
+      "busy": false,
+      "local_model_state": "not_requested"
+    }
+  },
+  {
+    "time": 1791451859.1892521,
+    "topic": "/voice/status",
+    "data": {
+      "state": "listening",
+      "frontend_ready": true,
+      "network_state": "online",
+      "enabled": true,
+      "busy": true,
+      "last_completed": {
+        "operation": "asr",
+        "backend": "aiui",
+        "timestamp": 1791451574.2549074
+      }
+    }
+  },
+  {
+    "time": 1791451863.4656682,
+    "topic": "/voice/hardware_wake",
+    "data": {
+      "observed_at": 1791451863.4643161,
+      "keyword": "lu4 ka3"
+    }
+  },
+  {
+    "time": 1791451863.4858074,
+    "topic": "/voice/status",
+    "data": {
+      "state": "recognized",
+      "frontend_ready": true,
+      "network_state": "online",
+      "enabled": true,
+      "busy": true,
+      "backend": "aiui",
+      "last_completed": {
+        "operation": "asr",
+        "backend": "aiui",
+        "timestamp": 1791451574.2549074
+      }
+    }
+  },
+  {
+    "time": 1791451863.4865386,
+    "topic": "/voice/recognized_text",
+    "data": "查看"
+  },
+  {
+    "time": 1791451863.4875052,
+    "topic": "/xiaozhi/status",
+    "data": {
+      "state": "thinking",
+      "enabled": true,
+      "busy": true,
+      "local_model_state": "not_requested"
+    }
+  },
+  {
+    "time": 1791451864.2032728,
+    "topic": "/voice/status",
+    "data": {
+      "state": "recognized",
+      "frontend_ready": true,
+      "network_state": "online",
+      "enabled": true,
+      "busy": false,
+      "backend": "aiui",
+      "last_completed": {
+        "operation": "asr",
+        "backend": "aiui",
+        "timestamp": 1791451863.4855537
+      }
+    }
+  },
+  {
+    "time": 1791451864.215954,
+    "topic": "/xiaozhi/answer",
+    "data": "什么查看呀？你快跟我说清楚嘛。"
+  },
+  {
+    "time": 1791451864.216642,
+    "topic": "/xiaozhi/status",
+    "data": {
+      "state": "answer_ready",
+      "enabled": true,
+      "busy": true,
+      "local_model_state": "not_requested",
+      "dialogue_backend": "aiui"
+    }
+  },
+  {
+    "time": 1791451864.2963786,
+    "topic": "/xiaozhi/status",
+    "data": {
+      "state": "speaking",
+      "enabled": true,
+      "busy": true,
+      "local_model_state": "not_requested"
+    }
+  },
+  {
+    "time": 1791451865.2033026,
+    "topic": "/voice/status",
+    "data": {
+      "state": "recognized",
+      "frontend_ready": true,
+      "network_state": "online",
+      "enabled": true,
+      "busy": true,
+      "backend": "aiui",
+      "last_completed": {
+        "operation": "asr",
+        "backend": "aiui",
+        "timestamp": 1791451863.4855537
+      }
+    }
+  },
+  {
+    "time": 1791451865.8448164,
+    "topic": "/voice/status",
+    "data": {
+      "state": "speaking",
+      "frontend_ready": true,
+      "network_state": "online",
+      "enabled": true,
+      "busy": true,
+      "backend": "aiui",
+      "last_completed": {
+        "operation": "asr",
+        "backend": "aiui",
+        "timestamp": 1791451863.4855537
+      }
+    }
+  },
+  {
+    "time": 1791451869.0533593,
+    "topic": "/voice/status",
+    "data": {
+      "state": "waiting_hardware_wake",
+      "frontend_ready": true,
+      "network_state": "online",
+      "enabled": true,
+      "busy": false,
+      "last_completed": {
+        "operation": "tts",
+        "backend": "aiui",
+        "timestamp": 1791451868.6513398,
+        "samples": 43946
+      }
+    }
+  },
+  {
+    "time": 1791451869.09617,
+    "topic": "/xiaozhi/status",
+    "data": {
+      "state": "waiting_hardware_wake",
+      "enabled": true,
+      "busy": false,
+      "local_model_state": "not_requested"
+    }
+  },
+  {
+    "time": 1791451872.688373,
+    "topic": "/voice/hardware_wake",
+    "data": {
+      "observed_at": 1791451872.6868055,
+      "keyword": "lu4 ka3"
+    }
+  },
+  {
+    "time": 1791451872.6890955,
+    "topic": "/xiaozhi/status",
+    "data": {
+      "state": "hardware_wake",
+      "enabled": true,
+      "busy": false,
+      "local_model_state": "not_requested"
+    }
+  },
+  {
+    "time": 1791451872.6907701,
+    "topic": "/voice/status",
+    "data": {
+      "state": "listening",
+      "frontend_ready": true,
+      "network_state": "online",
+      "enabled": true,
+      "busy": true,
+      "last_completed": {
+        "operation": "tts",
+        "backend": "aiui",
+        "timestamp": 1791451868.6513398,
+        "samples": 43946
+      }
+    }
+  },
+  {
+    "time": 1791451889.9366453,
+    "topic": "/voice/status",
+    "data": {
+      "state": "backend_unavailable",
+      "frontend_ready": true,
+      "network_state": "online",
+      "error": "RuntimeError",
+      "enabled": true,
+      "busy": true,
+      "last_completed": {
+        "operation": "tts",
+        "backend": "aiui",
+        "timestamp": 1791451868.6513398,
+        "samples": 43946
+      }
+    }
+  },
+  {
+    "time": 1791451890.2032628,
+    "topic": "/voice/status",
+    "data": {
+      "state": "backend_unavailable",
+      "frontend_ready": true,
+      "network_state": "online",
+      "error": "RuntimeError",
+      "enabled": true,
+      "busy": false,
+      "last_completed": {
+        "operation": "tts",
+        "backend": "aiui",
+        "timestamp": 1791451868.6513398,
+        "samples": 43946
+      }
+    }
+  }
+]

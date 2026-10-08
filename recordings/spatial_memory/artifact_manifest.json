@@ -1,0 +1,41 @@
+{
+  "models/yolo11n-fp16.engine": {
+    "bytes": 8688636,
+    "sha256": "3789353f1e790c52b03dd3901593269ed94152204e1fa3eaf8fe67834472785d"
+  },
+  "models/yolo11n.onnx": {
+    "bytes": 10930182,
+    "sha256": "634279b40c07c6391472c51ad45b81ebc48706a9a1fe72dd3396322acd0c053b"
+  },
+  "models/source.txt": {
+    "bytes": 76,
+    "sha256": "40ac332ce24e317a7eecd6d7debd0140f608b7fa8906f1b2e403a7e71f604497"
+  },
+  "sdk/libOpenNI2.so": {
+    "bytes": 538232,
+    "sha256": "d7231df09a6a242990507fce4eb75329a67c8f298bd8f110baa8dddc344f6bda"
+  },
+  "sdk/OpenNI.ini": {
+    "bytes": 458,
+    "sha256": "3896e8f831c6a56576e9e93a2e5b3e1d3fa72041e7d01e1d7f23b7cd907e7eff"
+  },
+  "sdk/OpenNI2/Drivers/libOniFile.so": {
+    "bytes": 453512,
+    "sha256": "e22b61f2d86ac17befdf43c02c64aff99a6e7a28c4b4f15c12f62e5216834133"
+  },
+  "sdk/OpenNI2/Drivers/orbbec.ini": {
+    "bytes": 5278,
+    "sha256": "b6a1cc4ed8ee62c7c4b2596e43727362ee489bd1733f59633794b005224d1e9b"
+  },
+  "sdk/OpenNI2/Drivers/OniFile.ini": {
+    "bytes": 210,
+    "sha256": "f50a20ca76350f8e5e81b50477714f9a1b1db9b49047f5089b90644526ba9505"
+  },
+  "sdk/OpenNI2/Drivers/liborbbec.so": {
+    "bytes": 1516048,
+    "sha256": "b6511b00891360bda20f452847db5f25d67d588597bad5991a9756ef5dffa95b"
+  },
+  "model_source": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n.onnx",
+  "sdk_source": "https://github.com/orbbec/ros2_astra_camera/tree/master/astra_camera/openni2_redist/arm64",
+  "model_release_digest": "sha256:634279b40c07c6391472c51ad45b81ebc48706a9a1fe72dd3396322acd0c053b"
+}

@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+node_modules/
+.venv/
+venv/
+ml_models/
+*.hbm
+*.onnx
+*.gguf
+*.pt
+*.pth
+*.safetensors
+*.pem
+*.key
+**/*credentials*

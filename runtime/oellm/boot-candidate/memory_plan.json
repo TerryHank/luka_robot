@@ -1,0 +1,29 @@
+{
+  "boardid": "0x6A87",
+  "platform": "S100 nash-e",
+  "live_boot_changed": false,
+  "base_sha256": "890114921d6c0544d648b3ba7388e25e99fa168d4cde8106b6251f7ea702d9bf",
+  "candidate_sha256": "22b3f59599311698e95e2dce26b692ecd122c94948210924ea16de8cf86391c3",
+  "candidate_path": "/home/sunrise/luka_data/runtime/oellm/boot-candidate/rdk-s100-v1p1.bpu-first.dtb",
+  "candidate_layout": {
+    "ion_reserved": [
+      "0x4",
+      "0x00000000",
+      "0x0",
+      "0xF0000000"
+    ],
+    "ion_carveout": [
+      "0x8",
+      "0x00000000",
+      "0x0",
+      "0xF0000000"
+    ],
+    "ion_cma": [
+      "0xc",
+      "0x80000000",
+      "0x0",
+      "0x40000000"
+    ]
+  },
+  "warning": "Official S100 bpu_first reduces Linux RAM and warns of possible performance issues. Requires coordinated reboot and post-reboot validation."
+}

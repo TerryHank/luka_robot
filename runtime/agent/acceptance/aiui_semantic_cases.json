@@ -1,0 +1,67 @@
+{
+  "pass": true,
+  "results": [
+    {
+      "text": "麻烦放一下小星星，可以吗？",
+      "expected": "play",
+      "pass": true,
+      "calls": [
+        {
+          "tool": "music_play",
+          "args": {
+            "query": "小星星"
+          }
+        }
+      ],
+      "answer": "音乐已经为您播放，小星星的旋律正在响起。"
+    },
+    {
+      "text": "先别放歌，告诉我现在可以去哪些地方。",
+      "expected": "read",
+      "pass": true,
+      "calls": [
+        {
+          "tool": "destinations",
+          "args": {}
+        },
+        {
+          "tool": "destinations",
+          "args": {}
+        }
+      ],
+      "answer": "现在可以去的地方有两个：一个是一楼的客厅，另一个是二楼的客厅。请问您要去哪里？"
+    },
+    {
+      "text": "如果我说播放小星星，你会怎么做？现在只是问问。",
+      "expected": "none",
+      "pass": true,
+      "calls": [],
+      "answer": "如果需要播放《小星星》，可以直接告诉我。目前我的任务规划器只处理导航和目的地查询，不负责音乐播放。"
+    },
+    {
+      "text": "你可以帮我导航吗？我先了解一下你的能力。",
+      "expected": "none",
+      "pass": true,
+      "calls": [
+        {
+          "tool": "destinations",
+          "args": {}
+        }
+      ],
+      "answer": "您想导航到哪个客厅？一楼的客厅（ID: room1）还是二楼的客厅（ID: room2）？"
+    },
+    {
+      "text": "去客厅吧。",
+      "expected": "clarify",
+      "pass": true,
+      "calls": [
+        {
+          "tool": "destinations",
+          "args": {}
+        }
+      ],
+      "answer": "您想前往的是一楼的客厅还是二楼的客厅？"
+    }
+  ],
+  "real_robot_commands": 0
+}

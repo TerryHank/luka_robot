@@ -1,0 +1,15 @@
+{
+  "returncode": 0,
+  "seconds": 1.29,
+  "ok": true,
+  "error_code": 0,
+  "error_scope": "",
+  "connected": true,
+  "timed_out": false,
+  "ignored_nlp_errors": 0,
+  "rate": 16000,
+  "channels": 1,
+  "pcm_bytes": 113920,
+  "rms": 2428.666259765625,
+  "peak": 14186.0
+}
