@@ -1,1 +1,0 @@
-docs/legacy/NX_MANUAL_CONTROL_20260910.md

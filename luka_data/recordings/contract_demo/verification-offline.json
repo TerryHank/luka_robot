@@ -1,0 +1,32 @@
+{
+  "01": {
+    "exit": 0,
+    "output_tail": "上位机 Modbus 读取帧： 01 04 00 36 00 02 91 c5\nCRC 校验： True\n只生成内存中的帧；未打开串口。没有 STM32 固件/CAN 的实现证据。\n01 I-1 STM32与通信协议 PARTIAL\n对应范围： 只有上位机RS485/Modbus协议代码；没有STM32固件工程和CAN实现。\n启动成功只证明节点已运行；实时数据和合同完整闭环仍须按 README 验证。\n",
+    "error": ""
+  },
+  "06": {
+    "exit": 0,
+    "output_tail": " \"/home/sunrise/luka_ws/install/orbbec_camera\",\n  \"orbbec_camera_msgs\": \"/home/sunrise/luka_ws/install/orbbec_camera_msgs\",\n  \"nav_llm_agent\": \"/home/sunrise/luka_ws/install/nav_llm_agent\",\n  \"nav2_bringup\": \"/home/sunrise/luka_ws/install/nav2_bringup\",\n  \"hotel_semantic_map\": \"/home/sunrise/luka_ws/install/hotel_semantic_map\",\n  \"hotel_semantic_map_msgs\": \"/home/sunrise/luka_ws/install/hotel_semantic_map_msgs\",\n  \"hobot_mot\": \"/home/sunrise/luka_ws/install/hobot_mot\",\n  \"explore_lite\": \"/home/sunrise/luka_ws/install/explore_lite\",\n  \"explore_lite_msgs\": \"/home/sunrise/luka_ws/install/explore_lite_msgs\",\n  \"ai_msgs\": \"/home/sunrise/luka_ws/install/ai_msgs\"\n}\n工作区： /home/sunrise/luka_ws \n运行数据： /home/sunrise/luka_data\n06 II-1 Ubuntu与ROS2工程环境 IMPLEMENTED\n对应范围： 已核实Ubuntu22.04.5、ROS2 Humble及当前17个真实ROS源码包。\n启动成功只证明节点已运行；实时数据和合同完整闭环仍须按 README 验证。\n",
+    "error": ""
+  },
+  "07": {
+    "exit": 0,
+    "output_tail": "                #\n\t\t\tuint32 width                 #\n\t\t\tstring encoding       #\n\t\t\t                      # taken from the list of strings in include/sensor_msgs/image_encodings.hpp\n\t\t\tuint8 is_bigendian    #\n\t\t\tuint32 step           #\n\t\t\tuint8[] data          #\n\t\tfloat32[] features\n\t\tDBResult db_result\n\t\t\t#\n\t\t\t#\n\t\t\t#\n\t\t\tstring db_type\n\t\t\tstring match_id\n\t\t\tfloat32 distance\n\t\t\tfloat32 similarity\n\nhotel_semantic_map_msgs/msg/Destination \n string id\nstring display_name\nstring poi_type\nstring floor_id\nstring area_id\ngeometry_msgs/Pose pose\n\tPoint position\n\t\tfloat64 x\n\t\tfloat64 y\n\t\tfloat64 z\n\tQuaternion orientation\n\t\tfloat64 x 0\n\t\tfloat64 y 0\n\t\tfloat64 z 0\n\t\tfloat64 w 1\nstring final_approach_profile\nbool enabled\n\n07 II-2 消息接口与话题封装 PARTIAL\n对应范围： 有ai_msgs和语义地图自定义消息；底盘控制仍大量使用标准Twist/Odometry，不能宣称有完整专用底盘协议消息。\n启动成功只证明节点已运行；实时数据和合同完整闭环仍须按 README 验证。\n",
+    "error": ""
+  },
+  "23": {
+    "exit": 0,
+    "output_tail": "ation_auto\": \"停止状态下尝试自动重定位，参数{}\",\n  \"voiceprint_status\": \"查询声纹录入数量与最近说话人候选，参数{}\",\n  \"music_search\": \"搜索音乐，参数{query:歌名或歌手}\",\n  \"music_play\": \"搜索并播放音乐，参数{query:歌名或歌手}\",\n  \"music_pause\": \"暂停音乐，参数{}\",\n  \"music_resume\": \"继续播放音乐，参数{}\",\n  \"music_stop\": \"停止音乐，参数{}\",\n  \"music_status\": \"查询音乐播放状态，参数{}\",\n  \"music_volume\": \"设置音乐音量，参数{volume:0到100}\",\n  \"functions_status\": \"查询各服务状态，参数{}\",\n  \"functions_start\": \"启动现有小车功能服务，参数{}\",\n  \"camera_find\": \"识别相机当前画面的物品，参数{query:物品名称}\",\n  \"record_start\": \"原地开始录像，不导航，参数{}\",\n  \"record_stop\": \"停止录像并保存，参数{}\",\n  \"record_status\": \"查询录像和搜索状态，参数{}\",\n  \"voice_volume\": \"调整说话音量，参数{direction:up或down}\",\n  \"settings_help\": \"账号、配网、地图房间航点编辑、声纹录入、手动定位、启动重启等操作入口，参数{topic:功能名称}\"\n}\n这是现有接口盘点，不是完整合同应用接口规范的交付证明。\n23 VI-4 应用接口规范资料 PARTIAL\n对应范围： 有API路由、ROS消息和追溯资料；没有确认的完整合同应用接口规范。本入口查看已有接口结构，不能替代正式交付文档。\n启动成功只证明节点已运行；实时数据和合同完整闭环仍须按 README 验证。\n",
+    "error": ""
+  },
+  "26": {
+    "exit": 0,
+    "output_tail": "msgs\t/home/sunrise/luka_ws/src/sensing/OrbbecSDK_ROS2/orbbec_camera_msgs\t(ros.ament_cmake)\norbbec_description\t/home/sunrise/luka_ws/src/sensing/OrbbecSDK_ROS2/orbbec_description\t(ros.ament_cmake)\nrplidar_ros\t/home/sunrise/luka_ws/src/sensing/rplidar_ros\t(ros.ament_cmake)\nteleop_twist_keyboard\t/home/sunrise/luka_ws/src/control/teleop_twist_keyboard\t(ros.ament_python)\ntros_person_following\t/home/sunrise/luka_ws/src/control/tros_person_following\t(ros.ament_cmake)\nwaterplus_map_tools\t/home/sunrise/luka_ws/src/map/waterplus_map_tools\t(ros.ament_cmake)\n\n源码： /home/sunrise/luka_ws/src\n配置： /home/sunrise/luka_ws/src/common/config\n资料： /home/sunrise/luka_ws/src/docs\n运行数据： /home/sunrise/luka_data\n缺失交付物：STM32 固件、经确认的完整应用接口规范；本盘点不代表验收完成。\n26 VII-3 源码配置与交付资产 PARTIAL\n对应范围： 有源码/配置/部分文档，缺STM32固件和完整接口规范；资产盘点不等于合同完整交付验收。\n启动成功只证明节点已运行；实时数据和合同完整闭环仍须按 README 验证。\n",
+    "error": ""
+  },
+  "kinematics": {
+    "exit": 0,
+    "output": "{\"input_twist\": [0.1, 0.0, 0.0], \"wheel_rpm\": {\"1\": 18.79782792423961, \"2\": 18.79782792423961, \"3\": 18.79782792423961, \"4\": 18.79782792423961}, \"roundtrip_twist\": [0.10000000000000002, 0.0, 0.0]}\n{\"input_twist\": [0.0, 0.1, 0.0], \"wheel_rpm\": {\"1\": -18.79782792423961, \"2\": 18.79782792423961, \"3\": 18.79782792423961, \"4\": -18.79782792423961}, \"roundtrip_twist\": [0.0, 0.10000000000000002, 0.0]}\n{\"input_twist\": [0.0, 0.0, 0.2], \"wheel_rpm\": {\"1\": -12.500555569619339, \"2\": 12.500555569619339, \"3\": -12.500555569619339, \"4\": 12.500555569619339}, \"roundtrip_twist\": [0.0, 0.0, 0.19999999999999996]}\n实际模型为麦克纳姆，非合同字面的差速。计算结果未发布为速度。\n",
+    "error": ""
+  }
+}

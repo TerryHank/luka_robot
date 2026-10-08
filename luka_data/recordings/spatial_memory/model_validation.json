@@ -1,0 +1,112 @@
+{
+  "cpu": {
+    "median_ms": 146.96297399973446,
+    "detections": [
+      {
+        "class": "person",
+        "confidence": 0.902,
+        "bbox": [
+          49,
+          398,
+          243,
+          905
+        ]
+      },
+      {
+        "class": "person",
+        "confidence": 0.8493,
+        "bbox": [
+          671,
+          393,
+          810,
+          880
+        ]
+      },
+      {
+        "class": "person",
+        "confidence": 0.8328,
+        "bbox": [
+          223,
+          406,
+          345,
+          860
+        ]
+      },
+      {
+        "class": "person",
+        "confidence": 0.3993,
+        "bbox": [
+          0,
+          550,
+          66,
+          872
+        ]
+      },
+      {
+        "class": "bus",
+        "confidence": 0.9392,
+        "bbox": [
+          12,
+          228,
+          799,
+          735
+        ]
+      }
+    ]
+  },
+  "gpu": {
+    "median_ms": 24.32226200016885,
+    "detections": [
+      {
+        "class": "person",
+        "confidence": 0.9023,
+        "bbox": [
+          49,
+          398,
+          243,
+          905
+        ]
+      },
+      {
+        "class": "person",
+        "confidence": 0.8491,
+        "bbox": [
+          671,
+          392,
+          810,
+          879
+        ]
+      },
+      {
+        "class": "person",
+        "confidence": 0.834,
+        "bbox": [
+          223,
+          406,
+          345,
+          860
+        ]
+      },
+      {
+        "class": "person",
+        "confidence": 0.3982,
+        "bbox": [
+          0,
+          550,
+          66,
+          872
+        ]
+      },
+      {
+        "class": "bus",
+        "confidence": 0.9404,
+        "bbox": [
+          12,
+          228,
+          799,
+          735
+        ]
+      }
+    ]
+  }
+}

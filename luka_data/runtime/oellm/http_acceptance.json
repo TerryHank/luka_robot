@@ -1,0 +1,20 @@
+{
+  "pass": true,
+  "backend": "official_oellm_1.0.0",
+  "model": "Qwen2.5-1.5B-Instruct",
+  "server_public_network_denied": true,
+  "two_turns": [
+    {
+      "question": "我叫小明，请记住我的名字。",
+      "answer": "好的，小明，很高兴认识你。",
+      "seconds": 0.64
+    },
+    {
+      "question": "我叫什么名字？",
+      "answer": "你叫小明。",
+      "seconds": 0.43
+    }
+  ],
+  "wrong_alias_rejected": true,
+  "no_robot_motion": true
+}
