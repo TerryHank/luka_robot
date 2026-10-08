@@ -1,57 +1,18 @@
-# Luka ROS 2 Workspace
-
-The repository is organized as a standard ROS 2 / colcon workspace.
+# Luka robot
 
 ```text
-~/
+luka_robot/
 ├── luka_ws/
-│   ├── src/
-│   │   ├── common/
-│   │   ├── sensing/
-│   │   ├── localization/
-│   │   ├── mapping/
-│   │   ├── perception/
-│   │   ├── planning/
-│   │   ├── control/
-│   │   ├── system/
-│   │   ├── visualization/
-│   │   └── testing/
-│   ├── build/      # generated, not tracked
-│   ├── install/    # generated, not tracked
-│   └── log/        # generated, not tracked
-│
+│   └── src/
 └── luka_data/
     ├── maps/
-    ├── ml_models/
-    └── recordings/
-        └── bags/
+    ├── recordings/
+    ├── runtime/
+    └── backups/
 ```
 
-## Initialize a checkout
+Every branch uses this layout while retaining its own source revision. The data snapshot is shared from the verified 2026-10-08 backup. Model weights and private credentials are excluded.
 
-```bash
-cd ~/luka_ws
-bash scripts/bootstrap_workspace_layout.sh
-source src/system/environment.bash
-colcon build
-```
+Install Git LFS before cloning. Build from `luka_ws/` with `colcon build --base-paths src`; generated build/install/log stay there. For the robot's existing absolute paths, restore the two directories under `/home/sunrise/` after cloning into a staging directory.
 
-`bootstrap_workspace_layout.sh` creates the colcon output directories and
-`~/luka_data`. When the data directories are empty it can restore the maps
-and stereo-calibration recordings that existed before this repository layout
-migration.
-
-## Canonical paths
-
-All source changes must be made under `src/`. Root-level directories such as
-`system`, `perception`, `control`, `map`, and `common` are temporary
-compatibility symlinks so existing service files and absolute paths keep
-working during migration.
-
-Runtime data is never canonical source:
-- maps: `$LUKA_DATA/maps`
-- ML models: `$LUKA_DATA/ml_models`
-- recordings: `$LUKA_DATA/recordings`
-- rosbag data: `$LUKA_DATA/recordings/bags`
-
-See `docs/WORKSPACE_LAYOUT.md` for the data migration contract.
+`luka_ws/LAYOUT_MIGRATION.json` records the original commit and path mapping. Inactive ignored source copies and root shortcuts remain recoverable from Git history. `luka_data/BACKUP_MANIFEST.json` records data hashes, links and exclusions. This structural change does not certify every historical branch's ROS runtime.

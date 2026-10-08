@@ -1,50 +1,17 @@
-# Generated ROS 2 workspace artifacts
-/build/
-/install/
-/log/
-/Log/
+/luka_ws/build/
+/luka_ws/install/
+/luka_ws/log/
 __pycache__/
 *.pyc
-
-# Credentials and secrets
-*.env
-.env*
-**/*credential*
-**/*credentials*
-**/*secret*
-**/*token*
+node_modules/
+venv/
+.venv/
+/luka_data/ml_models/
+*.hbm
+*.onnx
+*.gguf
+*.pt
+*.pth
 *.pem
 *.key
-
-# Large models, virtual environments, and SDK binaries
-**/models/
-**/*_venv/
-**/venv/
-**/SDK/
-**/*.gguf
-**/*.onnx
-**/*.engine
-**/*.hbm
-**/*.pt
-**/*.whl
-**/*.so
-**/*.so.*
-**/*.zip
-
-# Standard colcon workspace outputs everywhere
-**/build/
-**/install/
-**/log/
-**/Log/
-
-# IDE generated databases
-.vscode/browse.vc.db*
-.vscode/*.lock
-
-# Runtime data belongs in ~/luka_data
-*.bag
-*.db3
-*.mcap
-*.wav
-*.pcm
-*.audio
+**/*credentials*

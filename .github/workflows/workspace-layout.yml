@@ -22,6 +22,9 @@ on:
 jobs:
   layout:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: luka_ws/src
     steps:
       - uses: actions/checkout@v4
         with:

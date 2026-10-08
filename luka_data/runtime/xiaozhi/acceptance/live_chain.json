@@ -1,0 +1,25 @@
+{
+  "synthetic_recognized_text_injection": true,
+  "answer": [
+    "我是小丸子，一个三年级的小学生，每天都在期待新的冒险！"
+  ],
+  "dialogue_backends": [
+    "aiui"
+  ],
+  "dialogue_modes": [
+    "auto"
+  ],
+  "dialogue_error_codes": [],
+  "network_states": [
+    "online"
+  ],
+  "actual_playback_completed": true,
+  "speech_backend": {
+    "operation": "tts",
+    "backend": "aiui",
+    "timestamp": 1791445002.0211523,
+    "samples": 82346
+  },
+  "llm_command_count": 0,
+  "seconds": 8.52
+}

@@ -1,0 +1,1 @@
+{"image":"/home/sunrise/luka_data/recordings/locateanything_trial_20260907/object_memory/f54d3cd2c3084645bea9e8e36b9420cb/input.jpg","prompt":"Locate all the instances that matches the following description: cabinet.","mode":"slow-greedy","inference_seconds":1.8214733,"detections":[{"label":"cabinet","box":[0,0,447.104,237.21599]}]}
