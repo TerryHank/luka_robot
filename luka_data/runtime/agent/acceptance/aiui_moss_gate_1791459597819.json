@@ -1,0 +1,24 @@
+{
+  "started": "2026-10-08T11:39:49.687Z",
+  "provider": "aiui",
+  "moss_commit": "e0f163d8fa18dd8913854d6ccb6acbd0e084d15c",
+  "real_robot_commands": 0,
+  "pass": false,
+  "error": "ERR_ASSERTION",
+  "trace": [
+    {
+      "tool": "destinations",
+      "error": false
+    },
+    {
+      "tool": "navigation_status",
+      "error": true
+    }
+  ],
+  "model_replies": [
+    "{\"type\":\"tools\",\"calls\":[{\"name\":\"destinations\",\"arguments\":{}}]}",
+    "{\"type\":\"tools\",\"calls\":[{\"name\":\"navigation_start\",\"arguments\":{\"destination_id\": \"room_41fa2f10\"}} }]}",
+    "```json\n{\"type\":\"tools\",\"calls\":[{\"name\":\"navigation_status\",\"arguments\":{\"operation_id\": \"room_41fa2f10\"}}]}\n```",
+    "{\"type\":\"clarification\",\"text\":\"需要澄清的问题：用户提到的操作ID 'room_41fa2f10' 与导航工具预期的 'nav_gate' 不符，请问是否为目的地名称输入错误？\"}"
+  ]
+}

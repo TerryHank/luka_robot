@@ -1,0 +1,16 @@
+# /etc/systemd/system/luka-ws-chat.service
+[Unit]
+Description=Luka S100 local Qwen3 chat (CPU)
+After=network-online.target
+
+[Service]
+Type=simple
+User=sunrise
+Group=sunrise
+WorkingDirectory=/home/sunrise/luka_ws/install/luka_llm_runtime
+ExecStart=/home/sunrise/luka_ws/install/luka_llm_runtime/bin/llama-server --model /home/sunrise/luka_data/ml_models/nx_chat/Qwen3-4B-Instruct-2507-Q4_K_M.gguf --alias qwen3-4b-chat --host 127.0.0.1 --port 8092 --ctx-size 2048 --parallel 1 --n-gpu-layers 0 --threads 4 --batch-size 128 --ubatch-size 128 --jinja
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,11 @@
+{
+  "timestamp": 1791452336.2476168,
+  "device": "hw:CARD=Device,DEV=0",
+  "rate": 48000,
+  "channels": 2,
+  "pcm_bytes": 683512,
+  "rms": 2374,
+  "playback_exit": 0,
+  "alsa_failed": false,
+  "services_restored": true
+}

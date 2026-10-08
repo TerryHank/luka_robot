@@ -1,0 +1,13 @@
+[
+  {
+    "path": "/v2/aiint/ws",
+    "code": 20001,
+    "message": "{\"code\":20001,\"errMsg\":\"UnknownError: converResData fail: 无效参数错误\",\"sub\":\"nlp\"}",
+    "reply": ""
+  },
+  {
+    "path": "/v3/aiint/sos",
+    "code": 0,
+    "reply": "你好呀！我是樱桃子，大家平时都叫我小丸子。我今年9岁啦，是小学三年级的学生。我生活在一个超级温馨的家庭里，爸爸妈妈、爷爷奶奶还有姐姐都超级疼爱我哦。"
+  }
+]

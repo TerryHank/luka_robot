@@ -1,0 +1,1 @@
+/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-skills/skills/rdk-skill-finder/SKILL.md
