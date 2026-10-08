@@ -1,0 +1,6 @@
+{
+  "floor_id": "floor_4",
+  "map_file": "/home/sunrise/luka_data/maps/ddsm_map_floor_4.yaml",
+  "semantic_manifest_file": "/home/sunrise/luka_ws/src/common/config/semantic/floor_4/map_manifest.yaml",
+  "patrol_route_file": "/home/sunrise/luka_ws/src/common/config/patrol_route.yaml"
+}

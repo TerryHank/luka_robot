@@ -1,0 +1,130 @@
+{
+  "schema": 1,
+  "policy": "Preserve independent functions; one canonical implementation per function; old names only delegate.",
+  "features": {
+    "person_following": {
+      "canonical_sources": [
+        "src/control/tros_person_following",
+        "src/control/s100_person_following_integration",
+        "src/system/scripts/start_official_person_following.sh"
+      ],
+      "role": "Official MOT/IDLE/TRACKING/LOST strategy; owned NavigateToPose and Spin actions through existing Nav2 safe velocity chain; fresh wheel-odometry stop confirmation; default dry_run"
+    },
+    "dashboard_follow_command": {
+      "canonical_sources": [
+        "src/visualization/console/nx_follow.py"
+      ],
+      "role": "SetBool command/status adapter only; no goal or velocity generation"
+    },
+    "face_identity": {
+      "canonical_sources": [
+        "src/perception/luka_face_identity"
+      ],
+      "role": "Face enrollment/recognition using existing ROS image and official MOT; no body tracker or motion authority"
+    },
+    "navigation": {
+      "canonical_sources": [
+        "src/system/bringup/start_nx_navigation.sh",
+        "src/system/bringup/nx_navigation.launch.py",
+        "src/common/config/nx_nav2.yaml"
+      ],
+      "role": "current operational Nav2 profile; general reset/mapping modes share restart_nav_reset.sh"
+    },
+    "localization": {
+      "canonical_sources": [
+        "src/localization/launch/nx_localization.launch.py"
+      ],
+      "role": "AMCL/map localization; SLAM is a complementary operating mode"
+    },
+    "camera_acquisition": {
+      "canonical_sources": [
+        "src/system/scripts/start_orbbec_camera.sh",
+        "src/system/scripts/start_orbbec_vision.sh"
+      ],
+      "role": "Orbbec ROS camera is the physical owner; visual runtime is a ROS-image consumer with its own process lock"
+    },
+    "base_driver": {
+      "canonical_sources": [
+        "src/control/ddsm_car_control/ddsm_car_control/ddsm_driver.py",
+        "src/visualization/console/nx_manual_base.py"
+      ],
+      "role": "current driver and protected runtime; other hardware backends remain explicit alternative profiles"
+    },
+    "audio_and_voice": {
+      "canonical_sources": [
+        "src/system/luka_audio",
+        "src/system/luka_xiaozhi"
+      ],
+      "role": "audio I/O and high-level voice integration are complementary packages"
+    },
+    "semantic_navigation": {
+      "canonical_sources": [
+        "src/map/hotel_semantic_map",
+        "src/map/hotel_semantic_map_msgs"
+      ],
+      "role": "semantic service and interface package are complementary, not duplicates"
+    },
+    "image_inference": {
+      "canonical_sources": [
+        "src/perception/luka_image_inference",
+        "src/system/scripts/start_dynamic_mask.sh"
+      ],
+      "role": "Canonical bounded BPU image inference HTTP API; ROS dynamic-mask consumer reuses its single model; no camera/device or motion ownership"
+    },
+    "visual_runtime": {
+      "canonical_sources": [
+        "src/perception/luka_visual_runtime",
+        "src/perception/luka_live_detection"
+      ],
+      "role": "Current semantic memory and live search interfaces"
+    },
+    "contract_demo_native": {
+      "canonical_sources": [
+        "src/examples/contract_demo/_shared/native_commands.py"
+      ],
+      "role": "Foxglove native demo staged goals and navigation/map status; delegates to existing Nav2 action, protected base gate and map exporter; no velocity publisher"
+    },
+    "visual_slam": {
+      "canonical_sources": [
+        "src/localization/rtabmap",
+        "src/localization/luka_visual_slam"
+      ],
+      "role": "Optional VIMS-style Astra RGB-D frontend, RTAB-Map backend, masked-depth interface and isolated Nav2 planning; legacy rtabmap_rgbd_experiment entrypoints delegate; no production SLAM handover"
+    },
+    "person_follow_gui": {
+      "canonical_sources": [
+        "src/control/s100_person_following_integration/scripts/gui_manager.py",
+        "src/system/scripts/start_person_follow_gui.sh"
+      ],
+      "role": "Fixed GUI experiment service adapter and image overlays; delegates to canonical follower/Nav2; no velocity publisher or body tracker"
+    }
+  },
+  "command_adapters": [
+    "src/visualization/console/nx_follow.py"
+  ],
+  "compatibility_launches": [],
+  "shared_file_aliases": {
+    "src/evaluator/yolo26_bpu_person_current.py": "src/perception/luka_image_inference/luka_image_inference/segmenter.py",
+    "src/evaluator/yolo26_seg_current.py": "src/perception/luka_image_inference/luka_image_inference/bpu_yolo26_runtime/yolo26_seg.py",
+    "src/control/ddsm_car_control/config/nav2_mecanum_dwb_clean_params.yaml": "src/control/ddsm_car_control/config/nav2_mecanum_dwb_params.yaml",
+    "src/control/ddsm_car_control/config/nav2_lattice_params.yaml": "src/control/ddsm_car_control/config/nav2_mecanum_dwb_params.yaml"
+  },
+  "retired_sources": [
+    "src/visualization/console/person_follow_node.py",
+    "src/visualization/console/person_follow_demo.py",
+    "src/visualization/console/nx_follow_detour.py",
+    "src/visualization/console/nx_follow_map.py",
+    "src/visualization/console/person_range_gate.py",
+    "src/system/nav_llm_agent/nav_llm_agent/test_agent_parsing.py",
+    "src/control/s100_person_following_integration/config/mot_config.json",
+    "src/perception/person_follow",
+    "src/perception/object_api",
+    "src/control/luka_person_following",
+    "src/perception/spatial_memory",
+    "src/map/map_merge",
+    "src/perception/vision_opencv",
+    "src/system/nx_chat",
+    "src/common/legacy",
+    "src/docs/legacy"
+  ]
+}

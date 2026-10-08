@@ -1,0 +1,37 @@
+building_id: hotel_demo
+current_floor_id: floor_1
+default_elevator_id: elevator_A
+
+floors:
+  floor_1:
+    map: /home/sunrise/luka_data/maps/ddsm_map.yaml
+    semantic_map: /home/sunrise/luka_ws/src/map/hotel_semantic_map/config/map_manifest.yaml
+    elevator_poses:
+      elevator_A:
+        entry_destination_id: wp_003
+        exit_initial_pose:
+          x: -0.7408813429318337
+          y: 1.8145882145205219
+          yaw: 1.3927942077167546
+
+destinations:
+  home:
+    floor_id: floor_1
+    destination_id: home
+    display_name: 充电点
+  desk:
+    floor_id: floor_1
+    destination_id: wp_001
+    display_name: 办公桌
+  sofa:
+    floor_id: floor_1
+    destination_id: wp_002
+    display_name: 沙发
+  door:
+    floor_id: floor_1
+    destination_id: wp_003
+    display_name: 门口
+  tea_table:
+    floor_id: floor_1
+    destination_id: wp_004
+    display_name: 茶桌

@@ -1,0 +1,28 @@
+序号,合同编号,合同原文,代码状态,限制,演示目录,源码证据
+01,I-1,STM32 底盘主控底层固件开发、串口 / RS485 /CAN通信协议定制与适配。,部分对应,只有上位机RS485/Modbus协议代码；没有STM32固件工程和CAN实现。,01_02_I_1_I_2_底盘通信运动学与键盘控制_部分完成,control/ddsm_car_control/ddsm_car_control/zdt_y42_protocol.py
+02,I-2,四轮差速底盘运动学建模、速度解算、编码器数据采集与速度闭环控制。,部分对应,实际为四轮麦克纳姆运动学，非合同字面差速；编码器/闭环现场效果待验收。,01_02_I_1_I_2_底盘通信运动学与键盘控制_部分完成,control/ddsm_car_control/ddsm_car_control/zdt_mecanum_kinematics.py;visualization/console/nx_readonly_odom.py
+03,I-3,IMU 六轴传感器驱动、姿态解算、卡尔曼滤波多传感器数据融合。,有对应实现，现场待验收,复用IMU驱动和二维EKF；演示滤波器不发布TF，避免与现有里程计重叠。现场标定与精度未验收。,03_I_3_IMU与卡尔曼融合_代码已完成_待现场验收,control/ddsm_car_control/ddsm_car_control/wit_imu_node.py;control/ddsm_car_control/config/ekf_imu_yaw_rate.yaml
+04,I-4,激光雷达驱动适配、点云滤波、畸变矫正、数据稳定输出。,部分对应,当前主要数据是二维LaserScan，不是完整3D点云；去畸变演示输出独立话题。,04_I_4_雷达滤波与去畸变_部分完成,control/ddsm_car_control/ddsm_car_control/dual_laser_fusion.py;control/ddsm_car_control/ddsm_car_control/laser_scan_deskewer.py
+05,I-5,深度摄像头底层驱动适配、图像数据、深度数据采集与预处理开发，实现深度图像、深度距离数据稳定输出，完成与整机硬件、主控系统的通信适配。,有对应实现，现场待验收,Astra Pro Plus驱动和RGB-D预处理存在；实时帧率和深度质量需要现场验证。,05_I_5_RGBD深度相机_代码已完成_待现场验收,sensing/OrbbecSDK_ROS2/orbbec_camera/launch/astra_pro_plus.launch.py;perception/luka_visual_runtime/orbbec_ros_camera.py
+06,II-1,Ubuntu22.04 + ROS2 完整开发环境搭建、项目工程框架搭建。,有对应实现，现场待验收,已核实Ubuntu22.04.5、ROS2 Humble；包数以colcon list为准（本轮发现18个唯一包，不等于全量构建验收）。,06_II_1_Ubuntu与ROS2工程环境_代码已完成_待现场验收,system/environment.bash
+07,II-2,自定义机器人底盘、传感器、控制指令专用消息与话题封装。,部分对应,有ai_msgs和语义地图自定义消息；底盘控制仍大量使用标准Twist/Odometry，不能宣称有完整专用底盘协议消息。,07_II_2_消息接口与话题封装_部分完成,common/vendor/ai_msgs/msg/PerceptionTargets.msg;map/hotel_semantic_map_msgs/msg/Destination.msg
+08,II-3,分层节点开发：底盘驱动节点、雷达感知节点、IMU 姿态节点、SLAM 建图节点、导航规划节点、自动回充业务节点。,部分对应,有底盘/雷达/IMU/SLAM/Nav2；自动回充业务闭环缺失。,08_II_3_分层ROS节点_部分完成,system/bringup/nx_sensors.launch.py;system/bringup/nx_navigation.launch.py
+09,III-1,室内 2D 激光 SLAM 实时建图算法部署与参数调优。,有对应实现，现场待验收,只启动现有slam_toolbox算法节点，复用当前传感器和只读里程计；不调用旧ESP32通用整机launch。现场调优未验收。,09_III_1_二维激光SLAM_代码已完成_待现场验收,control/ddsm_car_control/config/slam_toolbox_mapping.yaml
+10,III-2,地图保存、离线加载、整机断电重启自动复用地图。,部分对应,提供静态地图加载入口和独立save_map.sh；保存调用已有mapping_bundle且要求SLAM活跃。断电自动复用未实测。,10_III_2_地图保存加载与复用_部分完成,visualization/console/mapping_bundle.py;visualization/console/s100_boot_pose.py;system/bringup/nx_localization.launch.py
+11,III-3,机器人全局重定位、坐标自动矫正、室内场景自适应匹配。,部分对应,有AMCL/全局重定位/扫描匹配；本入口不自动调用可能旋转底盘的重定位请求。场景适应效果未验收。,11_III_3_全局重定位与场景匹配_部分完成,visualization/console/nx_relocalization.py;visualization/console/nx_scan_map_match.py;control/ddsm_car_control/ddsm_car_control/ddsm_auto_localizer.py
+12,IV-1,全局路径规划、局部实时路径规划算法配置与现场调优。,有对应实现，现场待验收,启动现有Nav2规划/控制后端；不会自动发目标，现场调优和运动效果未验收。,12_IV_1_全局局部路径规划_代码已完成_待现场验收,system/bringup/nx_navigation.launch.py;common/config/nx_nav2.yaml
+13,IV-2,静态障碍物避障、动态行人实时避障逻辑开发。,部分对应,代价地图/CollisionMonitor存在；动态行人实时避障完整闭环仍需现场验收。,13_IV_2_静态与动态避障_部分完成,common/config/nx_nav2.yaml;control/ddsm_car_control/ddsm_car_control/lateral_escape_guard.py
+14,IV-3,室内多点定点导航、自主巡航、点位记忆、一键返航功能。,部分对应,航点/巡航/Home节点存在；无充电停靠闭环，入口只启动节点且不自动发航点/返航/巡航请求。,14_IV_3_航点巡航与软件返航_部分完成,control/ddsm_car_control/ddsm_car_control/ddsm_patrol_manager.py;control/ddsm_car_control/ddsm_car_control/ddsm_home_manager.py;system/nav_llm_agent/nav_llm_agent/waypoint_store.py
+15,IV-4,底盘缓启停、转弯限速、运动平滑控制，保证运行平稳。,有对应实现，现场待验收,复用Nav2 velocity_smoother和限幅函数；不直接注入速度，物理平稳性仍需运动验收。,15_IV_4_缓启停与运动平滑_代码已完成_待现场验收,control/ddsm_car_control/ddsm_car_control/zdt_mecanum_kinematics.py;system/bringup/nx_navigation.launch.py
+16,V-1,充电桩位置标定、信号识别与坐标匹配逻辑开发。,缺失可运行实现,有若干docking_server参数样例，但没有确认的桩识别/标定完整实现和在用启动链。配置段不作为实现证据。,16_V_1_充电桩标定与识别_未实现,
+17,V-2,自主返航、慢速精准对位、自动停靠充电。,部分对应,仅能演示软件Home节点与返航接口；精准对位、停靠和充电未形成闭环。,17_V_2_精准停靠与充电_部分完成,control/ddsm_car_control/ddsm_car_control/ddsm_home_manager.py
+18,V-3,低电量阈值检测、自动触发回充、回充失败重试、遇障绕行回充。,缺失可运行实现,未找到可运行的低电量触发、回充重试及绕障回充闭环。,18_V_3_低电量自动回充_未实现,
+19,V-4,充电状态检测、充满自动脱离基站、进入待机模式。,缺失可运行实现,未找到充电状态检测及充满自主脱离闭环。,19_V_4_充电检测脱离与待机_未实现,
+20,VI-1,声源识别导航接口编制通信接口规范、协议定义、数据格式约定；实现声源方位检测、声源定位联动机器人自主导航转向、定点趋近功能接口开发与整机适配。,部分对应,DOA/语音路由/Agent有代码；当前DOA记录不能代替新鲜实时检测；声源趋近完整联动未验收。需要有效NX_MIC/NX_SPEAKER配置。,20_VI_1_声源方位与语音导航_部分完成,visualization/console/nx_xfm_doa.py;visualization/console/nx_voice_gateway.py;system/bringup/start_nx_voice.sh
+21,VI-2,烟雾检测接口编制烟雾检测数据通信接口规范、上报协议、阈值告警规则；实现烟雾数据采集、状态上报、异常告警联动机器人就近返航、停机值守等业务接口开发与落地。,缺失可运行实现,未找到烟雾传感器驱动、阈值报警和返航/值守联动实现。,21_VI_2_烟雾告警与联动_未实现,
+22,VI-3,人脸识别接口编制人脸识别通信接口规范、身份校验协议、人脸库交互数据格式；实现人脸识别触发、身份认证、权限联动、定点迎宾导航等接口开发与整机系统集成。,部分对应,生产人员服务NX_FACE_ENABLED=0。独立只读演示复用YuNet/SFace，显示参考帧相似度，不修改生产开关，不声称权限联动或迎宾导航已实现。,22_VI_3_人脸识别与身份接口_部分完成,perception/person_follow/vision.py;perception/person_follow/identity.py;perception/person_follow/face_reacquire.py
+23,VI-4,统一输出完整《应用接口规范文档》，包含通信协议、数据帧格式、指令定义、异常处理、对接调试说明。,部分对应,有API路由、ROS消息和追溯资料；没有确认的完整合同应用接口规范。本入口查看已有接口结构，不能替代正式交付文档。,23_VI_4_应用接口规范资料_部分完成,visualization/console/nx_assistant_tools.py;examples/contract_clause_traceability_strict.md
+24,VII-1,机器人整机状态机设计：待机、手动控制、建图、自主导航、定点巡航、自动回充、故障告警、传感接口联动响应,部分对应,已有任务暂停/恢复/取消及状态接口；回充相关状态和完整传感器业务联动缺少证据。,24_VII_1_整机业务状态机_部分完成,control/ddsm_car_control/ddsm_car_control/ddsm_mission_control.py;visualization/console/nx_patrol_mission.py
+25,VII-2,设备故障自检、异常状态上报、运行日志记录,有对应实现，现场待验收,软件健康检查、故障快照与日志链存在；传感器断联会如实显示未就绪。,25_VII_2_故障自检与运行日志_代码已完成_待现场验收,visualization/console/robot_diagnostics.py;visualization/console/nx_runtime_health.py
+26,VII-3,交付完整源代码、固件、配置文件、全套技术文档及接口规范文档,部分对应,有源码/配置/部分文档，缺STM32固件和完整接口规范；资产盘点不等于合同完整交付验收。,26_VII_3_源码配置与交付资产_部分完成,system/environment.bash;examples/contract_feature_traceability.md
+27,VII-4,线上技术培训、一年软件质保、常规功能及接口适配迭代维护,服务承诺，源码不能证明,培训、一年质保和维护属于服务承诺，不能通过launch/sh或源码证明履约。,27_VII_4_培训质保与维护_服务承诺_待核实,

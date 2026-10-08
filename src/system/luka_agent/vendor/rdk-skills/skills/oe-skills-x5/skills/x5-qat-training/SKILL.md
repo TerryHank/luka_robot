@@ -1,0 +1,59 @@
+---
+name: x5-qat-training
+description: 执行 X5 Plugin calibration、量化感知训练、validation 和 convert 后定点评测；当适配模型已可运行，需要生成可比较指标与检查点时使用。要求 March.BAYES_E 和可复现训练，不使用 HAT Trainer。
+version: 1.1.1
+license: Apache-2.0
+---
+
+# X5 QAT 训练与定点验证
+
+## 目标与边界
+
+用同一数据和评价代码记录 `float → calibration → QAT → quantized` 的首个掉点阶段。训练循环由用户项目/PyTorch 实现，不引入 HAT Engine、config 或 callback。
+
+## 输入合同
+
+- 已适配模型、浮点 checkpoint、训练/校准/验证 DataLoader。
+- 评价函数、浮点基线、目标阈值、随机种子、设备和预算；目标运行环境需通过 CUDA 可见性检查。
+- 新检查点目录及覆盖策略。
+
+## 前置检查
+
+1. 固定 `March.BAYES_E`，记录 Plugin/PyTorch/CUDA 版本。
+2. 使用 `x5-environment-probe --workflow qat` 验证设备可见性；Docker 模式使用匹配的 GPU image 和 `--gpus all`。`torch.cuda.is_available()` 为 true 只表示可见设备存在，不能替代训练运行验证。
+3. 先在当前环境复现浮点指标。
+4. calibration、QAT validation 和 quantized validation 必须共享前处理与评价口径。
+5. 数据加载器不得隐式读取 HAT registry/config。
+
+## 执行步骤
+
+1. Calibration：模型 `eval()`，设置 calibration 状态，运行代表性数据并保存指标/observer 摘要。
+2. QAT：模型 `train()`，设置 QAT 状态，以较小学习率训练；每轮保存 loss、指标和配置哈希。
+3. Validation：模型 `eval()` 后设置 validation 状态，保存最好 checkpoint，不覆盖历史最好结果。
+4. Convert：将 calibration 或最佳 QAT 模型转为定点模型，使用同一验证集重新评测。
+5. 运行：
+
+~~~bash
+python .drobotics-x5/platforms/x5/scripts/check_qat_target.py \
+  --source <training.py> --stage training --report <training-check.json>
+~~~
+
+## 产物与完成标准
+
+- 浮点、calibration、每轮 QAT、最佳 QAT 和 quantized 指标可追溯。
+- 最佳 checkpoint、optimizer/scheduler 状态、随机种子和数据版本完整。
+- 定点指标达到用户阈值；否则明确首个掉点阶段，不进入“成功”状态。
+
+## 风险与确认
+
+训练耗时、GPU 资源和检查点写入为中风险；长训练或覆盖已有 checkpoint 前必须确认预算和目标路径。
+
+## 失败与交接
+
+精度不达标时交接 `x5-accuracy-diagnostics`。不得同时更换 qconfig、数据、学习率和预处理；每次实验只改变一个主变量。
+
+## 按需参考
+
+- `.drobotics-x5/platforms/x5/references/manual-map.md`
+- 官方资料查询：`mcp__rdk_docs__search_docs(manual="oe-x5", source="docs", query="X5 Plugin calibration QAT training")`，再用 `mcp__rdk_docs__get_page` 读取匹配官方页面正文。
+- 不使用本地 `_sources` 副本替代 MCP 证据；无法从官方正文确认具体命令/API/版本时报告阻塞。

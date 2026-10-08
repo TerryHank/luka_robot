@@ -1,0 +1,13 @@
+[Unit]
+Description=Luka contract demo deskew
+After=network.target
+
+[Service]
+Type=simple
+User=sunrise
+Group=sunrise
+WorkingDirectory=/home/sunrise/luka_ws
+ExecStart=/bin/bash /home/sunrise/luka_ws/src/examples/contract_demo/_shared/runtime.sh deskew
+Restart=no
+KillSignal=SIGINT
+TimeoutStopSec=15

@@ -1,0 +1,16 @@
+# /etc/systemd/system/luka-ws-boot-localize.service
+[Unit]
+Description=Luka S100 automatic boot localization
+After=network-online.target luka-ws-dashboard.service
+Wants=luka-ws-dashboard.service
+
+[Service]
+Type=simple
+User=sunrise
+Group=sunrise
+WorkingDirectory=/home/sunrise/luka_ws/src/system/runtime/tools
+ExecStart=/usr/bin/python3 /home/sunrise/luka_ws/src/system/runtime/tools/s100_boot_localize.py
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

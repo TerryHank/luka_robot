@@ -1,0 +1,19 @@
+[Unit]
+Description=Luka native Foxglove acceptance case launcher
+After=network-online.target luka-ws-foxglove-bridge.service
+Wants=luka-ws-foxglove-bridge.service
+
+[Service]
+Type=simple
+User=sunrise
+WorkingDirectory=/home/sunrise/luka_ws
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/bin/bash -c 'source /home/sunrise/luka_ws/src/system/environment.bash; exec python3 /home/sunrise/luka_ws/src/examples/contract_demo/_shared/gui_launcher.py'
+KillSignal=SIGINT
+TimeoutStopSec=90
+KillMode=mixed
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

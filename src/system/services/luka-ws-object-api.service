@@ -1,0 +1,13 @@
+[Unit]
+Description=Luka independent bounded image inference API
+After=network-online.target
+[Service]
+Type=simple
+User=sunrise
+Group=sunrise
+WorkingDirectory=/home/sunrise/luka_ws
+ExecStart=/bin/bash /home/sunrise/luka_ws/src/system/scripts/start_image_inference.sh
+Restart=on-failure
+RestartSec=5
+[Install]
+WantedBy=multi-user.target

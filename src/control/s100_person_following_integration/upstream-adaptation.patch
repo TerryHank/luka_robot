@@ -1,0 +1,1295 @@
+diff --git a/home/sunrise/luka_upstream/tros_person_following/src/person_following_node.cpp b/home/sunrise/luka_ws/src/control/tros_person_following/src/person_following_node.cpp
+index dcec316..bd07985 100644
+--- a/home/sunrise/luka_upstream/tros_person_following/src/person_following_node.cpp
++++ b/home/sunrise/luka_ws/src/control/tros_person_following/src/person_following_node.cpp
+@@ -26,6 +26,7 @@
+ #include <functional>
+ #include <memory>
+ #include <queue>
++#include <stdexcept>
+ #include <utility>
+ 
+ using namespace std::placeholders;
+@@ -58,6 +59,19 @@ PersonFollowingNode::PersonFollowingNode(const rclcpp::NodeOptions & options)
+   this->declare_parameter<std::string>("followed_target_pose_topic", "tros_followed_target_pose");
+   this->declare_parameter<std::string>("cmd_vel_topic", "/cmd_vel");
+   this->declare_parameter<std::string>("costmap_topic", "/global_costmap/costmap");
++  this->declare_parameter<std::string>("navigate_to_pose_action_name", "navigate_to_pose");
++
++  // Goal-only integration; neither mode creates a Twist publisher.
++  this->declare_parameter<std::string>("output_mode", "dry_run");
++  this->declare_parameter<std::string>("camera_frame", "camera_link");
++  this->declare_parameter<std::string>("goal_candidate_topic", "/person_follow/goal_candidate");
++  this->declare_parameter<std::string>("spin_action_name", "/spin");
++  this->declare_parameter<std::string>("odometry_topic", "/wheel/odom");
++  this->declare_parameter<std::string>("spin_candidate_topic", "/person_follow/spin_candidate");
++  this->declare_parameter<bool>("follow_enabled_on_start", false);
++  this->declare_parameter<double>("input_timeout_sec", 0.6);
++  this->declare_parameter<double>("costmap_timeout_sec", 2.0);
++  this->declare_parameter<double>("tf_timeout_sec", 0.6);
+ 
+   // --- Target filtering ---
+   this->declare_parameter<float>("target_filter_width_thr", target_filter_width_thr_);
+@@ -67,6 +81,7 @@ PersonFollowingNode::PersonFollowingNode(const rclcpp::NodeOptions & options)
+   this->declare_parameter<float>("target_filter_range_y_min", -1.0);
+   this->declare_parameter<float>("target_filter_range_y_max", 1.0);
+   this->declare_parameter<float>("target_filter_confidence_thr", 0.5);
++  this->declare_parameter<bool>("single_person_auto_relock", true);
+ 
+   // --- Target selection ---
+   this->declare_parameter<double>("select_min_confidence", 0.7);
+@@ -126,6 +141,16 @@ PersonFollowingNode::PersonFollowingNode(const rclcpp::NodeOptions & options)
+   this->declare_parameter<double>("costmap_free_cost_thr", 50.0);
+   this->declare_parameter<double>("costmap_free_search_radius_m", 2.0);
+ 
++  output_mode_ = this->get_parameter("output_mode").as_string();
++  camera_frame_ = this->get_parameter("camera_frame").as_string();
++  input_timeout_sec_ = this->get_parameter("input_timeout_sec").as_double();
++  costmap_timeout_sec_ = this->get_parameter("costmap_timeout_sec").as_double();
++  tf_timeout_sec_ = this->get_parameter("tf_timeout_sec").as_double();
++  if ((output_mode_ != "dry_run" && output_mode_ != "nav2_action") ||
++      input_timeout_sec_ <= 0.0 || costmap_timeout_sec_ <= 0.0 || tf_timeout_sec_ <= 0.0 ||
++      camera_frame_.empty()) {
++    throw std::invalid_argument("Invalid goal-only mode, camera frame or freshness timeout");
++  }
+   // Get parameters
+   // --- Topics & Frames ---
+   detect_result_topic_name_ = this->get_parameter("detect_result_topic_name").as_string();
+@@ -144,6 +169,7 @@ PersonFollowingNode::PersonFollowingNode(const rclcpp::NodeOptions & options)
+   target_filter_range_y_min_ = this->get_parameter("target_filter_range_y_min").as_double();
+   target_filter_range_y_max_ = this->get_parameter("target_filter_range_y_max").as_double();
+   target_filter_confidence_thr_ = this->get_parameter("target_filter_confidence_thr").as_double();
++  single_person_auto_relock_ = this->get_parameter("single_person_auto_relock").as_bool();
+   // --- Target selection ---
+   select_min_confidence_ = this->get_parameter("select_min_confidence").as_double();
+   select_weight_dist_ = this->get_parameter("select_weight_dist").as_double();
+@@ -191,6 +217,11 @@ PersonFollowingNode::PersonFollowingNode(const rclcpp::NodeOptions & options)
+   // --- Misc ---
+   costmap_free_cost_thr_ = this->get_parameter("costmap_free_cost_thr").as_double();
+   costmap_free_search_radius_m_ = this->get_parameter("costmap_free_search_radius_m").as_double();
++  if (follow_goal_pub_rate_ <= 0 || follow_distance_min_ <= 0 ||
++      follow_distance_max_ < follow_distance_min_ || follow_hysteresis_ < 0 ||
++      costmap_free_cost_thr_ <= 0 || costmap_free_cost_thr_ > 100) {
++    throw std::invalid_argument("Invalid distance, rate or OccupancyGrid threshold");
++  }
+ 
+   RCLCPP_INFO(this->get_logger(),
+     "PersonFollowingNode starting"
+@@ -287,10 +318,31 @@ PersonFollowingNode::PersonFollowingNode(const rclcpp::NodeOptions & options)
+     costmap_free_cost_thr_,
+     costmap_free_search_radius_m_);
+ 
+-  // Publisher for cmd_vel used during in-place spin maneuvers.
+-  // Topic is now parametrized (was hardcoded "/cmd_vel") so spin can be routed
+-  // through the Nav2 velocity smoother if desired (rev.4 architecture fix 1).
+-  cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>(cmd_vel_topic_, 10);
++  goal_candidate_pub_ = this->create_publisher<geometry_msgs::msg::PoseStamped>(
++    this->get_parameter("goal_candidate_topic").as_string(), 10);
++  spin_candidate_pub_ = this->create_publisher<geometry_msgs::msg::PoseStamped>(
++    this->get_parameter("spin_candidate_topic").as_string(), 10);
++  spin_client_ = rclcpp_action::create_client<Spin>(
++    this, this->get_parameter("spin_action_name").as_string());
++  last_spin_send_time_ = this->now() - rclcpp::Duration::from_seconds(1.0);
++  odometry_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
++    this->get_parameter("odometry_topic").as_string(), rclcpp::SensorDataQoS(),
++    [this](nav_msgs::msg::Odometry::SharedPtr msg) {
++      const auto & v = msg->twist.twist;
++      const bool fresh = stampFresh(msg->header.stamp, input_timeout_sec_);
++      const bool stationary = fresh && msg->child_frame_id == robot_frame_ &&
++        std::isfinite(v.linear.x) && std::isfinite(v.linear.y) && std::isfinite(v.angular.z) &&
++        std::hypot(v.linear.x, v.linear.y) < 0.02 && std::abs(v.angular.z) < 0.05;
++      if (!stationary) {
++        stopped_samples_ = 0;
++      } else if (msg->header.stamp != latest_odometry_.header.stamp) {
++        if (stopped_samples_ == 0) stopped_since_ = this->now().seconds();
++        ++stopped_samples_;
++      }
++      latest_odometry_ = *msg;
++    });
++  diagnostics_pub_ = this->create_publisher<std_msgs::msg::String>(
++    "integration_diagnostics", rclcpp::QoS(10).transient_local());
+ 
+   // Follow status publisher on "tros_tracking_status" (std_msgs/String, latched via
+   // transient_local) so late subscribers immediately learn the current state.
+@@ -324,13 +376,13 @@ PersonFollowingNode::PersonFollowingNode(const rclcpp::NodeOptions & options)
+ 
+   // Global costmap subscription for free-cell checks when placing the nav goal.
+   global_costmap_sub_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
+-    costmap_topic_, rclcpp::QoS(1),
++    costmap_topic_, rclcpp::QoS(1).transient_local().reliable(),
+     std::bind(&PersonFollowingNode::globalCostmapCallback, this, _1));
+ 
+   // Subscribe to AI detection results — drives the main tracking state machine
+   detect_result_sub_ = this->create_subscription<ai_msgs::msg::PerceptionTargets>(
+     detect_result_topic_name_,
+-    1,
++    rclcpp::SensorDataQoS().keep_last(1),
+     std::bind(&PersonFollowingNode::detectResultCallback, this, _1));
+ 
+   // Publisher for tracking goal poses (used by external visualization/debugging)
+@@ -350,16 +402,59 @@ PersonFollowingNode::PersonFollowingNode(const rclcpp::NodeOptions & options)
+   last_goal_send_time_ = this->now();
+ 
+   // NavigateToPose action client for sending goals to Nav2
+-  nav_client_ = rclcpp_action::create_client<NavigateToPose>(this, "navigate_to_pose");
++  nav_client_ = rclcpp_action::create_client<NavigateToPose>(
++    this, this->get_parameter("navigate_to_pose_action_name").as_string());
++
++  input_watchdog_ = this->create_wall_timer(std::chrono::milliseconds(100), [this]() {
++    if (spin_stop_requested_ && spin_active_) cancelOwnedSpin();
++    if (!follow_enabled_) return;
++    if (!stampFresh(last_detection_stamp_, input_timeout_sec_) || !costmapFresh() ||
++        getCurrentPose().header.frame_id.empty() || !cameraTfFresh() ||
++        (spinBusy() && (!isPointFree(getCurrentPose().pose.position) || !odometryValid()))) {
++      cancelOwnedGoals();
++      cancelOwnedSpin();
++      belief_search_.active = false;
++      diagnose("BLOCKED stale input, costmap or robot TF");
++      return;
++    }
++    if (track_state_ == TrackState::IDLE && spinBusy() &&
++        (this->now() - tp_target_find_start_).seconds() >= idle_search_total_timeout_sec_) {
++      cancelOwnedSpin();
++    }
++    if (belief_search_.active && belief_search_.awaiting_scan && !spinBusy() &&
++        owned_nav_goals_.empty() && pending_nav_requests_ == 0 && !queued_nav_goal_) {
++      continueBeliefSearch();
++    }
++    // A dry-run candidate has no navigation result. Bound search independently
++    // of Action arrival so LOST cannot remain active forever.
++    if (track_state_ == TrackState::LOST && belief_search_.active &&
++        (this->now() - belief_search_.start_time).seconds() > belief_search_timeout_sec_) {
++      cancelOwnedGoals();
++      cancelOwnedSpin();
++      belief_search_.active = false;
++      diagnose("LOST belief search timeout");
++      setFollowStatus(FollowStatus::LOST);
++      return;
++    }
++    if (queued_nav_goal_ && owned_nav_goals_.empty() && pending_nav_requests_ == 0 &&
++        !spinBusy() && (!waiting_for_spin_stop_ || stopped())) {
++      auto queued = queued_nav_goal_;
++      queued_nav_goal_.reset();
++      asyncNavToGoal(*queued);
++    }
++
++  });
++  if (this->get_parameter("follow_enabled_on_start").as_bool()) startFollowing();
+ 
+   // (goal-reachability validation moved to isGoalReachable's costmap cell-free
+   // check; no Nav2 ComputePathToPose client needed anymore.)
+ }
+ 
+ PersonFollowingNode::~PersonFollowingNode() {
+-  setFollowStatus(FollowStatus::DISABLED);
+-  // Cancel all pending navigation goals on shutdown to prevent orphaned actions.
+-  nav_client_->async_cancel_all_goals();
++  if (rclcpp::ok(this->get_node_base_interface()->get_context())) {
++    cancelOwnedGoals();
++    cancelOwnedSpin();
++  }
+ }
+ 
+ void PersonFollowingNode::detectResultCallback(
+@@ -381,6 +476,15 @@ void PersonFollowingNode::detectResultCallback(
+     return;
+   }
+ 
++  if (!stampFresh(msg->header.stamp, input_timeout_sec_) ||
++      getCurrentPose().header.frame_id.empty() || !cameraTfFresh()) {
++    cancelOwnedGoals();
++    cancelOwnedSpin();
++    diagnose("BLOCKED stale detection or robot TF");
++    return;
++  }
++  last_detection_stamp_ = msg->header.stamp;
++  bool invalid_spatial_input = false;
+   std::vector<PersonTarget> persons;
+ 
+   for (const auto & obj : msg->targets) {
+@@ -395,7 +499,7 @@ void PersonFollowingNode::detectResultCallback(
+ 
+       geometry_msgs::msg::PoseStamped pose_camera;
+       pose_camera.header.stamp = msg->header.stamp;
+-      pose_camera.header.frame_id = "camera_link";
++      pose_camera.header.frame_id = camera_frame_;
+ 
+       for (const auto & attr : obj.attributes) {
+         if (attr.type == "x_cm") {
+@@ -415,7 +519,16 @@ void PersonFollowingNode::detectResultCallback(
+         }
+       }
+ 
+-      if (has_x_cm && has_y_cm && has_height_cm && has_width_cm && has_y_offset) {
++      if (!has_x_cm || !has_y_cm || !has_height_cm || !has_width_cm ||
++          !std::isfinite(pose_camera.pose.position.x) || !std::isfinite(pose_camera.pose.position.y) ||
++          !std::isfinite(width_m) || !std::isfinite(height_m) ||
++          pose_camera.pose.position.x <= 0 || width_m <= 0 || height_m <= 0) {
++        invalid_spatial_input = true;
++        continue;
++      }
++      if (has_x_cm && has_y_cm && has_height_cm && has_width_cm && has_y_offset &&
++          std::isfinite(pose_camera.pose.position.x) && std::isfinite(pose_camera.pose.position.y) &&
++          std::isfinite(width_m) && std::isfinite(height_m) && width_m > 0 && height_m > 0) {
+         if (height_m < target_filter_height_thr_) {
+           if (track_state_ != TrackState::TRACKING) {
+             RCLCPP_INFO(this->get_logger(), "Invalid person height: %.2f, less than thr: %.2f m.",
+@@ -454,6 +567,21 @@ void PersonFollowingNode::detectResultCallback(
+     }
+   }
+ 
++  if (invalid_spatial_input) {
++    cancelOwnedGoals();
++    cancelOwnedSpin();
++    diagnose("BLOCKED invalid depth attributes");
++    return;
++  }
++  persons.erase(std::remove_if(persons.begin(), persons.end(), [this, &msg](const PersonTarget & p) {
++    geometry_msgs::msg::PoseStamped pc;
++    pc.header.frame_id = camera_frame_;
++    pc.header.stamp = msg->header.stamp;
++    pc.pose.position.x = p.x_m;
++    pc.pose.position.y = p.y_m;
++    return transformPersonToWorld(getCurrentPose(), pc).header.frame_id.empty();
++  }), persons.end());
++
+   // Record each detected person's world-frame position for stationary-target
+   // detection (A) and activity scoring (candidate B). Prune old samples first.
+   {
+@@ -462,7 +590,7 @@ void PersonFollowingNode::detectResultCallback(
+     for (const auto & p : persons) {
+       geometry_msgs::msg::PoseStamped pc;
+       pc.header.stamp = msg->header.stamp;
+-      pc.header.frame_id = "camera_link";
++      pc.header.frame_id = camera_frame_;
+       pc.pose.position.x = p.x_m;
+       pc.pose.position.y = p.y_m;
+       auto pw = transformPersonToWorld(robot_pose_now, pc);
+@@ -501,9 +629,9 @@ void PersonFollowingNode::detectResultCallback(
+       setFollowStatus(FollowStatus::IDLE_SEARCHING);
+       // Cancel any nav goal still active from before/within LOST so the IDLE
+       // spin search owns /cmd_vel exclusively (no Nav2 controller racing it).
+-      if (nav_goal_handle_) {
++      if (nav_goal_handle_ || goal_pending_) {
+         RCLCPP_INFO(this->get_logger(), "Canceling nav goal on transitioning to IDLE");
+-        nav_client_->async_cancel_goal(nav_goal_handle_);
++        cancelOwnedGoals();
+         nav_goal_handle_ = nullptr;
+         last_nav_goal_pose_ = nullptr;
+       }
+@@ -521,6 +649,23 @@ void PersonFollowingNode::detectResultCallback(
+       }
+     }
+     if (!found) {
++      // The upstream single-person bridge performs time/position/depth
++      // continuity checks. If it has already relocked the target with a new
++      // temporary tracker ID, accept that sole candidate here instead of
++      // entering LOST and waiting for motion that may not exist.
++      if (single_person_auto_relock_ && persons.size() == 1) {
++        const auto &candidate = persons.front();
++        const auto old_id = tracking_track_id_;
++        tracking_track_id_ = candidate.target->track_id;
++        target_lost_ = false;
++        following_active_ = false;
++        RCLCPP_WARN(this->get_logger(),
++          "Target relocked: track_id %lu -> %lu; reason=single_person_continuity",
++          old_id, tracking_track_id_);
++        setFollowStatus(FollowStatus::TRACKING);
++        publishGoalPose(*candidate.target, msg->header.stamp);
++        return;
++      }
+       // Transition into LOST: set state, cancel the stale follow nav goal, and
+       // start the belief-guided search (prediction-first + belief fallback).
+       // Extracted as a lambda so the pending-lost shortcut below reuses it.
+@@ -540,11 +685,11 @@ void PersonFollowingNode::detectResultCallback(
+         // Cancel the active follow nav goal: the tracked person is lost, so the
+         // old goal (aimed at where the person was) is stale. This also prevents
+         // the IDLE spin search from racing Nav2 for /cmd_vel control later.
+-        if (nav_goal_handle_) {
++        if (nav_goal_handle_ || goal_pending_) {
+           RCLCPP_INFO(this->get_logger(),
+             "[LOST-FLOW 3] canceling active nav goal on entering LOST (target id=%lu)",
+             tracking_track_id_);
+-          nav_client_->async_cancel_goal(nav_goal_handle_);
++          cancelOwnedGoals();
+           nav_goal_handle_ = nullptr;
+           last_nav_goal_pose_ = nullptr;
+         }
+@@ -609,8 +754,8 @@ void PersonFollowingNode::detectResultCallback(
+               tracking_track_id_, a_move, static_target_move_thr_,
+               static_target_timeout_sec_, best_b->target->track_id, best_b_move);
+             // Cancel the nav goal aimed at A so a fresh goal for B is sent.
+-            if (nav_goal_handle_) {
+-              nav_client_->async_cancel_goal(nav_goal_handle_);
++            if (nav_goal_handle_ || goal_pending_) {
++              cancelOwnedGoals();
+               nav_goal_handle_ = nullptr;
+             }
+             last_nav_goal_pose_ = nullptr;
+@@ -641,7 +786,7 @@ void PersonFollowingNode::detectResultCallback(
+         if (getRelockLkp(ref_lkp)) {
+           geometry_msgs::msg::PoseStamped pc;
+           pc.header.stamp = this->now();
+-          pc.header.frame_id = "camera_link";
++          pc.header.frame_id = camera_frame_;
+           pc.pose.position.x = p.x_m;
+           pc.pose.position.y = p.y_m;
+           auto tr_pose = transformPersonToWorld(getCurrentPose(), pc);
+@@ -700,7 +845,7 @@ void PersonFollowingNode::detectResultCallback(
+         if (have_lkp) {
+           geometry_msgs::msg::PoseStamped pc;
+           pc.header.stamp = this->now();
+-          pc.header.frame_id = "camera_link";
++          pc.header.frame_id = camera_frame_;
+           pc.pose.position.x = p.x_m;
+           pc.pose.position.y = p.y_m;
+           auto tr_pose = transformPersonToWorld(getCurrentPose(), pc);
+@@ -724,7 +869,7 @@ void PersonFollowingNode::detectResultCallback(
+         if (have_lkp) {
+           geometry_msgs::msg::PoseStamped pc;
+           pc.header.stamp = this->now();
+-          pc.header.frame_id = "camera_link";
++          pc.header.frame_id = camera_frame_;
+           pc.pose.position.x = new_target->x_m;
+           pc.pose.position.y = new_target->y_m;
+           auto tr_pose = transformPersonToWorld(getCurrentPose(), pc);
+@@ -744,8 +889,8 @@ void PersonFollowingNode::detectResultCallback(
+         spin_stop_requested_ = true;   // stop any in-flight scan
+         // Cancel the in-flight nav goal (if any) so a fresh goal for the new
+         // target is sent (publishGoalPose's re-nav branch will cancel + resend).
+-        if (nav_goal_handle_) {
+-          nav_client_->async_cancel_goal(nav_goal_handle_);
++        if (nav_goal_handle_ || goal_pending_) {
++          cancelOwnedGoals();
+           nav_goal_handle_ = nullptr;
+         }
+         last_nav_goal_pose_ = nullptr;
+@@ -806,36 +951,14 @@ void PersonFollowingNode::detectResultCallback(
+   // Helper: continue the spin search (used when no target to follow/observe).
+   auto continue_search = [&]() {
+       setFollowStatus(FollowStatus::IDLE_SEARCHING);
+-      // Any new observation target is invalidated when we go back to searching.
+       observe_track_id_ = 0;
+       tracking_track_id_ = 0;
+-      double elapsed = (this->now() - tp_target_find_start_).seconds();
+-      if (elapsed < idle_search_total_timeout_sec_) {
+-        if ((this->now() - tp_lost_).seconds() > idle_search_start_timeout_sec_) {
+-          RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 3000,
+-            "Spin to detect person (elapsed=%.1f/%.1f s).",
+-            elapsed, idle_search_total_timeout_sec_);
+-          // Run SpinInPlaceWCmdVel asynchronously so the detection callback
+-          // keeps firing during the spin — otherwise valid persons seen while
+-          // spinning would be missed (the spin blocks the executor). The spin
+-          // is stoppable via spin_stop_requested_ once a target is found.
+-          if (!spin_active_.load()) {
+-            spin_active_ = true;
+-            spin_stop_requested_ = false;
+-            // Turn toward the side where the target disappeared (recorded while
+-            // tracking). spin_radian_ magnitude with last_target_direction_ sign
+-            // (+1 left / -1 right).
+-            float dir = last_target_direction_;
+-            spin_thread_ = std::make_shared<std::thread>([this, dir]() {
+-              SpinInPlaceWCmdVel(spin_radian_ * dir);
+-              spin_active_ = false;
+-            });
+-            spin_thread_->detach();
+-          }
+-        }
+-      } else {
+-        RCLCPP_DEBUG(this->get_logger(), "Target find timeout (%.1f s), stop spinning.",
+-          idle_search_total_timeout_sec_);
++      const double elapsed = (this->now() - tp_target_find_start_).seconds();
++      if (elapsed < idle_search_total_timeout_sec_ &&
++          (this->now() - tp_lost_).seconds() > idle_search_start_timeout_sec_) {
++        startSpin(spin_radian_ * last_target_direction_, SpinPurpose::IDLE);
++      } else if (elapsed >= idle_search_total_timeout_sec_) {
++        cancelOwnedSpin();
+       }
+     };
+ 
+@@ -1034,15 +1157,10 @@ void PersonFollowingNode::enableFollowCallback(
+ 
+ void PersonFollowingNode::startFollowing()
+ {
+-  // G12 (partial): cancel any in-flight follow goal so follow owns Nav2 from
+-  // the start. async_cancel_all_goals cancels every goal sent by THIS action
+-  // client (goals we sent whose handle may not have been accepted yet are
+-  // also covered). It does NOT cancel goals sent by other clients (e.g. RViz
+-  // /goal_pose uses a separate client); those are unaffected. Mirrors
+-  // stopFollowing()'s cancel approach so enter/leave-follow are symmetric.
+-  nav_client_->async_cancel_all_goals();
+-  nav_goal_handle_ = nullptr;
++  cancelOwnedGoals();
++  cancelOwnedSpin();
+   last_nav_goal_pose_ = nullptr;
++  goal_send_armed_ = false;
+ 
+   follow_enabled_ = true;
+   setTrackState(TrackState::IDLE);
+@@ -1065,23 +1183,10 @@ void PersonFollowingNode::startFollowing()
+ 
+ void PersonFollowingNode::stopFollowing()
+ {
+-  // Cancel all in-flight follow goals. Uses async_cancel_all_goals (matching
+-  // startFollowing) instead of async_cancel_goal(nav_goal_handle_) so that
+-  // goals which were just async_send_goal'd but haven't yet been accepted by
+-  // the server (nav_goal_handle_ still nullptr in goalResponseCallback) are
+-  // also cancelled — otherwise such a goal slips through and runs to
+-  // completion after disable.
+-  nav_client_->async_cancel_all_goals();
+-  nav_goal_handle_ = nullptr;
++  cancelOwnedGoals();
++  cancelOwnedSpin();
+   last_nav_goal_pose_ = nullptr;
+-  RCLCPP_INFO(this->get_logger(), "Cancelling all nav goals");
+ 
+-  // Stop any in-progress spin and release Nav2 control.
+-  spin_stop_requested_ = true;
+-  if (cmd_vel_pub_) {
+-    geometry_msgs::msg::Twist stop_twist;
+-    cmd_vel_pub_->publish(stop_twist);
+-  }
+   publishBlindZoneObserving(true);
+ 
+   follow_enabled_ = false;
+@@ -1102,7 +1207,7 @@ void PersonFollowingNode::publishGoalPose(
+ {
+   geometry_msgs::msg::PoseStamped pose_camera;
+   pose_camera.header.stamp = stamp;
+-  pose_camera.header.frame_id = "camera_link";
++  pose_camera.header.frame_id = camera_frame_;
+   float width = 0;
+   float height = 0;
+   float confidence = 0;
+@@ -1130,19 +1235,11 @@ void PersonFollowingNode::publishGoalPose(
+   // Get current robot pose in global frame (for distance/yaw comparisons below)
+   geometry_msgs::msg::PoseStamped current_pose = getCurrentPose();
+ 
+-  // Transform camera-relative target pose to global frame
+-  auto transformed_target_pose = pose_camera;
+-  if (current_pose.header.frame_id != transformed_target_pose.header.frame_id) {
+-    if (!nav2_util::transformPoseInTargetFrame(
+-        pose_camera, transformed_target_pose, tf_buffer_, current_pose.header.frame_id))
+-    {
+-      RCLCPP_ERROR(this->get_logger(),
+-        "Could not transform %s to %s at line: %d",
+-        transformed_target_pose.header.frame_id.c_str(),
+-        current_pose.header.frame_id.c_str(), __LINE__);
+-      return;
+-    }
+-    transformed_target_pose.header.frame_id = current_pose.header.frame_id;
++  auto transformed_target_pose = transformPersonToWorld(current_pose, pose_camera);
++  if (transformed_target_pose.header.frame_id.empty()) {
++    cancelOwnedGoals();
++    diagnose("BLOCKED camera TF");
++    return;
+   }
+ 
+   // Publish the followed target's map-frame pose every frame while tracking.
+@@ -1195,6 +1292,9 @@ void PersonFollowingNode::publishGoalPose(
+   if (person_dist < follow_min_safe_distance_) {
+     RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
+       "Person too close (%.2f m < %.2f), withholding goal.", person_dist, follow_min_safe_distance_);
++    cancelOwnedGoals();
++    following_active_ = false;
++    cancelOwnedSpin();
+     setFollowStatus(FollowStatus::TRACKING_TOO_CLOSE);
+     return;
+   }
+@@ -1223,76 +1323,24 @@ void PersonFollowingNode::publishGoalPose(
+       image_width_, margin, margin, image_width_ - margin, image_width_);
+   }
+ 
+-  // Stop following: person closer than follow_distance_min — cancel any active
+-  // follow nav so the robot stops closing in, and publish a zero cmd_vel as a
+-  // hard stop fallback (covers inertia / residual velocity from a just-completed
+-  // goal). Does NOT return: falling through so the edge-turn branch below can
+-  // still spin the robot toward a too-close target that has slipped to the
+-  // frame edge (edge-turn now drives /cmd_vel directly, not Nav2, so the cancel
+-  // here no longer races with the edge-turn goal).
++  // Goal-only mode stops by canceling our Nav2 goal, never by writing velocity.
+   if (person_map_dist < follow_distance_min_) {
+-    if (nav_goal_handle_) {
+-      RCLCPP_INFO(this->get_logger(),
+-        "Person %.2f m < follow_distance_min %.2f m, canceling nav to stop follow",
+-        person_map_dist, follow_distance_min_);
+-      nav_client_->async_cancel_goal(nav_goal_handle_);
+-      nav_goal_handle_ = nullptr;
+-      last_nav_goal_pose_ = nullptr;
+-    }
+-    if (cmd_vel_pub_) {
+-      // Mutex with edge-turn: skip zero-vel while a spin is running OR this
+-      // frame is about to start one, so the spin's angular velocity owns
+-      // /cmd_vel (otherwise the zero-vel and the spin's angular-z race for
+-      // <100ms). will_edge_turn mirrors the edge-turn branch condition below.
+-      const bool will_edge_turn = !spin_active_.load() && !goal_pending_ &&
+-                                  isTargetAtFrameEdge(target);
+-      if (!spin_active_.load() && !will_edge_turn) {
+-        geometry_msgs::msg::Twist stop_twist;
+-        cmd_vel_pub_->publish(stop_twist);
+-      }
+-    }
++    cancelOwnedGoals();
++    following_active_ = false;
+   }
+ 
+-  // Edge-of-frame turn: target locked (TRACKING), person's ROI at left/right
+-  // image edge. Turn the robot toward the person to bring them back to frame
+-  // center. Done via direct cmd_vel spin (SpinInPlaceWCmdVel on a detached
+-  // thread), NOT Nav2 — a turn-in-place is a short angular impulse, not a nav
+-  // goal, and going through Nav2 raced with the dist<min cancel above (cancel
+-  // async + new goal → Nav2 rejected the turn → loop every frame).
+-  // Mutex: cancel any active Nav2 goal first so the spin owns /cmd_vel
+-  // exclusively (Nav2 controller also publishes /cmd_vel). Guarded by
+-  // !spin_active_ (no stacked spins) and !goal_pending_ (no in-flight goal).
+-  // Closed-loop turn angle: rotate exactly the yaw error to face the target —
+-  // one spin lands the robot facing the person, so the target returns to frame
+-  // center without re-spin churn.
+-  if (!spin_active_.load() && !goal_pending_ && isTargetAtFrameEdge(target) &&
+-    person_map_dist < follow_distance_min_) {
+-    // Release /cmd_vel from Nav2 before spinning.
+-    if (nav_goal_handle_) {
+-      nav_client_->async_cancel_goal(nav_goal_handle_);
+-      nav_goal_handle_ = nullptr;
+-      last_nav_goal_pose_ = nullptr;
+-    }
+-    double robot_yaw = tf2::getYaw(current_pose.pose.orientation);
+-    double yaw_to_target = std::atan2(
++  // Preserve official near-target edge-turn through the existing safe Nav2 behavior.
++  if (!spinBusy() && isTargetAtFrameEdge(target) && person_map_dist < follow_distance_min_) {
++    const double robot_yaw = tf2::getYaw(current_pose.pose.orientation);
++    const double yaw_to_target = std::atan2(
+       transformed_target_pose.pose.position.y - current_pose.pose.position.y,
+       transformed_target_pose.pose.position.x - current_pose.pose.position.x);
+-    float turn_angle = static_cast<float>(
+-      angles::shortest_angular_distance(robot_yaw, yaw_to_target));
+-    RCLCPP_INFO(this->get_logger(),
+-      "Target at frame edge, turning %.2f rad via cmd_vel toward target at (%.2f, %.2f)",
+-      turn_angle, transformed_target_pose.pose.position.x,
+-      transformed_target_pose.pose.position.y);
+-    spin_active_ = true;
+-    spin_stop_requested_ = false;
+-    spin_thread_ = std::make_shared<std::thread>([this, turn_angle]() {
+-      SpinInPlaceWCmdVel(turn_angle);
+-      spin_active_ = false;
+-    });
+-    spin_thread_->detach();
+-    setFollowStatus(FollowStatus::TRACKING_EDGE_TURN);
+-    publishPredictTrajectory();
+-    return;
++    const float turn_angle = angles::shortest_angular_distance(robot_yaw, yaw_to_target);
++    if (startSpin(turn_angle, SpinPurpose::EDGE)) {
++      setFollowStatus(FollowStatus::TRACKING_EDGE_TURN);
++      publishPredictTrajectory();
++      return;
++    }
+   }
+ 
+   // Withhold vs follow with hysteresis on the band edge: enter follow at
+@@ -1311,8 +1359,7 @@ void PersonFollowingNode::publishGoalPose(
+     }
+   }
+   if (!following_active_) {
+-    // Withhold goal: within the follow band (with hysteresis) — don't send a
+-    // new goal; let any existing nav continue. Robot neither closes in nor chases.
++    // Official withhold semantics: do not send or cancel an existing goal in the band.
+     setFollowStatus(FollowStatus::TRACKING);
+     publishPredictTrajectory();
+     return;
+@@ -1427,7 +1474,7 @@ void PersonFollowingNode::publishGoalPose(
+           // handle-mismatch guard).
+           NavigateToPose::Goal nav_goal;
+           nav_goal.pose = goal_pose;
+-          asyncNavToGoal(nav_goal);
++          if (!asyncNavToGoal(nav_goal)) return;
+           last_nav_goal_pose_ = std::make_shared<geometry_msgs::msg::PoseStamped>(goal_pose);
+           last_goal_send_time_ = this->now();
+           goal_send_armed_ = true;
+@@ -1441,7 +1488,7 @@ void PersonFollowingNode::publishGoalPose(
+         goal_pose.pose.position.x, goal_pose.pose.position.y);
+       NavigateToPose::Goal nav_goal;
+       nav_goal.pose = goal_pose;
+-      asyncNavToGoal(nav_goal);
++      if (!asyncNavToGoal(nav_goal)) return;
+       last_nav_goal_pose_ = std::make_shared<geometry_msgs::msg::PoseStamped>(goal_pose);
+       last_goal_send_time_ = this->now();
+       goal_send_armed_ = true;
+@@ -1481,12 +1528,16 @@ geometry_msgs::msg::PoseStamped PersonFollowingNode::getCurrentPose()
+ {
+   // Look up the latest TF from robot_frame_ to global_frame_ to get the robot's pose.
+   geometry_msgs::msg::PoseStamped robot_pose;
+-  robot_pose.header.frame_id = global_frame_;
+   robot_pose.header.stamp = this->now();
+ 
+   try {
+     auto transform = tf_buffer_.lookupTransform(
+       global_frame_, robot_frame_, tf2::TimePointZero);
++    if (!stampFresh(transform.header.stamp, tf_timeout_sec_)) {
++      diagnose("BLOCKED stale robot TF");
++      return robot_pose;
++    }
++    robot_pose.header.frame_id = global_frame_;
+     robot_pose.pose.position.x = transform.transform.translation.x;
+     robot_pose.pose.position.y = transform.transform.translation.y;
+     robot_pose.pose.position.z = transform.transform.translation.z;
+@@ -1496,6 +1547,7 @@ geometry_msgs::msg::PoseStamped PersonFollowingNode::getCurrentPose()
+       "Failed to get robot pose: %s", ex.what());
+   }
+ 
++  if (!poseValid(robot_pose)) robot_pose.header.frame_id.clear();
+   return robot_pose;
+ }
+ 
+@@ -1561,6 +1613,18 @@ bool PersonFollowingNode::isGoalReachable(const geometry_msgs::msg::PoseStamped
+ void PersonFollowingNode::globalCostmapCallback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg)
+ {
+   std::lock_guard<std::mutex> lock(costmap_mutex_);
++  const auto & q = msg->info.origin.orientation;
++  if (msg->header.frame_id != global_frame_ || !stampFresh(msg->header.stamp, costmap_timeout_sec_) ||
++      !std::isfinite(msg->info.resolution) || msg->info.resolution <= 0.0 ||
++      !std::isfinite(msg->info.origin.position.x) || !std::isfinite(msg->info.origin.position.y) ||
++      msg->info.width == 0 || msg->info.height == 0 ||
++      msg->data.size() != static_cast<size_t>(msg->info.width) * msg->info.height ||
++      std::abs(q.x) > 1e-6 || std::abs(q.y) > 1e-6 || std::abs(q.z) > 1e-6 ||
++      std::abs(q.w - 1.0) > 1e-6) {
++    latest_costmap_.reset();
++    diagnose("BLOCKED malformed, rotated or stale costmap");
++    return;
++  }
+   latest_costmap_ = msg;
+ }
+ 
+@@ -1584,14 +1648,15 @@ bool PersonFollowingNode::worldToCell(
+   const nav_msgs::msg::OccupancyGrid::SharedPtr & cm,
+   const geometry_msgs::msg::Point & pt, int & mx, int & my)
+ {
+-  if (!cm || cm->info.resolution <= 0.0) {
++  if (!cm || !stampFresh(cm->header.stamp, costmap_timeout_sec_) ||
++      !std::isfinite(pt.x) || !std::isfinite(pt.y) || cm->info.resolution <= 0.0) {
+     return false;
+   }
+   double ox = cm->info.origin.position.x;
+   double oy = cm->info.origin.position.y;
+   double res = cm->info.resolution;
+-  mx = static_cast<int>((pt.x - ox) / res);
+-  my = static_cast<int>((pt.y - oy) / res);
++  mx = static_cast<int>(std::floor((pt.x - ox) / res));
++  my = static_cast<int>(std::floor((pt.y - oy) / res));
+   if (mx < 0 || my < 0 ||
+       mx >= static_cast<int>(cm->info.width) ||
+       my >= static_cast<int>(cm->info.height)) {
+@@ -1614,7 +1679,10 @@ int PersonFollowingNode::cellCost(
+   // Recover the unsigned costmap_2d cost: int8_t 254 (LETHAL) reads as -2 when
+   // signed, so cast through uint8_t first to get 254 back as an int.
+   size_t idx = static_cast<size_t>(my) * cm->info.width + static_cast<size_t>(mx);
+-  return static_cast<int>(static_cast<uint8_t>(cm->data[idx]));
++  if (idx >= cm->data.size()) return -1;
++  // nav_msgs/OccupancyGrid costs are 0..100 with -1 unknown (not raw Costmap2D).
++  const int value = static_cast<int>(cm->data[idx]);
++  return value >= 0 && value <= 100 ? value : -1;
+ }
+ 
+ bool PersonFollowingNode::nearestFreeCellToPerson(
+@@ -1766,7 +1834,11 @@ geometry_msgs::msg::PoseStamped PersonFollowingNode::transformPersonToWorld(
+ {
+   // Mirror of the camera→map transform in publishGoalPose. On TF failure
+   // returns a PoseStamped whose header.frame_id is empty (caller's sentinel).
++  geometry_msgs::msg::PoseStamped empty;
++  if (robot_pose.header.frame_id.empty() ||
++      !stampFresh(pose_camera.header.stamp, input_timeout_sec_)) return empty;
+   auto transformed = pose_camera;
++  transformed.pose.orientation.w = 1.0;
+   if (robot_pose.header.frame_id != transformed.header.frame_id) {
+     if (!nav2_util::transformPoseInTargetFrame(
+         pose_camera, transformed, tf_buffer_, robot_pose.header.frame_id))
+@@ -1779,6 +1851,7 @@ geometry_msgs::msg::PoseStamped PersonFollowingNode::transformPersonToWorld(
+     }
+     transformed.header.frame_id = robot_pose.header.frame_id;
+   }
++  if (!poseValid(transformed)) return empty;
+   return transformed;
+ }
+ 
+@@ -2164,6 +2237,7 @@ void PersonFollowingNode::startBeliefSearch()
+   belief_search_.has_motion = (speed >= static_target_move_thr_);
+   belief_search_.searched_points.clear();
+   belief_search_.start_time = this->now();
++  belief_search_.awaiting_scan = false;
+   belief_search_.scanning = false;
+   belief_search_.scan_completed = false;
+ 
+@@ -2214,8 +2288,8 @@ void PersonFollowingNode::startBeliefSearch()
+   }
+ 
+   // Cancel any in-flight nav goal, navigate to observation point.
+-  if (nav_goal_handle_) {
+-    nav_client_->async_cancel_goal(nav_goal_handle_);
++  if (nav_goal_handle_ || goal_pending_) {
++    cancelOwnedGoals();
+     nav_goal_handle_ = nullptr;
+   }
+   // Cache robot↔observation-point distance for the LOST_BELIEF_NAV status :dist=.
+@@ -2235,7 +2309,7 @@ void PersonFollowingNode::startBeliefSearch()
+   }
+   NavigateToPose::Goal nav_goal;
+   nav_goal.pose = obs;
+-  asyncNavToGoal(nav_goal);
++  if (!asyncNavToGoal(nav_goal)) return;
+   last_nav_goal_pose_ = std::make_shared<geometry_msgs::msg::PoseStamped>(obs);
+   belief_search_.searched_points.push_back(obs.pose.position);  // record so is_searched excludes it next round
+   last_goal_send_time_ = this->now();
+@@ -2303,9 +2377,6 @@ void PersonFollowingNode::continueBeliefSearch()
+       belief_search_.scan_completed = true;  // skip scan → triggers round++ below
+       return;
+     }
+-    belief_search_.scanning = true;
+-    spin_stop_requested_ = false;
+-    spin_active_ = true;
+     // Scan direction: toward LKP (bias the spin to the side the target likely is).
+     float dir = 1.0f;  // default left
+     if (belief_search_.has_motion) {
+@@ -2317,14 +2388,13 @@ void PersonFollowingNode::continueBeliefSearch()
+       double rel_angle = std::atan2(dy, dx) - robot_yaw;
+       dir = (std::sin(rel_angle) >= 0) ? 1.0f : -1.0f;
+     }
+-    float final_dir = dir;
+-    spin_thread_ = std::make_shared<std::thread>([this, final_dir]() {
+-      SpinInPlaceWCmdVel(spin_radian_ * final_dir);
+-      spin_active_ = false;
+-      belief_search_.scanning = false;
+-      belief_search_.scan_completed = true;  // signal the next call to advance
+-    });
+-    spin_thread_->detach();
++    belief_search_.awaiting_scan = true;
++    if (!startSpin(spin_radian_ * dir, SpinPurpose::BELIEF)) {
++      setFollowStatus(FollowStatus::LOST_HOLDING);
++      return;
++    }
++    belief_search_.awaiting_scan = false;
++    belief_search_.scanning = true;
+     RCLCPP_INFO(this->get_logger(),
+       "[LOST-FLOW 10] belief search round %d: nav reached, starting directional scan", belief_search_.round);
+     // Arrived at the observation point → switch from NAV to SCAN so consumers
+@@ -2334,15 +2404,14 @@ void PersonFollowingNode::continueBeliefSearch()
+     return;
+   }
+ 
+-  // If still scanning, wait. The scan runs on a detached thread and sets
+-  // scan_completed when done; the LOST per-frame poll (detectResultCallback)
+-  // re-enters here to advance once it sees scan_completed.
++  // Only a successful owned Spin Action result marks this scan complete.
+   if (belief_search_.scanning) {
+     return;
+   }
+ 
+   // scan_completed: scanning finished at this observation point and the target
+   // was not found → advance to the next round.
++  belief_search_.awaiting_scan = false;
+   belief_search_.scan_completed = false;  // consumed; reset for the next observation point
+   belief_search_.round++;
+   if (belief_search_.round >= belief_search_.max_rounds) {
+@@ -2371,12 +2440,16 @@ void PersonFollowingNode::continueBeliefSearch()
+   }
+ 
+   if (nav_goal_handle_) {
+-    nav_client_->async_cancel_goal(nav_goal_handle_);
++    cancelOwnedGoals();
+     nav_goal_handle_ = nullptr;
+   }
+   NavigateToPose::Goal nav_goal;
+   nav_goal.pose = obs;
+-  asyncNavToGoal(nav_goal);
++  if (!asyncNavToGoal(nav_goal)) {
++    belief_search_.active = false;
++    setFollowStatus(FollowStatus::LOST_HOLDING);
++    return;
++  }
+   last_nav_goal_pose_ = std::make_shared<geometry_msgs::msg::PoseStamped>(obs);
+   belief_search_.searched_points.push_back(obs.pose.position);  // record so is_searched excludes it next round
+   last_goal_send_time_ = this->now();
+@@ -2715,38 +2788,259 @@ void PersonFollowingNode::publishBuzzerPattern(uint8_t pattern)
+   RCLCPP_INFO(this->get_logger(), "buzzer pattern %d on TRACKING->LOST", pattern);
+ }
+ 
+-void PersonFollowingNode::asyncNavToGoal(const NavigateToPose::Goal & goal)
++bool PersonFollowingNode::stampFresh(const builtin_interfaces::msg::Time & stamp,
++  double timeout, bool allow_static) const
+ {
+-  // Wait for the Nav2 action server; abort if unavailable.
+-  if (!nav_client_->wait_for_action_server(std::chrono::seconds(2))) {
+-    RCLCPP_ERROR(this->get_logger(), "NavigateToPose action server not available after waiting");
+-    return;
++  const rclcpp::Time time(stamp, this->get_clock()->get_clock_type());
++  if (time.nanoseconds() == 0) return allow_static;
++  const double age = (this->now() - time).seconds();
++  return age >= -0.05 && age <= timeout;
++}
++
++bool PersonFollowingNode::cameraTfFresh()
++{
++  try {
++    auto transform = tf_buffer_.lookupTransform(global_frame_, camera_frame_, tf2::TimePointZero);
++    return stampFresh(transform.header.stamp, tf_timeout_sec_, true);
++  } catch (const tf2::TransformException &) {
++    return false;
+   }
++}
+ 
+-  RCLCPP_DEBUG(this->get_logger(), "Sending NavigateToPose goal at (%.2f, %.2f)",
+-    goal.pose.pose.position.x, goal.pose.pose.position.y);
++bool PersonFollowingNode::poseValid(const geometry_msgs::msg::PoseStamped & pose) const
++{
++  const auto & p = pose.pose.position;
++  const auto & q = pose.pose.orientation;
++  return pose.header.frame_id == global_frame_ && std::isfinite(p.x) && std::isfinite(p.y) &&
++    std::isfinite(p.z) && std::isfinite(q.x) && std::isfinite(q.y) && std::isfinite(q.z) &&
++    std::isfinite(q.w) && std::abs(q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w - 1.0) < 1e-3;
++}
+ 
+-  auto send_goal_options = rclcpp_action::Client<NavigateToPose>::SendGoalOptions();
+-  // Register callbacks for goal acceptance/rejection and final result.
+-  send_goal_options.goal_response_callback =
+-    std::bind(&PersonFollowingNode::goalResponseCallback, this, _1);
+-  send_goal_options.result_callback =
+-    std::bind(&PersonFollowingNode::resultCallback, this, _1);
+-  goal_pending_ = true;  // set before send; cleared in goalResponseCallback
+-  nav_client_->async_send_goal(goal, send_goal_options);
++bool PersonFollowingNode::costmapFresh()
++{
++  std::lock_guard<std::mutex> lock(costmap_mutex_);
++  return latest_costmap_ && stampFresh(latest_costmap_->header.stamp, costmap_timeout_sec_);
+ }
+ 
+-void PersonFollowingNode::goalResponseCallback(
+-  GoalHandleNavigateToPose::SharedPtr goal_handle)
++void PersonFollowingNode::diagnose(const std::string & text)
+ {
+-  goal_pending_ = false;  // response arrived — no longer awaiting accept/reject
+-  if (!goal_handle) {
+-    RCLCPP_ERROR(this->get_logger(), "NavigateToPose goal was rejected by server");
+-  } else {
+-    // Store the accepted goal handle so we can cancel it later if the target moves.
+-    nav_goal_handle_ = goal_handle;
+-    RCLCPP_DEBUG(this->get_logger(), "NavigateToPose goal accepted");
++  if (!diagnostics_pub_) return;
++  std_msgs::msg::String msg;
++  msg.data = output_mode_ + ": " + text;
++  diagnostics_pub_->publish(msg);
++}
++
++bool PersonFollowingNode::spinBusy() const
++{
++  return pending_spin_requests_ != 0 || !owned_spin_goals_.empty();
++}
++
++bool PersonFollowingNode::odometryValid() const
++{
++  const auto & v = latest_odometry_.twist.twist;
++  return stampFresh(latest_odometry_.header.stamp, input_timeout_sec_) &&
++    latest_odometry_.child_frame_id == robot_frame_ &&
++    std::isfinite(v.linear.x) && std::isfinite(v.linear.y) && std::isfinite(v.angular.z);
++}
++
++bool PersonFollowingNode::stopped() const
++{
++  return stopped_samples_ >= 2 && odometryValid() &&
++    this->now().seconds() - stopped_since_ >= 0.1;
++}
++
++void PersonFollowingNode::cancelOwnedSpin()
++{
++  if (spinBusy()) waiting_for_spin_stop_ = true;
++  ++spin_generation_;
++  spin_stop_requested_ = true;
++  for (const auto & entry : owned_spin_goals_) {
++    if (spin_client_) spin_client_->async_cancel_goal(entry.second);
++  }
++  spin_active_ = spinBusy();  // Cancellation is not completion; wait for terminal results.
++}
++
++bool PersonFollowingNode::startSpin(float angle, SpinPurpose purpose)
++{
++  if (!follow_enabled_ || !std::isfinite(angle) || std::abs(angle) < 0.02 || spinBusy() ||
++      goal_pending_ || pending_nav_requests_ != 0 || !owned_nav_goals_.empty() || queued_nav_goal_ ||
++      !stampFresh(last_detection_stamp_, input_timeout_sec_) || !costmapFresh() || !cameraTfFresh()) {
++    return false;
++  }
++  if (!stopped()) {
++    diagnose("BLOCKED waiting for fresh measured stop before rotation");
++    return false;
++  }
++  waiting_for_spin_stop_ = false;
++  auto pose = getCurrentPose();
++  if (pose.header.frame_id.empty() || !isPointFree(pose.pose.position)) return false;
++  if ((this->now() - last_spin_send_time_).seconds() < 0.4) return false;
++  if (output_mode_ == "dry_run") {
++    pose.header.stamp = this->now();
++    pose.pose.orientation = nav2_util::geometry_utils::orientationAroundZAxis(
++      tf2::getYaw(pose.pose.orientation) + angle);
++    spin_candidate_pub_->publish(pose);
++    last_spin_send_time_ = this->now();
++    diagnose("SPIN_CANDIDATE angle=" + std::to_string(angle));
++    return false;  // An observation candidate cannot complete a physical scan.
++  }
++  if (!spin_client_->action_server_is_ready()) {
++    diagnose("BLOCKED spin action server unavailable");
++    return false;
++  }
++  Spin::Goal goal;
++  goal.target_yaw = angle;
++  goal.time_allowance = rclcpp::Duration::from_seconds(30.0);
++  const auto generation = ++spin_generation_;
++  auto weak_self = std::weak_ptr<PersonFollowingNode>(
++    std::static_pointer_cast<PersonFollowingNode>(shared_from_this()));
++  auto client = spin_client_;
++  rclcpp_action::Client<Spin>::SendGoalOptions options;
++  options.goal_response_callback = [weak_self, client, generation](GoalHandleSpin::SharedPtr handle) {
++    auto self = weak_self.lock();
++    if (self) --self->pending_spin_requests_;
++    if (handle && self) self->owned_spin_goals_[handle->get_goal_id()] = handle;
++    if (!self || generation != self->spin_generation_ || !self->follow_enabled_) {
++      if (handle) client->async_cancel_goal(handle);
++      return;
++    }
++    self->spin_active_ = self->spinBusy();
++    if (!handle) {
++      self->belief_search_.scanning = false;
++      if (self->belief_search_.active) {
++        self->belief_search_.active = false;
++        self->setFollowStatus(FollowStatus::LOST_HOLDING);
++      }
++      self->diagnose("BLOCKED SPIN_REJECTED");
++    } else {
++      self->diagnose("SPIN_ACCEPTED");
++    }
++  };
++  options.feedback_callback = [weak_self, generation](GoalHandleSpin::SharedPtr,
++    const std::shared_ptr<const Spin::Feedback> feedback) {
++    auto self = weak_self.lock();
++    if (self && generation == self->spin_generation_) {
++      self->diagnose("SPIN_FEEDBACK traveled=" + std::to_string(feedback->angular_distance_traveled));
++    }
++  };
++  options.result_callback = [weak_self, generation, purpose](const GoalHandleSpin::WrappedResult & result) {
++    auto self = weak_self.lock();
++    if (!self) return;
++    self->owned_spin_goals_.erase(result.goal_id);
++    self->waiting_for_spin_stop_ = true;
++    self->spin_active_ = self->spinBusy();
++    if (generation != self->spin_generation_ || !self->follow_enabled_) return;
++    self->diagnose("SPIN_RESULT code=" + std::to_string(static_cast<int>(result.code)));
++    if (purpose == SpinPurpose::BELIEF && self->belief_search_.active) {
++      self->belief_search_.scanning = false;
++      if (result.code == rclcpp_action::ResultCode::SUCCEEDED) {
++        self->belief_search_.scan_completed = true;
++      } else {
++        self->belief_search_.active = false;
++        self->setFollowStatus(FollowStatus::LOST_HOLDING);
++      }
++    }
++  };
++  ++pending_spin_requests_;
++  spin_stop_requested_ = false;
++  spin_active_ = true;
++  last_spin_send_time_ = this->now();
++  spin_client_->async_send_goal(goal, options);
++  diagnose("SPIN_SENT angle=" + std::to_string(angle));
++  return true;
++}
++
++
++void PersonFollowingNode::cancelOwnedGoals()
++{
++  ++nav_generation_;  // Late accepted requests from this generation are canceled by UUID.
++  goal_pending_ = false;
++  queued_nav_goal_.reset();
++  nav_goal_handle_.reset();
++  last_nav_goal_pose_.reset();
++  for (const auto & entry : owned_nav_goals_) {
++    if (nav_client_ && output_mode_ == "nav2_action") nav_client_->async_cancel_goal(entry.second);
++  }
++  // Keep canceled handles until terminal results: Spin must not race Nav2 cancellation.
++}
++
++bool PersonFollowingNode::asyncNavToGoal(const NavigateToPose::Goal & goal)
++{
++  if (!follow_enabled_ || goal_pending_ || !poseValid(goal.pose) ||
++      !stampFresh(last_detection_stamp_, input_timeout_sec_) || !costmapFresh() ||
++      getCurrentPose().header.frame_id.empty() || !cameraTfFresh() || !isGoalReachable(goal.pose)) {
++    diagnose("BLOCKED invalid input, TF, costmap or pending goal");
++    return false;
++  }
++  if (spinBusy() || (waiting_for_spin_stop_ && !stopped()) || pending_nav_requests_ != 0 ||
++      (!owned_nav_goals_.empty() && !nav_goal_handle_)) {
++    if (spinBusy()) cancelOwnedSpin();
++    queued_nav_goal_ = std::make_shared<NavigateToPose::Goal>(goal);
++    diagnose("WAIT owned motion cancellation before navigation");
++    return true;
++  }
++  if (output_mode_ == "dry_run") {
++    auto candidate = goal.pose;
++    candidate.header.stamp = this->now();
++    goal_candidate_pub_->publish(candidate);  // Only the original Action dispatch decision reaches here.
++    diagnose("CANDIDATE");
++    return true;
++  }
++  if (!nav_client_->action_server_is_ready()) {
++    diagnose("BLOCKED action server unavailable");
++    return false;
+   }
++  waiting_for_spin_stop_ = false;
++  const auto generation = ++nav_generation_;
++  auto weak_self = std::weak_ptr<PersonFollowingNode>(
++    std::static_pointer_cast<PersonFollowingNode>(shared_from_this()));
++  auto options = rclcpp_action::Client<NavigateToPose>::SendGoalOptions();
++  auto client = nav_client_;
++  options.goal_response_callback = [weak_self, client, generation](GoalHandleNavigateToPose::SharedPtr handle) {
++    auto self = weak_self.lock();
++    if (self) --self->pending_nav_requests_;
++    if (!self || generation != self->nav_generation_ || !self->follow_enabled_) {
++      if (handle) {
++        if (self) self->owned_nav_goals_[handle->get_goal_id()] = handle;
++        client->async_cancel_goal(handle);
++      }
++      return;
++    }
++    self->goal_pending_ = false;
++    if (!handle) {
++      self->last_nav_goal_pose_.reset();
++      self->diagnose("REJECTED");
++      return;
++    }
++    self->nav_goal_handle_ = handle;
++    self->owned_nav_goals_[handle->get_goal_id()] = handle;
++    self->diagnose("ACCEPTED");
++  };
++  options.feedback_callback = [weak_self, generation](GoalHandleNavigateToPose::SharedPtr handle,
++    const std::shared_ptr<const NavigateToPose::Feedback> feedback) {
++    auto self = weak_self.lock();
++    if (self && generation == self->nav_generation_ && self->nav_goal_handle_ &&
++        self->nav_goal_handle_->get_goal_id() == handle->get_goal_id()) {
++      self->diagnose("FEEDBACK distance_remaining=" + std::to_string(feedback->distance_remaining));
++    }
++  };
++  options.result_callback = [weak_self, generation](const GoalHandleNavigateToPose::WrappedResult & result) {
++    auto self = weak_self.lock();
++    if (!self) return;
++    self->owned_nav_goals_.erase(result.goal_id);
++    if (generation != self->nav_generation_) {
++      if (self->nav_goal_handle_ && self->nav_goal_handle_->get_goal_id() == result.goal_id) {
++        self->nav_goal_handle_.reset();
++      }
++      return;
++    }
++    self->resultCallback(result);
++  };
++  goal_pending_ = true;
++  ++pending_nav_requests_;
++  nav_client_->async_send_goal(goal, options);
++  diagnose("SENT");
++  return true;
+ }
+ 
+ void PersonFollowingNode::resultCallback(
+@@ -2763,8 +3057,7 @@ void PersonFollowingNode::resultCallback(
+   //  - a newer goal is pending (sent but not yet accepted): the result can't be
+   //    for the newer goal, so it must be stale; or
+   //  - the active handle is set and differs from this result's goal_id: stale.
+-  if (goal_pending_ ||
+-      (nav_goal_handle_ && result.goal_id != nav_goal_handle_->get_goal_id())) {
++  if (goal_pending_ || !nav_goal_handle_ || result.goal_id != nav_goal_handle_->get_goal_id()) {
+     RCLCPP_DEBUG(this->get_logger(),
+       "Ignoring stale nav result (pending newer goal or goal_id mismatch)");
+     return;
+@@ -2773,6 +3066,7 @@ void PersonFollowingNode::resultCallback(
+   nav_goal_handle_ = nullptr;
+   goal_pending_ = false;  // safety: a result always means accept already happened
+   last_nav_goal_pose_ = nullptr;  // G13 should not suppress new goals vs a completed one
++  diagnose("RESULT code=" + std::to_string(static_cast<int>(result.code)));
+   switch (result.code) {
+     case rclcpp_action::ResultCode::SUCCEEDED:
+       RCLCPP_DEBUG(this->get_logger(), "NavigateToPose goal succeeded");
+@@ -2785,6 +3079,7 @@ void PersonFollowingNode::resultCallback(
+       // just let the LOST timeout (lost_to_idle_timeout_sec_) → IDLE spin recover.
+       if (track_state_ == TrackState::LOST) {
+         if (belief_search_.active) {
++          belief_search_.awaiting_scan = true;
+           continueBeliefSearch();
+         }
+       }
+@@ -2799,6 +3094,7 @@ void PersonFollowingNode::resultCallback(
+       // search is inactive, there is nothing to advance (see SUCCEEDED note).
+       if (track_state_ == TrackState::LOST) {
+         if (belief_search_.active) {
++          belief_search_.awaiting_scan = true;
+           continueBeliefSearch();
+         }
+       }
+@@ -2818,48 +3114,6 @@ void PersonFollowingNode::resultCallback(
+   }
+ }
+ 
+-void PersonFollowingNode::SpinInPlaceWCmdVel(float spin_radian) {
+-  // Blocking in-place spin using cmd_vel. Publishes angular velocity at a fixed
+-  // rate until the desired rotation angle is reached or a stop is requested.
+-  // WARNING: This blocks the executor thread; no other callbacks run during spin.
+-  if (spin_radian == 0.0f) {
+-    RCLCPP_WARN(this->get_logger(), "Spin InPlaceWCmdVel: spin_radian is 0, skipping");
+-    return;
+-  }
+-
+-  spin_stop_requested_ = false;
+-
+-  double spin_duration = std::abs(spin_radian) / explore_spin_angular_speed_;
+-  double angular_z = (spin_radian > 0) ? explore_spin_angular_speed_ : -explore_spin_angular_speed_;
+-
+-  RCLCPP_DEBUG(this->get_logger(),
+-    "Spin InPlaceWCmdVel: spinning %.2f rad at %.2f rad/s, duration %.2f s, topic [%s]",
+-    spin_radian, angular_z, spin_duration, cmd_vel_topic_.c_str());
+-
+-  geometry_msgs::msg::Twist twist;
+-  twist.angular.z = angular_z;
+-
+-  rclcpp::Time start_time = this->now();
+-  const int publish_rate_hz = 10;
+-  rclcpp::Rate rate(publish_rate_hz);
+-
+-  while (rclcpp::ok() && !spin_stop_requested_) {
+-    double elapsed = (this->now() - start_time).seconds();
+-    if (elapsed >= spin_duration) {
+-      break;
+-    }
+-    cmd_vel_pub_->publish(twist);
+-    rate.sleep();
+-  }
+-
+-  // Publish zero velocity to guarantee the robot stops.
+-  geometry_msgs::msg::Twist stop_twist;
+-  cmd_vel_pub_->publish(stop_twist);
+-  spin_stop_requested_ = true;
+-  RCLCPP_DEBUG(this->get_logger(), "Spin InPlaceWCmdVel: completed, stopped=%s",
+-    spin_stop_requested_.load() ? "true" : "false");
+-}
+-
+ }  // namespace tros_person_following
+ 
+ #include <rclcpp_components/register_node_macro.hpp>
+diff --git a/home/sunrise/luka_upstream/tros_person_following/include/tros_person_following/person_following_node.h b/home/sunrise/luka_ws/src/control/tros_person_following/include/tros_person_following/person_following_node.h
+index 0d28110..73107f0 100644
+--- a/home/sunrise/luka_upstream/tros_person_following/include/tros_person_following/person_following_node.h
++++ b/home/sunrise/luka_ws/src/control/tros_person_following/include/tros_person_following/person_following_node.h
+@@ -20,15 +20,16 @@
+ #include <vector>
+ #include <mutex>
+ #include <atomic>
+-#include <thread>
+ #include <memory>
+ 
+ #include <rclcpp/rclcpp.hpp>
+ #include <rclcpp_action/rclcpp_action.hpp>
+ #include <nav2_msgs/action/navigate_to_pose.hpp>
++#include <nav2_msgs/action/spin.hpp>
+ #include <geometry_msgs/msg/pose_stamped.hpp>
+ #include <nav_msgs/msg/path.hpp>
+ #include <nav_msgs/msg/occupancy_grid.hpp>
++#include <nav_msgs/msg/odometry.hpp>
+ #include <tf2_ros/buffer.h>
+ #include <tf2_ros/transform_listener.h>
+ #include <ai_msgs/msg/perception_targets.hpp>
+@@ -65,6 +66,11 @@ public:
+ 
+   explicit PersonFollowingNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
+   ~PersonFollowingNode();
++  void prepareShutdown() { stopFollowing(); }
++  bool pendingNavRequests() const {
++    return pending_nav_requests_ != 0 || pending_spin_requests_ != 0 ||
++      !owned_nav_goals_.empty() || !owned_spin_goals_.empty();
++  }
+ 
+ private:
+   // Detection result callback — ported from frontier_exploration Explore::dectectResultCallback
+@@ -82,7 +88,7 @@ private:
+   void stopFollowing();
+ 
+   // Navigate to a pose asynchronously
+-  void asyncNavToGoal(const NavigateToPose::Goal & goal);
++  bool asyncNavToGoal(const NavigateToPose::Goal & goal);
+ 
+   // Spin in place by the given radian using NavigateToPose action
+   void spinInPlace(float spin_radian);
+@@ -348,8 +354,21 @@ private:
+   std::shared_ptr<geometry_msgs::msg::PoseStamped> last_nav_goal_pose_ = nullptr;
+   rclcpp::Time last_goal_send_time_;
+   bool goal_send_armed_{false};
+-  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_ = nullptr;
+-  void goalResponseCallback(GoalHandleNavigateToPose::SharedPtr goal_handle);
++  void cancelOwnedGoals();
++  bool stampFresh(const builtin_interfaces::msg::Time & stamp, double timeout, bool allow_static = false) const;
++  bool poseValid(const geometry_msgs::msg::PoseStamped & pose) const;
++  bool costmapFresh();
++  bool cameraTfFresh();
++  void diagnose(const std::string & text);
++  std::string output_mode_, camera_frame_;
++  double input_timeout_sec_, costmap_timeout_sec_, tf_timeout_sec_;
++  builtin_interfaces::msg::Time last_detection_stamp_;
++  uint64_t nav_generation_{0};
++  size_t pending_nav_requests_{0};
++  std::map<rclcpp_action::GoalUUID, GoalHandleNavigateToPose::SharedPtr> owned_nav_goals_;
++  rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr goal_candidate_pub_;
++  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr diagnostics_pub_;
++  rclcpp::TimerBase::SharedPtr input_watchdog_;
+   void resultCallback(const GoalHandleNavigateToPose::WrappedResult & result);
+ 
+   // ======================================================================
+@@ -374,6 +393,9 @@ private:
+   // buzzer_min_interval_sec_: <0 不发任何蜂鸣器消息（禁用）；==0 不限制；>0 节流。
+   void publishBuzzerPattern(uint8_t pattern);
+   uint64_t tracking_track_id_{0};     // 当前跟随目标 track_id（IDLE 时为 0）
++  // Tracker IDs are temporary trajectory IDs. In single-person mode a new ID
++  // may represent the same continuous target after a brief association gap.
++  bool single_person_auto_relock_{true};
+   bool target_lost_{false};           // TRACKING 期本帧未检测到目标（pending-lost 宽限期内）
+   rclcpp::Time tp_target_lost_;       // 首次丢失时刻（进 pending-lost 宽限期）
+   rclcpp::Time tp_lost_;             // 进 LOST 时刻（relock timeline 起点）
+@@ -387,11 +409,30 @@ private:
+   // ======================================================================
+   // Spin machinery — 原地旋转线程（IDLE 搜索 / belief scan / edge-turn 共用）
+   // ======================================================================
+-  void SpinInPlaceWCmdVel(float spin_radian);
+   std::atomic<bool> spin_stop_requested_{false};  // 请求停止旋转（线程内循环检查）
+-  // SpinInPlaceWCmdVel 在 detached 线程跑（不阻塞 detectResultCallback，避免漏检）。
++  // Spin Action callbacks run in the existing executor; no detached velocity thread.
+   std::atomic<bool> spin_active_{false};
+-  std::shared_ptr<std::thread> spin_thread_;
++  using Spin = nav2_msgs::action::Spin;
++  using GoalHandleSpin = rclcpp_action::ClientGoalHandle<Spin>;
++  enum class SpinPurpose { IDLE, EDGE, BELIEF };
++  bool startSpin(float angle, SpinPurpose purpose);
++  bool spinBusy() const;
++  bool stopped() const;
++  bool odometryValid() const;
++  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_sub_;
++  nav_msgs::msg::Odometry latest_odometry_;
++  size_t stopped_samples_{0};
++  double stopped_since_{0.0};
++  bool waiting_for_spin_stop_{false};
++  void cancelOwnedSpin();
++  rclcpp_action::Client<Spin>::SharedPtr spin_client_;
++  std::map<rclcpp_action::GoalUUID, GoalHandleSpin::SharedPtr> owned_spin_goals_;
++  uint64_t spin_generation_{0};
++  size_t pending_spin_requests_{0};
++  rclcpp::Time last_spin_send_time_;
++  rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr spin_candidate_pub_;
++  std::shared_ptr<NavigateToPose::Goal> queued_nav_goal_;
++
+ 
+   // ======================================================================
+   // Status & diagnostics — 状态发布 + 距离缓存（追加到状态串 :dist=）
+@@ -442,6 +483,7 @@ private:
+     bool has_motion = false;               // speed >= static_target_move_thr_ 则 true
+     std::vector<geometry_msgs::msg::Point> searched_points;  // 已访观测点（下轮排除）
+     rclcpp::Time start_time;                // belief search 开始时刻（计 timeout）
++    bool awaiting_scan = false;             // Reached-point retry while owned cancellation/action readiness settles.
+     bool scanning = false;                  // 到达后原地扫描中
+     bool scan_completed = false;            // 本观测点扫描完成（区别于 scanning==false 的"未开始"）
+     bool at_lkp = false;                    // 观测点即 LKP/预测点（→ 到达即扫）；false 为过渡 free cell（→ 不扫，下轮重试 LKP）

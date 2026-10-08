@@ -1,0 +1,11 @@
+{
+  "repository": "https://github.com/D-Robotics/xiaozhi-in-rdk",
+  "revision": "ade6cd1cc25ee105dc7d0fee600c56b8dd8b4305",
+  "license": "MIT",
+  "entrypoint": "xiaozhi-in-rdk.py --ros-speech",
+  "role": "Local S100 session manager; AIUI-only inference online, local ASR/LLM/TTS only when internet loss is confirmed",
+  "online_provider": "AIUI ARM64 SDK for speech; official AIUI v3 WSS API for personalized LLM replies",
+  "offline_provider": "Existing Qwen3-4B-Instruct-2507-Q4_K_M via robot loopback llama.cpp service",
+  "public_xiaozhi_cloud": "Not used by the modified ROS speech mode",
+  "hardware_motion": "Not enabled or tested"
+}

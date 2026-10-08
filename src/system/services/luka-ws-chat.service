@@ -1,0 +1,18 @@
+[Unit]
+Description=Luka S100 official OELLM Qwen2.5-1.5B-Instruct (BPU)
+After=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=sunrise
+Group=sunrise
+WorkingDirectory=/home/sunrise/luka_data/runtime/oellm
+ExecStart=/bin/bash /home/sunrise/luka_ws/src/system/luka_xiaozhi/scripts/start_oellm.sh
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

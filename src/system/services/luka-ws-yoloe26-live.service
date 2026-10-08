@@ -1,0 +1,18 @@
+# /etc/systemd/system/luka-ws-yoloe26-live.service
+[Unit]
+Description=Luka S100 current live image search
+After=network-online.target luka-ws-vision.service
+Wants=luka-ws-vision.service
+
+[Service]
+Environment=NX_CAMERA_SNAPSHOT_URL=http://127.0.0.1:8091/snapshot-hd.jpg
+Type=simple
+User=sunrise
+Group=sunrise
+WorkingDirectory=/home/sunrise/luka_ws/src/perception/luka_live_detection
+ExecStart=/usr/bin/python3 /home/sunrise/luka_ws/src/perception/luka_live_detection/yoloe26_live_api.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

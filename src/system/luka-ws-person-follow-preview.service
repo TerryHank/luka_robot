@@ -1,0 +1,17 @@
+[Unit]
+Description=Luka selected person official follow preview (isolated motion outputs)
+After=network.target luka-ws-orbbec-camera.service luka-ws-people.service
+
+[Service]
+Type=simple
+User=sunrise
+Group=sunrise
+WorkingDirectory=/home/sunrise/luka_ws
+ExecStart=/bin/bash /home/sunrise/luka_ws/src/system/scripts/start_selected_follow_preview.sh
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=15
+KillSignal=SIGINT
+
+[Install]
+WantedBy=multi-user.target

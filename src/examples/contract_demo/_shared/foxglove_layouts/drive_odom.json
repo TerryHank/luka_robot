@@ -1,0 +1,118 @@
+{
+  "configById": {
+    "Plot!luka0": {
+      "foxglovePanelTitle": "编码器逆解位置 / m",
+      "paths": [
+        {
+          "value": "/wheel/odom.pose.pose.position.x",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "x",
+          "color": "#38bdf8"
+        },
+        {
+          "value": "/wheel/odom.pose.pose.position.y",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "y",
+          "color": "#fb923c"
+        }
+      ],
+      "showLegend": true,
+      "legendDisplay": "top",
+      "showPlotValuesInLegend": true,
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "followingViewWidth": 30,
+      "sidebarDimension": 180
+    },
+    "Plot!luka1": {
+      "foxglovePanelTitle": "实测车体速度",
+      "paths": [
+        {
+          "value": "/wheel/odom.twist.twist.linear.x",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "linear.x",
+          "color": "#38bdf8"
+        },
+        {
+          "value": "/wheel/odom.twist.twist.linear.y",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "linear.y",
+          "color": "#fb923c"
+        },
+        {
+          "value": "/wheel/odom.twist.twist.angular.z",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "angular.z",
+          "color": "#4ade80"
+        }
+      ],
+      "showLegend": true,
+      "legendDisplay": "top",
+      "showPlotValuesInLegend": true,
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "followingViewWidth": 30,
+      "sidebarDimension": 180
+    },
+    "RawMessages!luka2": {
+      "foxglovePanelTitle": "编码器里程计原始消息",
+      "topicPath": "/wheel/odom",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "RawMessages!luka3": {
+      "foxglovePanelTitle": "现有底盘安全门",
+      "topicPath": "/nx/web_teleop_status",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "LukaConsole!drive_odom": {
+      "caseNumber": "01",
+      "section": "navigation"
+    }
+  },
+  "layout": {
+    "direction": "row",
+    "first": {
+      "direction": "row",
+      "first": {
+        "direction": "column",
+        "first": "Plot!luka0",
+        "second": "Plot!luka1",
+        "splitPercentage": 55
+      },
+      "second": {
+        "direction": "column",
+        "first": "RawMessages!luka2",
+        "second": "RawMessages!luka3",
+        "splitPercentage": 55
+      },
+      "splitPercentage": 55
+    },
+    "second": "LukaConsole!drive_odom",
+    "splitPercentage": 52
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "version": 1
+}

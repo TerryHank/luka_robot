@@ -1,0 +1,11 @@
+[Unit]
+Description=Compatibility entry for the canonical Luka Moss task runtime
+After=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/systemctl start luka-ws-moss.service
+
+[Install]
+WantedBy=multi-user.target

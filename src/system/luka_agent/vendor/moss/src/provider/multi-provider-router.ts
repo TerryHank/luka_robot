@@ -1,0 +1,238 @@
+import type {
+  LLMProvider,
+  LLMRequestOptions,
+  LLMResponse,
+  LLMStreamEvent,
+} from '../core/llm/llm-provider.js';
+import { classifyLlmError, type LlmErrorClassification } from './llm-error-classifier.js';
+import { MossError, ErrorCode } from '../errors.js';
+
+export interface FallbackProviderConfig {
+  provider: string;
+
+  model?: string;
+
+  baseUrl?: string;
+
+  apiKey?: string;
+}
+
+export interface MultiProviderRouterOptions {
+  primary: LLMProvider;
+
+  createProvider: (config: FallbackProviderConfig) => LLMProvider;
+
+  fallbacks: FallbackProviderConfig[];
+
+  maxFallbacks?: number;
+
+  cooldownMs?: number;
+}
+
+interface ProviderHealth {
+  provider: LLMProvider;
+  config: FallbackProviderConfig;
+  unhealthyUntil: number;
+}
+
+/** One observed failover decision, surfaced by /doctor (O3 observability). */
+export interface FailoverEvent {
+  ts: number;
+  stage: 'primary' | 'fallback' | 'exhausted';
+  provider: string;
+  model?: string;
+  ok: boolean;
+  reason: string;
+}
+
+const MAX_FAILOVER_EVENTS = 20;
+const recentFailoverEvents: FailoverEvent[] = [];
+
+function recordFailoverEvent(event: FailoverEvent): void {
+  recentFailoverEvents.push(event);
+  if (recentFailoverEvents.length > MAX_FAILOVER_EVENTS) {
+    recentFailoverEvents.splice(0, recentFailoverEvents.length - MAX_FAILOVER_EVENTS);
+  }
+}
+
+/** Recent failover decisions (newest last), for /doctor reporting. */
+export function getRecentFailoverEvents(): readonly FailoverEvent[] {
+  return recentFailoverEvents;
+}
+
+/** Test hook: clear the recorded failover history. */
+export function resetFailoverEventsForTests(): void {
+  recentFailoverEvents.length = 0;
+}
+
+export class MultiProviderRouter implements LLMProvider {
+  readonly id = 'multi-provider-router';
+  readonly displayName = 'Multi-Provider Router';
+  readonly capabilities: LLMProvider['capabilities'];
+
+  private primary: LLMProvider;
+  private createProvider: (config: FallbackProviderConfig) => LLMProvider;
+  private fallbackHealth: ProviderHealth[];
+  private maxFallbacks: number;
+  private cooldownMs: number;
+
+  constructor(options: MultiProviderRouterOptions) {
+    this.primary = options.primary;
+    this.createProvider = options.createProvider;
+    this.maxFallbacks = options.maxFallbacks ?? 3;
+    this.cooldownMs = options.cooldownMs ?? 60_000;
+    this.capabilities = { ...options.primary.capabilities };
+
+    this.fallbackHealth = options.fallbacks.slice(0, this.maxFallbacks).map((config) => ({
+      provider: this.createProvider(config),
+      config,
+      unhealthyUntil: 0,
+    }));
+  }
+
+  private checkHealth(health: ProviderHealth, classification: LlmErrorClassification): boolean {
+    const now = Date.now();
+
+    if (health.unhealthyUntil > 0 && now >= health.unhealthyUntil) {
+      health.unhealthyUntil = 0;
+    }
+
+    if (health.unhealthyUntil > 0) return false;
+
+    if (!classification.retryable && classification.category !== 'unknown') {
+      health.unhealthyUntil = now + this.cooldownMs;
+      return false;
+    }
+
+    return true;
+  }
+
+  async complete(opts: LLMRequestOptions): Promise<LLMResponse> {
+    return this.stream(opts, () => {});
+  }
+
+  async stream(
+    opts: LLMRequestOptions,
+    onEvent: (e: LLMStreamEvent) => void
+  ): Promise<LLMResponse> {
+    let primaryErr: unknown;
+    try {
+      return await this.primary.stream(opts, onEvent);
+    } catch (err) {
+      primaryErr = err;
+      const classification = classifyLlmError(err);
+      if (!classification.retryable) throw err;
+      recordFailoverEvent({
+        ts: Date.now(),
+        stage: 'primary',
+        provider: this.primary.displayName,
+        ok: false,
+        reason: `${classification.category}: ${errorMessageSafe(err)}`,
+      });
+    }
+
+    // Initialize lastError to the primary's error — if no fallbacks exist or
+    // all fallbacks fail without throwing, the user sees the real upstream
+    // failure instead of a misleading "All providers exhausted" placeholder.
+    // (Found by moss self-iteration — previously the placeholder discarded
+    // the primary error when fallbackHealth was empty.)
+    let lastError: unknown = primaryErr;
+    for (const health of this.fallbackHealth) {
+      // User aborted during a fallback's in-flight request (e.g. Ctrl+C):
+      // stop trying fallbacks — don't burn more requests, and don't mark
+      // providers unhealthy for a user-initiated cancel.
+      if (opts.abortSignal?.aborted)
+        throw new MossError({ code: ErrorCode.USER_ABORTED, message: 'Request aborted' });
+      if (!this.checkHealth(health, classifyLlmError(lastError))) {
+        recordFailoverEvent({
+          ts: Date.now(),
+          stage: 'fallback',
+          provider: health.config.provider,
+          ...(health.config.model ? { model: health.config.model } : {}),
+          ok: false,
+          reason: 'skipped: unhealthy (cooldown)',
+        });
+        continue;
+      }
+
+      try {
+        const result = await health.provider.stream(opts, onEvent);
+        recordFailoverEvent({
+          ts: Date.now(),
+          stage: 'fallback',
+          provider: health.config.provider,
+          ...(health.config.model ? { model: health.config.model } : {}),
+          ok: true,
+          reason: 'served request',
+        });
+        return result;
+      } catch (fallbackErr) {
+        lastError = fallbackErr;
+        const classification = classifyLlmError(fallbackErr);
+        recordFailoverEvent({
+          ts: Date.now(),
+          stage: 'fallback',
+          provider: health.config.provider,
+          ...(health.config.model ? { model: health.config.model } : {}),
+          ok: false,
+          reason: `${classification.category}: ${errorMessageSafe(fallbackErr)}`,
+        });
+        // A user abort is not a provider health problem — propagate it
+        // immediately instead of marking the fallback unhealthy (which would
+        // penalize a good provider for a user-initiated cancel) and continuing
+        // to the next fallback.
+        if (classification.category === 'user_abort') throw fallbackErr;
+        if (!classification.retryable) {
+          health.unhealthyUntil = Date.now() + this.cooldownMs;
+        }
+      }
+    }
+
+    recordFailoverEvent({
+      ts: Date.now(),
+      stage: 'exhausted',
+      provider: 'all',
+      ok: false,
+      reason: `fallback chain exhausted: ${errorMessageSafe(lastError)}`,
+    });
+    throw lastError;
+  }
+}
+
+function errorMessageSafe(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err);
+  return message.length > 120 ? `${message.slice(0, 120)}…` : message;
+}
+
+export function parseFallbackProvidersEnv(
+  env: NodeJS.ProcessEnv = process.env
+): FallbackProviderConfig[] {
+  const raw = env.MOSS_FALLBACK_PROVIDERS;
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (item): item is FallbackProviderConfig =>
+        typeof item === 'object' && item !== null && typeof item.provider === 'string'
+    );
+  } catch {
+    return [];
+  }
+}
+
+export function parseFallbackMaxRetriesEnv(env: NodeJS.ProcessEnv = process.env): number {
+  const raw = env.MOSS_FALLBACK_MAX_RETRIES;
+  if (!raw) return 3;
+  const parsed = Number.parseInt(raw, 10);
+  if (Number.isInteger(parsed) && parsed >= 0 && parsed <= 10) return parsed;
+  return 3;
+}
+
+export function parseFallbackCooldownEnv(env: NodeJS.ProcessEnv = process.env): number {
+  const raw = env.MOSS_FALLBACK_COOLDOWN_MS;
+  if (!raw) return 60_000;
+  const parsed = Number.parseInt(raw, 10);
+  if (Number.isInteger(parsed) && parsed >= 5000 && parsed <= 600_000) return parsed;
+  return 60_000;
+}

@@ -1,25 +1,23 @@
-# Luka workspace
+# luka_ws backup
 
-ROS 2 source is grouped by function. Root-level compatibility symlinks are removed.
+Public snapshot of `/home/sunrise/luka_ws/src`, captured on 2026-10-08.
+Model weights, private credentials, generated caches and live sockets are excluded.
+Exact included files, hashes, symlink targets and exclusions are in BACKUP_MANIFEST.json.
 
-- Configuration and local state: `common/config/`, `common/state/`
-- Maps: `map/maps/`
-- Orbbec ROS 2 camera: `sensing/OrbbecSDK_ROS2/` (includes the driver SDK)
-- Startup and reset scripts: `system/bringup/`
-- Service units: `system/services/`
-- Command entrypoint: `system/luka.sh`
-- Dashboard and console source: `visualization/console/`
-- Installed tools compatibility directory: `system/runtime/tools/`
-- Historical documentation: `docs/legacy/`
+## Restore on Linux
 
-On the robot, source `/home/sunrise/luka_ws/system/environment.bash`.
-Use `/home/sunrise/luka_ws/system/luka.sh status ws` to inspect services.
-Service activation and motion retain their existing explicit controls.
+Install Git LFS first, then clone both repositories next to each other:
 
-`build/`, `install/`, `log/`, and `Log/` are local generated artifacts.
-Models, credentials, and runtime state remain in their existing categorized directories;
-removing a root shortcut does not delete its target.
+```bash
+git clone --branch dev https://github.com/TerryHank/luka_ws.git ~/luka_ws
+git clone --branch dev https://github.com/TerryHank/luka_data.git ~/luka_data
+git -C ~/luka_ws lfs pull
+git -C ~/luka_data lfs pull
+```
 
-Historical snapshots may record old paths. Current executable paths use the categorized directories.
-
-The standalone Orbbec SDK download and examples are archived at `/home/sunrise/orbbec_sdk_v1/`.
+Linux symlinks and executable flags are preserved. Absolute links targeting `/home/sunrise/`
+need adaptation when restoring under another username. Some links refer to external dependencies
+outside these two directories; those targets are not included in this snapshot.
+Restore models and private configuration separately, install system/ROS/vendor dependencies,
+and rebuild with `colcon build --base-paths src`. This backup does not include build/install/log
+or systemd files outside the requested directories and is not a verified full-system image.

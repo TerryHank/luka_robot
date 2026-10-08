@@ -1,0 +1,1 @@
+../perception/luka_image_inference/luka_image_inference/bpu_yolo26_runtime/yolo26_seg.py

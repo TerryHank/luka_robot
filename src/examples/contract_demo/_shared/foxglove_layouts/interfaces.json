@@ -1,0 +1,60 @@
+{
+  "configById": {
+    "RawMessages!luka0": {
+      "foxglovePanelTitle": "标准Odometry",
+      "topicPath": "/wheel/odom",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "RawMessages!luka1": {
+      "foxglovePanelTitle": "标准IMU",
+      "topicPath": "/imu/data",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "RawMessages!luka2": {
+      "foxglovePanelTitle": "业务JSON消息",
+      "topicPath": "/hotel/mission/status",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "LukaConsole!interfaces": {
+      "caseNumber": "07",
+      "section": "navigation"
+    }
+  },
+  "layout": {
+    "direction": "row",
+    "first": {
+      "direction": "row",
+      "first": {
+        "direction": "column",
+        "first": "RawMessages!luka0",
+        "second": "RawMessages!luka1",
+        "splitPercentage": 55
+      },
+      "second": "RawMessages!luka2",
+      "splitPercentage": 55
+    },
+    "second": "LukaConsole!interfaces",
+    "splitPercentage": 52
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "version": 1
+}

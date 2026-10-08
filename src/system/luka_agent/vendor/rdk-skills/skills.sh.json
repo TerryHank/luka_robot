@@ -1,0 +1,88 @@
+{
+  "$schema": "https://skills.sh/schemas/skills.sh.schema.json",
+  "notGrouped": "bottom",
+  "groupings": [
+    {
+      "title": "BSP Development",
+      "description": "Host-side board support package development — cross-compilation environment, source sync, system images, kernel/DTB/drivers, deb packages, bootloader, and rootfs customization for RDK X3/X5, plus S-series source acquisition.",
+      "skills": [
+        "bsp-env-setup",
+        "bsp-source-sync",
+        "bsp-image-build",
+        "bsp-kernel-build",
+        "bsp-deb-build",
+        "bsp-bootloader-build",
+        "bsp-rootfs-custom",
+        "bsp-s-series"
+      ]
+    },
+    {
+      "title": "Device Diagnostics",
+      "description": "Read-only health snapshots, memory auditing, log forensics, and network diagnostics for D-Robotics RDK boards.",
+      "skills": [
+        "rdk-diagnostic",
+        "rdk-memory-audit",
+        "rdk-log-forensics",
+        "rdk-network-remote"
+      ]
+    },
+    {
+      "title": "System Configuration",
+      "description": "Board-side system configuration: performance modes, thermal management, headless setup, and system maintenance.",
+      "skills": [
+        "rdk-system-config",
+        "rdk-headless-mode",
+        "rdk-system-maintain"
+      ]
+    },
+    {
+      "title": "Camera and Vision",
+      "description": "Camera bring-up, end-to-end vision pipeline, and multimedia hardware codecs.",
+      "skills": [
+        "rdk-camera-setup",
+        "rdk-vision-pipeline",
+        "rdk-multimedia"
+      ]
+    },
+    {
+      "title": "Model Deployment",
+      "description": "Model deployment, benchmarking, model zoo, and inference-related skills.",
+      "skills": [
+        "rdk-model-deploy",
+        "rdk-model-benchmark",
+        "rdk-model-zoo"
+      ]
+    },
+    {
+      "title": "Peripherals and Robotics",
+      "description": "GPIO, 40-pin header, peripheral cookbook, accessories, and TogetheROS.Bot setup.",
+      "skills": [
+        "rdk-gpio-40pin",
+        "rdk-peripheral-cookbook",
+        "rdk-accessories",
+        "rdk-tros-setup"
+      ]
+    },
+    {
+      "title": "Documentation and Knowledge",
+      "description": "Full-text search, board knowledge, hardware specs, command manual, source map, and ecosystem selection.",
+      "skills": [
+        "rdk-docs-reference",
+        "rdk-board-knowledge",
+        "rdk-hardware",
+        "rdk-ecosystem",
+        "rdk-command-manual",
+        "rdk-source-map"
+      ]
+    },
+    {
+      "title": "Advanced Deployment",
+      "description": "On-device LLM/VLM deployment, embodied AI, and S-series heterogeneous development.",
+      "skills": [
+        "rdk-llm-deployment",
+        "rdk-embodied-lerobot",
+        "rdk-board-delegate"
+      ]
+    }
+  ]
+}

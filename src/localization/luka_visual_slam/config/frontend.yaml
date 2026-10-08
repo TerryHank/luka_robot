@@ -1,0 +1,3 @@
+Odom/ImageDecimation: '2'
+Vis/MaxFeatures: '500'
+OdomF2M/MaxSize: '1000'

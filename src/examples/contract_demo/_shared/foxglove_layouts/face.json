@@ -1,0 +1,46 @@
+{
+  "configById": {
+    "Image!luka0": {
+      "foxglovePanelTitle": "YuNet/SFace：参考相似度，无权限联动",
+      "imageMode": {
+        "imageTopic": "/contract_demo/face_image"
+      },
+      "scene": {},
+      "topics": {},
+      "transforms": {},
+      "layers": {},
+      "version": 1
+    },
+    "RawMessages!luka1": {
+      "foxglovePanelTitle": "图像时间戳",
+      "topicPath": "/contract_demo/face_image.header",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "LukaConsole!face": {
+      "caseNumber": "22",
+      "section": "people"
+    }
+  },
+  "layout": {
+    "direction": "row",
+    "first": {
+      "direction": "row",
+      "first": "Image!luka0",
+      "second": "RawMessages!luka1",
+      "splitPercentage": 55
+    },
+    "second": "LukaConsole!face",
+    "splitPercentage": 52
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "version": 1
+}

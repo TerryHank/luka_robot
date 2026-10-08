@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 D-Robotics. All rights reserved.
+#
+# Component synchronization is state-changing and is intentionally handled only
+# by component-upgrade.yml. This workflow verifies the committed catalog on
+# pull requests and on manual dispatch without changing it.
+
+name: Verify committed skills catalog
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pull request or committed catalog
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install catalog generator dependencies
+        run: python3 -m pip install -r .github/requirements.txt
+
+      - name: Verify committed catalog and plugin declarations
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests
+          python3 .github/scripts/validate.py --mode advisory
+          python3 .github/scripts/generate_plugin_catalog.py --repo-root . --check-plugin-includes
+          git diff --exit-code

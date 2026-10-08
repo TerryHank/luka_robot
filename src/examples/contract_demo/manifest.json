@@ -1,0 +1,490 @@
+{
+  "contract_sha256": "3657d7cbc61f46de21957c6c8c34b3642d5c0c5b372bf317630ff686edb4c2e4",
+  "contract_filename": "智能居家机器人项目技术开发委托合同01(2).docx",
+  "source_revision": "de8f1a06a794278e59759f4108fcceb041a1de68",
+  "audit_date": "2026-10-08",
+  "payment": {
+    "total_cny": 10000,
+    "installments_cny": [
+      5000,
+      5000
+    ],
+    "per_function_amounts": null
+  },
+  "items": [
+    {
+      "number": "01",
+      "clause": "I-1",
+      "title": "STM32与通信协议",
+      "requirement": "STM32 底盘主控底层固件开发、串口 / RS485 /CAN通信协议定制与适配。",
+      "source_paragraph_index": 72,
+      "profile": "drive_odom",
+      "status": "PARTIAL",
+      "limitation": "只有上位机RS485/Modbus协议代码；没有STM32固件工程和CAN实现。",
+      "evidence": [
+        "control/ddsm_car_control/ddsm_car_control/zdt_y42_protocol.py"
+      ],
+      "folder": "01_02_I_1_I_2_底盘通信运动学与键盘控制_部分完成",
+      "folder_status_suffix": "部分完成",
+      "demo_group": "01_02",
+      "launch": "_shared/drive_odom.launch.py",
+      "foxglove_layout": "_shared/foxglove_layouts/drive_odom.json"
+    },
+    {
+      "number": "02",
+      "clause": "I-2",
+      "title": "运动学编码器与速度闭环",
+      "requirement": "四轮差速底盘运动学建模、速度解算、编码器数据采集与速度闭环控制。",
+      "source_paragraph_index": 73,
+      "profile": "drive_odom",
+      "status": "PARTIAL",
+      "limitation": "实际为四轮麦克纳姆运动学，非合同字面差速；编码器/闭环现场效果待验收。",
+      "evidence": [
+        "control/ddsm_car_control/ddsm_car_control/zdt_mecanum_kinematics.py",
+        "visualization/console/nx_readonly_odom.py"
+      ],
+      "folder": "01_02_I_1_I_2_底盘通信运动学与键盘控制_部分完成",
+      "folder_status_suffix": "部分完成",
+      "demo_group": "01_02",
+      "launch": "_shared/drive_odom.launch.py",
+      "foxglove_layout": "_shared/foxglove_layouts/drive_odom.json"
+    },
+    {
+      "number": "03",
+      "clause": "I-3",
+      "title": "IMU与卡尔曼融合",
+      "requirement": "IMU 六轴传感器驱动、姿态解算、卡尔曼滤波多传感器数据融合。",
+      "source_paragraph_index": 74,
+      "profile": "imu_launch",
+      "status": "IMPLEMENTED",
+      "limitation": "复用IMU驱动和二维EKF；演示滤波器不发布TF，避免与现有里程计重叠。现场标定与精度未验收。",
+      "evidence": [
+        "control/ddsm_car_control/ddsm_car_control/wit_imu_node.py",
+        "control/ddsm_car_control/config/ekf_imu_yaw_rate.yaml"
+      ],
+      "folder": "03_I_3_IMU与卡尔曼融合_代码已完成_待现场验收",
+      "folder_status_suffix": "代码已完成_待现场验收",
+      "launch": "_shared/imu_axes.launch.py",
+      "foxglove_layout": "_shared/foxglove_layouts/imu_axes.json"
+    },
+    {
+      "number": "04",
+      "clause": "I-4",
+      "title": "雷达滤波与去畸变",
+      "requirement": "激光雷达驱动适配、点云滤波、畸变矫正、数据稳定输出。",
+      "source_paragraph_index": 75,
+      "profile": "lidar",
+      "status": "PARTIAL",
+      "limitation": "当前主要数据是二维LaserScan，不是完整3D点云；去畸变演示输出独立话题。",
+      "evidence": [
+        "control/ddsm_car_control/ddsm_car_control/dual_laser_fusion.py",
+        "control/ddsm_car_control/ddsm_car_control/laser_scan_deskewer.py"
+      ],
+      "folder": "04_I_4_雷达滤波与去畸变_部分完成",
+      "folder_status_suffix": "部分完成",
+      "launch": "_shared/function_demo.launch.py",
+      "launch_group": "lidar",
+      "foxglove_layout": "_shared/foxglove_layouts/lidar.json"
+    },
+    {
+      "number": "05",
+      "clause": "I-5",
+      "title": "RGBD深度相机",
+      "requirement": "深度摄像头底层驱动适配、图像数据、深度数据采集与预处理开发，实现深度图像、深度距离数据稳定输出，完成与整机硬件、主控系统的通信适配。",
+      "source_paragraph_index": 76,
+      "profile": "camera",
+      "status": "IMPLEMENTED",
+      "limitation": "Astra Pro Plus驱动和RGB-D预处理存在；实时帧率和深度质量需要现场验证。",
+      "evidence": [
+        "sensing/OrbbecSDK_ROS2/orbbec_camera/launch/astra_pro_plus.launch.py",
+        "sensing/OrbbecSDK_ROS2/orbbec_camera/launch/astra.launch.py"
+      ],
+      "folder": "05_I_5_RGBD深度相机_代码已完成_待现场验收",
+      "folder_status_suffix": "代码已完成_待现场验收",
+      "launch": "_shared/function_demo.launch.py",
+      "launch_group": "camera",
+      "foxglove_layout": "_shared/foxglove_layouts/camera.json"
+    },
+    {
+      "number": "06",
+      "clause": "II-1",
+      "title": "Ubuntu与ROS2工程环境",
+      "requirement": "Ubuntu22.04 + ROS2 完整开发环境搭建、项目工程框架搭建。",
+      "source_paragraph_index": 78,
+      "profile": "environment",
+      "status": "IMPLEMENTED",
+      "limitation": "已核实Ubuntu22.04.5、ROS2 Humble；包数以colcon list为准（本轮发现18个唯一包，不等于全量构建验收）。",
+      "evidence": [
+        "system/environment.bash"
+      ],
+      "folder": "06_II_1_Ubuntu与ROS2工程环境_代码已完成_待现场验收",
+      "folder_status_suffix": "代码已完成_待现场验收"
+    },
+    {
+      "number": "07",
+      "clause": "II-2",
+      "title": "消息接口与话题封装",
+      "requirement": "自定义机器人底盘、传感器、控制指令专用消息与话题封装。",
+      "source_paragraph_index": 79,
+      "profile": "interfaces",
+      "status": "PARTIAL",
+      "limitation": "有ai_msgs和语义地图自定义消息；底盘控制仍大量使用标准Twist/Odometry，不能宣称有完整专用底盘协议消息。",
+      "evidence": [
+        "common/vendor/ai_msgs/msg/PerceptionTargets.msg",
+        "map/hotel_semantic_map_msgs/msg/Destination.msg"
+      ],
+      "folder": "07_II_2_消息接口与话题封装_部分完成",
+      "folder_status_suffix": "部分完成",
+      "launch": "_shared/function_demo.launch.py",
+      "launch_group": "interfaces",
+      "foxglove_layout": "_shared/foxglove_layouts/interfaces.json"
+    },
+    {
+      "number": "08",
+      "clause": "II-3",
+      "title": "分层ROS节点",
+      "requirement": "分层节点开发：底盘驱动节点、雷达感知节点、IMU 姿态节点、SLAM 建图节点、导航规划节点、自动回充业务节点。",
+      "source_paragraph_index": 80,
+      "profile": "layers",
+      "status": "PARTIAL",
+      "limitation": "有底盘/雷达/IMU/SLAM/Nav2；自动回充业务闭环缺失。",
+      "evidence": [
+        "system/bringup/nx_sensors.launch.py",
+        "system/bringup/nx_navigation.launch.py"
+      ],
+      "folder": "08_II_3_分层ROS节点_部分完成",
+      "folder_status_suffix": "部分完成",
+      "launch": "_shared/function_demo.launch.py",
+      "launch_group": "layers",
+      "foxglove_layout": "_shared/foxglove_layouts/layers.json"
+    },
+    {
+      "number": "09",
+      "clause": "III-1",
+      "title": "二维激光SLAM",
+      "requirement": "室内 2D 激光 SLAM 实时建图算法部署与参数调优。",
+      "source_paragraph_index": 82,
+      "profile": "slam",
+      "status": "IMPLEMENTED",
+      "limitation": "只启动现有slam_toolbox算法节点，复用当前传感器和只读里程计；不调用旧ESP32通用整机launch。现场调优未验收。",
+      "evidence": [
+        "control/ddsm_car_control/config/slam_toolbox_mapping.yaml"
+      ],
+      "folder": "09_III_1_二维激光SLAM_代码已完成_待现场验收",
+      "folder_status_suffix": "代码已完成_待现场验收",
+      "launch": "_shared/function_demo.launch.py",
+      "launch_group": "slam",
+      "foxglove_layout": "_shared/foxglove_layouts/slam.json"
+    },
+    {
+      "number": "10",
+      "clause": "III-2",
+      "title": "地图保存加载与复用",
+      "requirement": "地图保存、离线加载、整机断电重启自动复用地图。",
+      "source_paragraph_index": 83,
+      "profile": "map",
+      "status": "PARTIAL",
+      "limitation": "提供静态地图加载入口和独立save_map.sh；保存调用已有mapping_bundle且要求SLAM活跃。断电自动复用未实测。",
+      "evidence": [
+        "visualization/console/mapping_bundle.py",
+        "visualization/console/s100_boot_pose.py",
+        "system/bringup/nx_localization.launch.py"
+      ],
+      "folder": "10_III_2_地图保存加载与复用_部分完成",
+      "folder_status_suffix": "部分完成",
+      "launch": "_shared/function_demo.launch.py",
+      "launch_group": "map",
+      "foxglove_layout": "_shared/foxglove_layouts/map.json"
+    },
+    {
+      "number": "11",
+      "clause": "III-3",
+      "title": "全局重定位与场景匹配",
+      "requirement": "机器人全局重定位、坐标自动矫正、室内场景自适应匹配。",
+      "source_paragraph_index": 84,
+      "profile": "localization",
+      "status": "PARTIAL",
+      "limitation": "有AMCL/全局重定位/扫描匹配；本入口不自动调用可能旋转底盘的重定位请求。场景适应效果未验收。",
+      "evidence": [
+        "visualization/console/nx_relocalization.py",
+        "visualization/console/nx_scan_map_match.py",
+        "control/ddsm_car_control/ddsm_car_control/ddsm_auto_localizer.py"
+      ],
+      "folder": "11_III_3_全局重定位与场景匹配_部分完成",
+      "folder_status_suffix": "部分完成",
+      "launch": "_shared/function_demo.launch.py",
+      "launch_group": "localization",
+      "foxglove_layout": "_shared/foxglove_layouts/localization.json"
+    },
+    {
+      "number": "12",
+      "clause": "IV-1",
+      "title": "全局局部路径规划",
+      "requirement": "全局路径规划、局部实时路径规划算法配置与现场调优。",
+      "source_paragraph_index": 86,
+      "profile": "navigation",
+      "status": "IMPLEMENTED",
+      "limitation": "启动现有Nav2规划/控制后端；不会自动发目标，现场调优和运动效果未验收。",
+      "evidence": [
+        "system/bringup/nx_navigation.launch.py",
+        "common/config/nx_nav2.yaml"
+      ],
+      "folder": "12_IV_1_全局局部路径规划_代码已完成_待现场验收",
+      "folder_status_suffix": "代码已完成_待现场验收",
+      "launch": "_shared/function_demo.launch.py",
+      "launch_group": "navigation",
+      "foxglove_layout": "_shared/foxglove_layouts/navigation.json"
+    },
+    {
+      "number": "13",
+      "clause": "IV-2",
+      "title": "静态与动态避障",
+      "requirement": "静态障碍物避障、动态行人实时避障逻辑开发。",
+      "source_paragraph_index": 87,
+      "profile": "avoidance",
+      "status": "PARTIAL",
+      "limitation": "代价地图/CollisionMonitor存在；动态行人实时避障完整闭环仍需现场验收。",
+      "evidence": [
+        "common/config/nx_nav2.yaml",
+        "control/ddsm_car_control/ddsm_car_control/lateral_escape_guard.py"
+      ],
+      "folder": "13_IV_2_静态与动态避障_部分完成",
+      "folder_status_suffix": "部分完成",
+      "launch": "_shared/function_demo.launch.py",
+      "launch_group": "avoidance",
+      "foxglove_layout": "_shared/foxglove_layouts/avoidance.json"
+    },
+    {
+      "number": "14",
+      "clause": "IV-3",
+      "title": "航点巡航与软件返航",
+      "requirement": "室内多点定点导航、自主巡航、点位记忆、一键返航功能。",
+      "source_paragraph_index": 88,
+      "profile": "business",
+      "status": "PARTIAL",
+      "limitation": "航点/巡航/Home节点存在；无充电停靠闭环，入口只启动节点且不自动发航点/返航/巡航请求。",
+      "evidence": [
+        "control/ddsm_car_control/ddsm_car_control/ddsm_patrol_manager.py",
+        "control/ddsm_car_control/ddsm_car_control/ddsm_home_manager.py",
+        "system/nav_llm_agent/nav_llm_agent/waypoint_store.py"
+      ],
+      "folder": "14_IV_3_航点巡航与软件返航_部分完成",
+      "folder_status_suffix": "部分完成",
+      "launch": "_shared/function_demo.launch.py",
+      "launch_group": "business",
+      "foxglove_layout": "_shared/foxglove_layouts/business.json"
+    },
+    {
+      "number": "15",
+      "clause": "IV-4",
+      "title": "缓启停与运动平滑",
+      "requirement": "底盘缓启停、转弯限速、运动平滑控制，保证运行平稳。",
+      "source_paragraph_index": 89,
+      "profile": "smoothing",
+      "status": "IMPLEMENTED",
+      "limitation": "复用Nav2 velocity_smoother和限幅函数；不直接注入速度，物理平稳性仍需运动验收。",
+      "evidence": [
+        "control/ddsm_car_control/ddsm_car_control/zdt_mecanum_kinematics.py",
+        "system/bringup/nx_navigation.launch.py"
+      ],
+      "folder": "15_IV_4_缓启停与运动平滑_代码已完成_待现场验收",
+      "folder_status_suffix": "代码已完成_待现场验收",
+      "launch": "_shared/function_demo.launch.py",
+      "launch_group": "smoothing",
+      "foxglove_layout": "_shared/foxglove_layouts/smoothing.json"
+    },
+    {
+      "number": "16",
+      "clause": "V-1",
+      "title": "充电桩标定与识别",
+      "requirement": "充电桩位置标定、信号识别与坐标匹配逻辑开发。",
+      "source_paragraph_index": 91,
+      "profile": "missing",
+      "status": "MISSING",
+      "limitation": "有若干docking_server参数样例，但没有确认的桩识别/标定完整实现和在用启动链。配置段不作为实现证据。",
+      "evidence": [],
+      "folder": "16_V_1_充电桩标定与识别_未实现",
+      "folder_status_suffix": "未实现"
+    },
+    {
+      "number": "17",
+      "clause": "V-2",
+      "title": "精准停靠与充电",
+      "requirement": "自主返航、慢速精准对位、自动停靠充电。",
+      "source_paragraph_index": 92,
+      "profile": "home",
+      "status": "PARTIAL",
+      "limitation": "仅能演示软件Home节点与返航接口；精准对位、停靠和充电未形成闭环。",
+      "evidence": [
+        "control/ddsm_car_control/ddsm_car_control/ddsm_home_manager.py"
+      ],
+      "folder": "17_V_2_精准停靠与充电_部分完成",
+      "folder_status_suffix": "部分完成",
+      "launch": "_shared/function_demo.launch.py",
+      "launch_group": "home",
+      "foxglove_layout": "_shared/foxglove_layouts/home.json"
+    },
+    {
+      "number": "18",
+      "clause": "V-3",
+      "title": "低电量自动回充",
+      "requirement": "低电量阈值检测、自动触发回充、回充失败重试、遇障绕行回充。",
+      "source_paragraph_index": 93,
+      "profile": "missing",
+      "status": "MISSING",
+      "limitation": "未找到可运行的低电量触发、回充重试及绕障回充闭环。",
+      "evidence": [],
+      "folder": "18_V_3_低电量自动回充_未实现",
+      "folder_status_suffix": "未实现"
+    },
+    {
+      "number": "19",
+      "clause": "V-4",
+      "title": "充电检测脱离与待机",
+      "requirement": "充电状态检测、充满自动脱离基站、进入待机模式。",
+      "source_paragraph_index": 94,
+      "profile": "missing",
+      "status": "MISSING",
+      "limitation": "未找到充电状态检测及充满自主脱离闭环。",
+      "evidence": [],
+      "folder": "19_V_4_充电检测脱离与待机_未实现",
+      "folder_status_suffix": "未实现"
+    },
+    {
+      "number": "20",
+      "clause": "VI-1",
+      "title": "声源方位与语音导航",
+      "requirement": "声源识别导航接口编制通信接口规范、协议定义、数据格式约定；实现声源方位检测、声源定位联动机器人自主导航转向、定点趋近功能接口开发与整机适配。",
+      "source_paragraph_index": 96,
+      "profile": "voice",
+      "status": "PARTIAL",
+      "limitation": "DOA/语音路由/Agent有代码；当前DOA记录不能代替新鲜实时检测；声源趋近完整联动未验收。需要有效NX_MIC/NX_SPEAKER配置。",
+      "evidence": [
+        "visualization/console/nx_xfm_doa.py",
+        "visualization/console/nx_voice_gateway.py",
+        "system/bringup/start_nx_voice.sh"
+      ],
+      "folder": "20_VI_1_声源方位与语音导航_部分完成",
+      "folder_status_suffix": "部分完成",
+      "launch": "_shared/function_demo.launch.py",
+      "launch_group": "voice",
+      "foxglove_layout": "_shared/foxglove_layouts/voice.json"
+    },
+    {
+      "number": "21",
+      "clause": "VI-2",
+      "title": "烟雾告警与联动",
+      "requirement": "烟雾检测接口编制烟雾检测数据通信接口规范、上报协议、阈值告警规则；实现烟雾数据采集、状态上报、异常告警联动机器人就近返航、停机值守等业务接口开发与落地。",
+      "source_paragraph_index": 97,
+      "profile": "missing",
+      "status": "MISSING",
+      "limitation": "未找到烟雾传感器驱动、阈值报警和返航/值守联动实现。",
+      "evidence": [],
+      "folder": "21_VI_2_烟雾告警与联动_未实现",
+      "folder_status_suffix": "未实现"
+    },
+    {
+      "number": "22",
+      "clause": "VI-3",
+      "title": "人脸识别与身份接口",
+      "requirement": "人脸识别接口编制人脸识别通信接口规范、身份校验协议、人脸库交互数据格式；实现人脸识别触发、身份认证、权限联动、定点迎宾导航等接口开发与整机系统集成。",
+      "source_paragraph_index": 98,
+      "profile": "face",
+      "status": "PARTIAL",
+      "limitation": "生产人员服务NX_FACE_ENABLED=0。独立只读演示复用YuNet/SFace，显示参考帧相似度，不修改生产开关，不声称权限联动或迎宾导航已实现。",
+      "evidence": [
+        "perception/luka_face_identity/luka_face_identity/vision.py",
+        "perception/luka_face_identity/luka_face_identity/identity.py",
+        "perception/luka_face_identity/luka_face_identity/node.py"
+      ],
+      "folder": "22_VI_3_人脸识别与身份接口_部分完成",
+      "folder_status_suffix": "部分完成",
+      "launch": "_shared/function_demo.launch.py",
+      "launch_group": "face",
+      "foxglove_layout": "_shared/foxglove_layouts/face.json"
+    },
+    {
+      "number": "23",
+      "clause": "VI-4",
+      "title": "应用接口规范资料",
+      "requirement": "统一输出完整《应用接口规范文档》，包含通信协议、数据帧格式、指令定义、异常处理、对接调试说明。",
+      "source_paragraph_index": 99,
+      "profile": "documentation",
+      "status": "PARTIAL",
+      "limitation": "有API路由、ROS消息和追溯资料；没有确认的完整合同应用接口规范。本入口查看已有接口结构，不能替代正式交付文档。",
+      "evidence": [
+        "visualization/console/nx_assistant_tools.py",
+        "examples/contract_clause_traceability_strict.md"
+      ],
+      "folder": "23_VI_4_应用接口规范资料_部分完成",
+      "folder_status_suffix": "部分完成"
+    },
+    {
+      "number": "24",
+      "clause": "VII-1",
+      "title": "整机业务状态机",
+      "requirement": "机器人整机状态机设计：待机、手动控制、建图、自主导航、定点巡航、自动回充、故障告警、传感接口联动响应",
+      "source_paragraph_index": 101,
+      "profile": "state_machine",
+      "status": "PARTIAL",
+      "limitation": "已有任务暂停/恢复/取消及状态接口；回充相关状态和完整传感器业务联动缺少证据。",
+      "evidence": [
+        "control/ddsm_car_control/ddsm_car_control/ddsm_mission_control.py",
+        "visualization/console/nx_patrol_mission.py"
+      ],
+      "folder": "24_VII_1_整机业务状态机_部分完成",
+      "folder_status_suffix": "部分完成",
+      "launch": "_shared/function_demo.launch.py",
+      "launch_group": "state_machine",
+      "foxglove_layout": "_shared/foxglove_layouts/state_machine.json"
+    },
+    {
+      "number": "25",
+      "clause": "VII-2",
+      "title": "故障自检与运行日志",
+      "requirement": "设备故障自检、异常状态上报、运行日志记录",
+      "source_paragraph_index": 102,
+      "profile": "diagnostics",
+      "status": "IMPLEMENTED",
+      "limitation": "软件健康检查、故障快照与日志链存在；传感器断联会如实显示未就绪。",
+      "evidence": [
+        "visualization/console/robot_diagnostics.py",
+        "visualization/console/nx_runtime_health.py"
+      ],
+      "folder": "25_VII_2_故障自检与运行日志_代码已完成_待现场验收",
+      "folder_status_suffix": "代码已完成_待现场验收",
+      "launch": "_shared/function_demo.launch.py",
+      "launch_group": "diagnostics",
+      "foxglove_layout": "_shared/foxglove_layouts/diagnostics.json"
+    },
+    {
+      "number": "26",
+      "clause": "VII-3",
+      "title": "源码配置与交付资产",
+      "requirement": "交付完整源代码、固件、配置文件、全套技术文档及接口规范文档",
+      "source_paragraph_index": 103,
+      "profile": "delivery",
+      "status": "PARTIAL",
+      "limitation": "有源码/配置/部分文档，缺STM32固件和完整接口规范；资产盘点不等于合同完整交付验收。",
+      "evidence": [
+        "system/environment.bash",
+        "examples/contract_feature_traceability.md"
+      ],
+      "folder": "26_VII_3_源码配置与交付资产_部分完成",
+      "folder_status_suffix": "部分完成"
+    },
+    {
+      "number": "27",
+      "clause": "VII-4",
+      "title": "培训质保与维护",
+      "requirement": "线上技术培训、一年软件质保、常规功能及接口适配迭代维护",
+      "source_paragraph_index": 104,
+      "profile": "service",
+      "status": "SERVICE",
+      "limitation": "培训、一年质保和维护属于服务承诺，不能通过launch/sh或源码证明履约。",
+      "evidence": [],
+      "folder": "27_VII_4_培训质保与维护_服务承诺_待核实",
+      "folder_status_suffix": "服务承诺_待核实"
+    }
+  ]
+}

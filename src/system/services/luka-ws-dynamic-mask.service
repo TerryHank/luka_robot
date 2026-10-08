@@ -1,0 +1,20 @@
+[Unit]
+Description=Luka real BPU person segmentation mask for RGB-D mapping
+Requires=luka-ws-orbbec-camera.service luka-ws-object-api.service
+After=luka-ws-orbbec-camera.service luka-ws-object-api.service
+
+[Service]
+Type=simple
+User=sunrise
+Group=sunrise
+WorkingDirectory=/home/sunrise/luka_ws
+ExecStart=/bin/bash /home/sunrise/luka_ws/src/system/scripts/start_dynamic_mask.sh
+Restart=on-failure
+RestartSec=5
+MemoryMax=400M
+KillMode=mixed
+KillSignal=SIGINT
+TimeoutStopSec=40
+
+[Install]
+WantedBy=multi-user.target

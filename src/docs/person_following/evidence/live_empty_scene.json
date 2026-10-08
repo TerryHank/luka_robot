@@ -1,0 +1,233 @@
+{
+  "inputs": {
+    "depth": {
+      "encoding": "16UC1",
+      "width": 640,
+      "height": 480,
+      "step": 1280,
+      "frame": "camera_color_optical_frame",
+      "stamp": "builtin_interfaces.msg.Time(sec=1791439192, nanosec=539186944)"
+    },
+    "camera_info": {
+      "frame": "camera_color_optical_frame",
+      "width": 640,
+      "height": 480,
+      "k": [
+        541.964599609375,
+        0.0,
+        320.5293273925781,
+        0.0,
+        541.964599609375,
+        243.3502197265625,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "color": {
+      "encoding": "rgb8",
+      "width": 640,
+      "height": 480,
+      "step": 1920,
+      "frame": "camera_color_optical_frame",
+      "stamp": "builtin_interfaces.msg.Time(sec=1791439192, nanosec=576360960)"
+    }
+  },
+  "counts": {
+    "depth": 662,
+    "color": 661,
+    "segmentation": 229,
+    "fusion": 229,
+    "mot": 228
+  },
+  "duration_sec": 25.005579235999903,
+  "latency_summary": {
+    "segmentation": {
+      "count": 229,
+      "mean_sec": 0.2664557846352523,
+      "max_sec": 0.650007963180542
+    },
+    "fusion": {
+      "count": 229,
+      "mean_sec": 0.2797766054561565,
+      "max_sec": 0.6515645980834961
+    },
+    "mot": {
+      "count": 228,
+      "mean_sec": 0.28087665637334186,
+      "max_sec": 0.6525144577026367
+    }
+  },
+  "endpoints": {
+    "/camera/color/camera_info": [
+      {
+        "node": "camera",
+        "type": "sensor_msgs/msg/CameraInfo",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/camera/color/image_raw": [
+      {
+        "node": "camera",
+        "type": "sensor_msgs/msg/Image",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/camera/depth/camera_info": [
+      {
+        "node": "camera",
+        "type": "sensor_msgs/msg/CameraInfo",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/camera/depth/image_raw": [
+      {
+        "node": "camera",
+        "type": "sensor_msgs/msg/Image",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/camera/depth_filter_status": [
+      {
+        "node": "camera",
+        "type": "std_msgs/msg/String",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=1, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.TRANSIENT_LOCAL, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/camera/depth_to_color": [
+      {
+        "node": "camera",
+        "type": "orbbec_camera_msgs/msg/Extrinsics",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=1, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.TRANSIENT_LOCAL, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/hobot_dnn_seg": [
+      {
+        "node": "s100_official_segmentation",
+        "type": "ai_msgs/msg/PerceptionTargets",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/hobot_dnn_seg_info": [
+      {
+        "node": "s100_official_segmentation",
+        "type": "ai_msgs/msg/PerceptionInfo",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/person_follow/enable_blind_zone_observing": [
+      {
+        "node": "tros_person_following_node",
+        "type": "std_msgs/msg/Bool",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=1, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/person_follow/fusion/debug_detect_map": [
+      {
+        "node": "hobot_obstacle_depth_fusion",
+        "type": "nav_msgs/msg/OccupancyGrid",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/person_follow/fusion/debug_map": [
+      {
+        "node": "hobot_obstacle_depth_fusion",
+        "type": "nav_msgs/msg/OccupancyGrid",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/person_follow/fusion/depth": [
+      {
+        "node": "person_follow_depth_pair",
+        "type": "sensor_msgs/msg/Image",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/person_follow/fusion/seg": [
+      {
+        "node": "person_follow_depth_pair",
+        "type": "ai_msgs/msg/PerceptionTargets",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/person_follow/goal_candidate": [
+      {
+        "node": "tros_person_following_node",
+        "type": "geometry_msgs/msg/PoseStamped",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/person_follow/image_nv12": [
+      {
+        "node": "person_follow_image_format",
+        "type": "sensor_msgs/msg/Image",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=2, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/person_follow/integration_diagnostics": [
+      {
+        "node": "tros_person_following_node",
+        "type": "std_msgs/msg/String",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.TRANSIENT_LOCAL, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/person_follow/nearest_pose": [
+      {
+        "node": "tros_person_following_node",
+        "type": "geometry_msgs/msg/PoseStamped",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=1, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/person_follow/pair_skew_sec": [
+      {
+        "node": "person_follow_depth_pair",
+        "type": "std_msgs/msg/Float64",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/person_follow/predict_trajectory": [
+      {
+        "node": "tros_person_following_node",
+        "type": "nav_msgs/msg/Path",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.TRANSIENT_LOCAL, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/person_follow/target": [
+      {
+        "node": "tros_person_following_node",
+        "type": "ai_msgs/msg/PerceptionTargets",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.TRANSIENT_LOCAL, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/person_follow/target_pose": [
+      {
+        "node": "tros_person_following_node",
+        "type": "geometry_msgs/msg/PoseStamped",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/person_follow/tros_tracking_status": [
+      {
+        "node": "tros_person_following_node",
+        "type": "std_msgs/msg/String",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.TRANSIENT_LOCAL, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/tros_fusion_interaction": [
+      {
+        "node": "hobot_obstacle_depth_fusion",
+        "type": "ai_msgs/msg/PerceptionTargets",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ],
+    "/tros_mot_targets": [
+      {
+        "node": "tros_mot_node",
+        "type": "ai_msgs/msg/PerceptionTargets",
+        "qos": "QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10, reliability=ReliabilityPolicy.RELIABLE, durability=DurabilityPolicy.VOLATILE, lifespan=Infinite, deadline=Infinite, liveliness=LivelinessPolicy.AUTOMATIC, liveliness_lease_duration=Infinite, avoid_ros_namespace_conventions=False)"
+      }
+    ]
+  },
+  "pair_skew_max_abs_sec": 0.01258707046508789,
+  "people_present": false
+}

@@ -1,0 +1,19 @@
+{
+  "moss": {
+    "repository": "https://github.com/D-Robotics/moss",
+    "commit": "e0f163d8fa18dd8913854d6ccb6acbd0e084d15c",
+    "version": "0.26.0",
+    "archive_sha256": "a43e198699e476046b472f272630b46497a87f8314726a1b087d06d6731d161a",
+    "license": "MIT"
+  },
+  "node": {
+    "version": "24.18.0",
+    "source": "https://nodejs.org/dist/v24.18.0/",
+    "linux_arm64_sha256": "58c9520501f6ae2b52d5b210444e24b9d0c029a58c5011b797bc1fe7105886f6"
+  },
+  "skills": {
+    "rdk-skills": { "commit": "c750d62aa7b7629d6d448e9ebaaf9a60f465b3ac", "role": "index", "archive_sha256": "4a2a2b039b3614e5a9502e3ffb5bb00272f6399b3ee4e8babe5674029ba50fd8" },
+    "rdk-device-skills": { "commit": "b192974b7472d4bf9ee34b8fb0b12ce231c65920", "role": "device_source", "archive_sha256": "c099cbaca8351e9beaae5096c4c5a129d204bf4bad7d2a1974a13e61df4f0f09" }
+  },
+  "aiui_protocol": "https://aiui-doc.xf-yun.com/project-1/doc-584/"
+}

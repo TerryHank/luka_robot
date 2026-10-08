@@ -1,0 +1,17 @@
+[Unit]
+Description=Luka Moss business task runtime
+After=network-online.target luka-ws-dashboard.service
+Requires=luka-ws-dashboard.service
+
+[Service]
+Type=simple
+User=sunrise
+Group=sunrise
+WorkingDirectory=/home/sunrise/luka_data/runtime/agent
+ExecStart=/bin/bash /home/sunrise/luka_ws/src/system/luka_agent/scripts/start_agent.sh
+Restart=on-failure
+RestartSec=5
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

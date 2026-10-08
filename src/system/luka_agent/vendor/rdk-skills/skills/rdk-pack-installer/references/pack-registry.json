@@ -1,0 +1,35 @@
+{
+  "packs": [
+    {
+      "catalog_dir": "oe-skills-s",
+      "install_script": "setup.sh",
+      "install_type": "workspace",
+      "name": "OE Tool Chain (S)",
+      "ref": "v1.1.2",
+      "repo": "D-Robotics/oe-skills-s",
+      "verify_paths": [
+        ".drobotics-s/DROBOTICS-S.md",
+        ".drobotics-s/VERSION",
+        ".drobotics-s/skill-index.json",
+        ".drobotics-s/skills/drobotics-router/SKILL.md"
+      ],
+      "workspace_dir": ".drobotics-s"
+    },
+    {
+      "catalog_dir": "oe-skills-x5",
+      "install_script": "setup.sh",
+      "install_type": "workspace",
+      "name": "OE Tool Chain (X5)",
+      "ref": "v1.1.1",
+      "repo": "D-Robotics/oe-skills-x5",
+      "verify_paths": [
+        ".drobotics-x5/X5.md",
+        ".drobotics-x5/VERSION",
+        ".drobotics-x5/skill-index.json",
+        ".drobotics-x5/skills/x5-router/SKILL.md"
+      ],
+      "workspace_dir": ".drobotics-x5"
+    }
+  ],
+  "schema_version": 1
+}

@@ -1,0 +1,10 @@
+{
+  "login": {"appid": "YOUR_APPID", "key": "YOUR_KEY", "api_secret": "YOUR_API_SECRET"},
+  "global": {"scene": "main", "aiui_ver": "1"},
+  "interact": {"interact_timeout": "-1", "result_timeout": "5000"},
+  "speech": {"data_source": "user", "wakeup_mode": "off", "interact_mode": "oneshot", "intent_engine_type": "cloud"},
+  "vad": {"engine_type": "meta"},
+  "iat": {"sample_rate": "16000"},
+  "tts": {"engine_type": "cloud", "voice_name": "x4_lingxiaoying_em_v2"},
+  "log": {"debug_log": "0", "save_datalog": "0"}
+}

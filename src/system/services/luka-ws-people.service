@@ -1,0 +1,14 @@
+[Unit]
+Description=Luka independent face identity (official MOT, no motion)
+After=network-online.target
+[Service]
+Type=simple
+User=sunrise
+Group=sunrise
+WorkingDirectory=/home/sunrise/luka_ws
+ExecStart=/bin/bash /home/sunrise/luka_ws/src/system/scripts/start_face_identity.sh
+Restart=on-failure
+RestartSec=5
+UMask=0077
+[Install]
+WantedBy=multi-user.target

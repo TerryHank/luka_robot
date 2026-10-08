@@ -1,0 +1,38 @@
+export type {
+  LLMProvider,
+  LLMProviderCapabilities,
+  LLMMessage,
+  LLMContentBlock,
+  LLMStreamEvent,
+  LLMRequestOptions,
+  LLMResponse,
+  LLMSystemPromptParts,
+  LLMToolDeclaration,
+} from './llm-provider.js';
+export {
+  createInlineThinkingRouter,
+  splitThinkingTagsFromAssistantText,
+} from './inline-thinking-stream.js';
+export type { InlineThinkingRouter } from './inline-thinking-stream.js';
+export { classifyLlmError, retryDelayForLlmError } from '../../provider/llm-error-classifier.js';
+export type {
+  LlmErrorCategory,
+  LlmErrorClassification,
+} from '../../provider/llm-error-classifier.js';
+export { createStreamFunctionFromLlmProvider } from './llm-provider-stream-adapter.js';
+export type { LlmProviderStreamAdapterOptions } from './llm-provider-stream-adapter.js';
+export { totalPromptTokens } from './usage.js';
+export type { NormalizedPromptUsage } from './usage.js';
+export {
+  createClientLlmSummarizationStrategy,
+  createProviderServerCompactionStrategy,
+  createSummarizeFnFromLlmProvider,
+} from './summarization-strategy.js';
+export type {
+  ProviderServerCompactionFn,
+  ProviderServerCompactionPayload,
+  SummarizationStrategy,
+  SummarizationStrategyInput,
+  SummarizationStrategyKind,
+  SummarizationStrategyResult,
+} from './summarization-strategy.js';

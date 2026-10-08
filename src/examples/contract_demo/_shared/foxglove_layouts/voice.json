@@ -1,0 +1,75 @@
+{
+  "configById": {
+    "RawMessages!luka0": {
+      "foxglovePanelTitle": "DOA事件：核对源时间戳",
+      "topicPath": "/voice/doa",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "RawMessages!luka1": {
+      "foxglovePanelTitle": "语音识别文本",
+      "topicPath": "/voice/recognized_text",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "RawMessages!luka2": {
+      "foxglovePanelTitle": "语音状态",
+      "topicPath": "/voice/status",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "RawMessages!luka3": {
+      "foxglovePanelTitle": "命令Agent反馈",
+      "topicPath": "/llm_status",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "LukaConsole!voice": {
+      "caseNumber": "20",
+      "section": "voice"
+    }
+  },
+  "layout": {
+    "direction": "row",
+    "first": {
+      "direction": "row",
+      "first": {
+        "direction": "column",
+        "first": "RawMessages!luka0",
+        "second": "RawMessages!luka1",
+        "splitPercentage": 55
+      },
+      "second": {
+        "direction": "column",
+        "first": "RawMessages!luka2",
+        "second": "RawMessages!luka3",
+        "splitPercentage": 55
+      },
+      "splitPercentage": 55
+    },
+    "second": "LukaConsole!voice",
+    "splitPercentage": 52
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "version": 1
+}

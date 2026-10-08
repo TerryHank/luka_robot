@@ -1,4 +1,9 @@
-common/legacy/snapshots/** -text -diff
-evaluator/fixtures/legacy_images/** -text -diff
-evaluator/artifacts/legacy_results/** -text -diff
-visualization/console/nx_voice_gateway.py whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+* text=auto
+"src/common/vendor/wetts_sdk/lib/libonnxruntime.so.1.11.1" filter=lfs diff=lfs merge=lfs -text
+"src/common/vendor/wetts_sdk/lib/libtts.so" filter=lfs diff=lfs merge=lfs -text
+"src/localization/rtabmap/data/Dictionary49k.txt.zip" filter=lfs diff=lfs merge=lfs -text
+"src/sensing/OrbbecSDK_ROS2/orbbec_camera/SDK/lib/arm32/libOrbbecSDK.so.1.10.36" filter=lfs diff=lfs merge=lfs -text
+"src/sensing/OrbbecSDK_ROS2/orbbec_camera/SDK/lib/arm64/libOrbbecSDK.so.1.10.37" filter=lfs diff=lfs merge=lfs -text
+"src/sensing/OrbbecSDK_ROS2/orbbec_camera/SDK/lib/x64/libOrbbecSDK.so.1.10.37" filter=lfs diff=lfs merge=lfs -text
+"src/sensing/OrbbecSDK_ROS2/orbbec_description/meshes/AstraPlus.stl" filter=lfs diff=lfs merge=lfs -text
+"src/system/luka_audio/vendor/aiui/libs/arm64/libaiui.so" filter=lfs diff=lfs merge=lfs -text

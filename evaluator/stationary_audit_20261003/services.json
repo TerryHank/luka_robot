@@ -1,5 +1,0 @@
-{
-  "exit_code": 0,
-  "stdout": "NRestarts=0\nId=luka-ws-dashboard.service\nActiveState=active\nSubState=running\n\nNRestarts=0\nId=luka-ws-chat.service\nActiveState=active\nSubState=running\n\nNRestarts=0\nId=luka-ws-agent.service\nActiveState=active\nSubState=running\n\nNRestarts=0\nId=luka-ws-object-api.service\nActiveState=active\nSubState=running\n\nNRestarts=0\nId=luka-ws-vision.service\nActiveState=active\nSubState=running\n\nNRestarts=0\nId=luka-ws-people.service\nActiveState=active\nSubState=running\n\nNRestarts=0\nId=luka-ws-yoloe26-live.service\nActiveState=active\nSubState=running\n",
-  "stderr": ""
-}

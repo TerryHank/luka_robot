@@ -1,0 +1,138 @@
+{
+  "configById": {
+    "3D!luka0": {
+      "foxglovePanelTitle": "实时地图·扫描·路径（无目标时等待）",
+      "followTf": "map",
+      "followMode": "follow-pose",
+      "cameraState": {
+        "distance": 6,
+        "perspective": false,
+        "phi": 0,
+        "thetaOffset": 0,
+        "targetOffset": [
+          0,
+          0,
+          0
+        ]
+      },
+      "scene": {
+        "transforms": {
+          "showLabel": true,
+          "axisScale": 0.3,
+          "enablePreloading": true
+        }
+      },
+      "transforms": {},
+      "layers": {},
+      "version": 1,
+      "publish": {
+        "type": "pose",
+        "poseTopic": "/contract_demo/goal_pose",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.25,
+        "poseEstimateYDeviation": 0.25,
+        "poseEstimateThetaDeviation": 0.26
+      },
+      "topics": {
+        "/map": {
+          "visible": true,
+          "color": "#38bdf8",
+          "pointSize": 3,
+          "decayTime": 0
+        },
+        "/scan": {
+          "visible": true,
+          "color": "#fb923c",
+          "pointSize": 3,
+          "decayTime": 0.5
+        },
+        "/scan_obstacle_fused": {
+          "visible": true,
+          "color": "#4ade80",
+          "pointSize": 3,
+          "decayTime": 0.5
+        },
+        "/plan": {
+          "visible": true,
+          "color": "#f472b6",
+          "pointSize": 3,
+          "decayTime": 0
+        },
+        "/patrol/route_path": {
+          "visible": true,
+          "color": "#38bdf8",
+          "pointSize": 3,
+          "decayTime": 0
+        },
+        "/amcl_pose": {
+          "visible": true,
+          "color": "#fb923c",
+          "pointSize": 3,
+          "decayTime": 0
+        }
+      }
+    },
+    "RawMessages!luka1": {
+      "foxglovePanelTitle": "巡航状态",
+      "topicPath": "/patrol/status",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "RawMessages!luka2": {
+      "foxglovePanelTitle": "软件Home状态",
+      "topicPath": "/home/status",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "RawMessages!luka3": {
+      "foxglovePanelTitle": "暂存目标与Nav2结果",
+      "topicPath": "/contract_demo/navigation_status",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "LukaConsole!business": {
+      "caseNumber": "14",
+      "section": "patrol"
+    }
+  },
+  "layout": {
+    "direction": "row",
+    "first": {
+      "direction": "row",
+      "first": {
+        "direction": "column",
+        "first": "3D!luka0",
+        "second": "RawMessages!luka1",
+        "splitPercentage": 55
+      },
+      "second": {
+        "direction": "column",
+        "first": "RawMessages!luka2",
+        "second": "RawMessages!luka3",
+        "splitPercentage": 55
+      },
+      "splitPercentage": 55
+    },
+    "second": "LukaConsole!business",
+    "splitPercentage": 52
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "version": 1
+}

@@ -1,0 +1,7 @@
+configured: true
+frame_id: map
+x: -1.4491941667185024
+y: 1.4530664283819525
+yaw: 0.22354713468314102
+map_file: /home/sunrise/luka_data/maps/ddsm_map_floor_2.yaml
+map_sha256: 362247c67e9a05bf3e330a33fd713bb459e49df55bf5cf81d2e0361736630a47

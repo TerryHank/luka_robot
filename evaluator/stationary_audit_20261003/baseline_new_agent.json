@@ -1,5 +1,0 @@
-{
-  "exit_code": 1,
-  "stdout": ".........F.........                                                      [100%]\n=================================== FAILURES ===================================\n___________ test_short_asr_fragments_and_looping_chat_are_contained ____________\n\n    def test_short_asr_fragments_and_looping_chat_are_contained():\n        assert needs_voice_rephrase(\"带子\")\n        assert needs_voice_rephrase(\"骗的\")\n        assert not needs_voice_rephrase(\"今天天气怎么样\")\n>       assert sanitize_chat_answer(\"好的呀。呀，好的啦。\") == \"好的。\"\nE       AssertionError: assert '好的呀。呀，好的啦。' == '好的。'\nE         - 好的。\nE         + 好的呀。呀，好的啦。\n\ntest_agent_parsing.py:91: AssertionError\n=========================== short test summary info ============================\nFAILED test_agent_parsing.py::test_short_asr_fragments_and_looping_chat_are_contained\n1 failed, 18 passed in 0.98s\n",
-  "stderr": ""
-}

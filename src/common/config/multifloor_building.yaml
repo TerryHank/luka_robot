@@ -1,0 +1,67 @@
+building_id: hotel_demo
+current_floor_id: floor_1
+default_elevator_id: elevator_A
+floors:
+  floor_1:
+    map: /home/sunrise/luka_data/maps/ddsm_map_floor_1.yaml
+    semantic_map: /home/sunrise/luka_ws/src/common/config/semantic/floor_1/map_manifest.yaml
+    patrol_route: /home/sunrise/luka_ws/src/common/config/patrol_route_floor_1.yaml
+    elevator_poses:
+      elevator_A:
+        entry_destination_id: wp_003
+        exit_initial_pose:
+          x: -0.7408813429318337
+          y: 1.8145882145205219
+          yaw: 1.3927942077167546
+  floor_2:
+    map: /home/sunrise/luka_data/maps/ddsm_map_floor_2.yaml
+    semantic_map: /home/sunrise/luka_ws/src/common/config/semantic/floor_2/map_manifest.yaml
+    patrol_route: /home/sunrise/luka_ws/src/common/config/patrol_route_floor_2.yaml
+    elevator_poses:
+      elevator_A:
+        entry_destination_id: wp_001
+        exit_initial_pose:
+          x: 0.5793659138309009
+          y: 1.070841138643464
+          yaw: 0.02465415732886604
+destinations:
+  home:
+    floor_id: floor_1
+    destination_id: home
+    display_name: 充电点
+  desk:
+    floor_id: floor_1
+    destination_id: wp_001
+    display_name: 办公桌
+  sofa:
+    floor_id: floor_1
+    destination_id: wp_002
+    display_name: 沙发
+  floor1_door:
+    floor_id: floor_1
+    destination_id: wp_003
+    display_name: 一层门口
+  tea_table:
+    floor_id: floor_1
+    destination_id: wp_004
+    display_name: 茶桌
+  floor2_door:
+    floor_id: floor_2
+    destination_id: wp_001
+    display_name: 二层门口
+  living_room:
+    floor_id: floor_2
+    destination_id: wp_002
+    display_name: 客厅
+  kitchen:
+    floor_id: floor_2
+    destination_id: wp_003
+    display_name: 厨房
+  toilet:
+    floor_id: floor_2
+    destination_id: wp_004
+    display_name: 厕所
+  bathroom:
+    floor_id: floor_2
+    destination_id: wp_004
+    display_name: 卫生间

@@ -1,0 +1,34 @@
+node_modules/
+dist/
+docs-api/
+coverage/
+.env
+.env.*
+*.log
+.DS_Store
+sessions/
+tmp/
+.tmp/
+.npmrc
+.codegraph/
+.mimosa/
+.moss/*
+!.moss/skills/
+.moss-fresh-audit/
+CLAUDE.md
+TEST_REPORT-*.md
+
+# Scratch / probe files
+probe-*.mjs
+probe-*.js
+*.scratch
+# local scratch space (soak drivers, one-off probes) — never commit
+scratch/
+
+# benchmark run artifacts (jsonl transcripts + summaries) — never commit
+bench/results/
+bench/.cache/
+
+# Qoder IDE session artifacts
+.qoder/
+.qoder-collab-runtime/
