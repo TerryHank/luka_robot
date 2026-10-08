@@ -1,25 +1,18 @@
-# Luka workspace
+# Luka robot
 
-ROS 2 source is grouped by function. Root-level compatibility symlinks are removed.
+```text
+luka_robot/
+├── luka_ws/
+│   └── src/
+└── luka_data/
+    ├── maps/
+    ├── recordings/
+    ├── runtime/
+    └── backups/
+```
 
-- Configuration and local state: `common/config/`, `common/state/`
-- Maps: `map/maps/`
-- Orbbec ROS 2 camera: `sensing/OrbbecSDK_ROS2/` (includes the driver SDK)
-- Startup and reset scripts: `system/bringup/`
-- Service units: `system/services/`
-- Command entrypoint: `system/luka.sh`
-- Dashboard and console source: `visualization/console/`
-- Installed tools compatibility directory: `system/runtime/tools/`
-- Historical documentation: `docs/legacy/`
+Every branch uses this layout while retaining its own source revision. The data snapshot is shared from the verified 2026-10-08 backup. Model weights and private credentials are excluded.
 
-On the robot, source `/home/sunrise/luka_ws/system/environment.bash`.
-Use `/home/sunrise/luka_ws/system/luka.sh status ws` to inspect services.
-Service activation and motion retain their existing explicit controls.
+Install Git LFS before cloning. Build from `luka_ws/` with `colcon build --base-paths src`; generated build/install/log stay there. For the robot's existing absolute paths, restore the two directories under `/home/sunrise/` after cloning into a staging directory.
 
-`build/`, `install/`, `log/`, and `Log/` are local generated artifacts.
-Models, credentials, and runtime state remain in their existing categorized directories;
-removing a root shortcut does not delete its target.
-
-Historical snapshots may record old paths. Current executable paths use the categorized directories.
-
-The standalone Orbbec SDK download and examples are archived at `/home/sunrise/orbbec_sdk_v1/`.
+`luka_ws/LAYOUT_MIGRATION.json` records the original commit and path mapping. Inactive ignored source copies and root shortcuts remain recoverable from Git history. `luka_data/BACKUP_MANIFEST.json` records data hashes, links and exclusions. This structural change does not certify every historical branch's ROS runtime.

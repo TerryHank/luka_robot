@@ -1,4 +1,18 @@
-common/legacy/snapshots/** -text -diff
-evaluator/fixtures/legacy_images/** -text -diff
-evaluator/artifacts/legacy_results/** -text -diff
-visualization/console/nx_voice_gateway.py whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+* text=auto
+luka_ws/src/common/legacy/snapshots/** -text -diff
+luka_ws/src/evaluator/fixtures/legacy_images/** -text -diff
+luka_ws/src/evaluator/artifacts/legacy_results/** -text -diff
+luka_ws/src/visualization/console/nx_voice_gateway.py whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"luka_data/maps/rtabmap_rgbd/20261008_192021_267656901/map.db" filter=lfs diff=lfs merge=lfs -text
+"luka_data/maps/rtabmap_rgbd/20261008_192410_453885330/map.db" filter=lfs diff=lfs merge=lfs -text
+"luka_data/maps/visual_slam/1791466220337181426/map.db" filter=lfs diff=lfs merge=lfs -text
+"luka_data/maps/visual_slam/1791467555115764369/map.db" filter=lfs diff=lfs merge=lfs -text
+"luka_data/runtime/oellm/sdk-1.0.0/D-Robotics_LLM_S100_1.0.0_SDK/oellm_runtime/example/oellm_omni_online/ffmpeg/lib/libavcodec.so.58.134.100" filter=lfs diff=lfs merge=lfs -text
+"luka_data/runtime/oellm/sdk-1.0.0/D-Robotics_LLM_S100_1.0.0_SDK/oellm_runtime/lib/libavcodec.so.58.134.100" filter=lfs diff=lfs merge=lfs -text
+"luka_data/runtime/oellm/sdk-1.0.0/D-Robotics_LLM_S100_1.0.0_SDK/oellm_runtime/lib/libhbtl.so" filter=lfs diff=lfs merge=lfs -text
+"luka_data/runtime/oellm/sdk-1.0.0/D-Robotics_LLM_S100_1.0.0_SDK/oellm_runtime/lib/libhbtl_ext_dnn.so" filter=lfs diff=lfs merge=lfs -text
+"luka_data/runtime/oellm/sdk-1.0.0/D-Robotics_LLM_S100_1.0.0_SDK/oellm_runtime/lib/libopencv_world.so.4.9.0" filter=lfs diff=lfs merge=lfs -text
+"luka_data/runtime/oellm/sdk-1.0.0/D-Robotics_LLM_S100_1.0.0_SDK/oellm_runtime/lib/libxlm.so" filter=lfs diff=lfs merge=lfs -text
+"luka_data/runtime/toolchains/node-v24.18.0-linux-arm64.tar.xz" filter=lfs diff=lfs merge=lfs -text
+"luka_data/runtime/toolchains/node-v24.18.0-linux-arm64/bin/node" filter=lfs diff=lfs merge=lfs -text
+"luka_data/runtime/visual_slam/1791466570178842043/map.db" filter=lfs diff=lfs merge=lfs -text

@@ -1,0 +1,33 @@
+{
+  "timestamp": 1791454175.918838,
+  "user_authorized": true,
+  "targets": [
+    {
+      "path": "/home/sunrise/luka_backup_20260929_182648.tar.zst",
+      "deleted_bytes_apparent": 3775614522,
+      "state": "deleted"
+    },
+    {
+      "path": "/home/sunrise/luka_backup_20260929_182648.tar.zst.sha256",
+      "deleted_bytes_apparent": 116,
+      "state": "deleted"
+    },
+    {
+      "path": "/home/sunrise/luka_archives",
+      "deleted_bytes_apparent": 1084388862,
+      "state": "deleted"
+    },
+    {
+      "path": "/home/sunrise/luka_migration_backups",
+      "deleted_bytes_apparent": 1468667579,
+      "state": "deleted"
+    },
+    {
+      "path": "/home/sunrise/luka_data/ml_models/nx_chat/Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+      "deleted_bytes_apparent": 2497281120,
+      "state": "deleted"
+    }
+  ],
+  "free_before": 5633306624,
+  "free_after": 14639017984
+}

@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-08",
+  "physical_launch_entries": 18,
+  "logical_contract_items": 27,
+  "new_launch_regression_tests": 30,
+  "focused_deskew_tests": 4,
+  "isolated_ros_domain": 188,
+  "isolated_ros_launch_transport_profiles": [
+    "lidar",
+    "camera",
+    "navigation",
+    "business",
+    "avoidance"
+  ],
+  "real_readonly_checks": [
+    "IMU axes",
+    "camera RGB/depth",
+    "dual lidar",
+    "fused scan",
+    "deskew output"
+  ],
+  "keyboard": "isolated domain188 only; protected manual topic, no hardware",
+  "motion_goals_sent": false,
+  "physical_navigation_patrol_home_voice_acceptance": "PENDING",
+  "unique_colcon_package_names": 18,
+  "log_directory": "/home/sunrise/luka_data/recordings/contract_demo",
+  "live_checks": {
+    "camera": {
+      "live_message": true,
+      "log": "/home/sunrise/luka_data/recordings/contract_demo/function-launch-live-camera.log",
+      "exit_code": 0,
+      "traceback": false
+    },
+    "lidar": {
+      "live_message": true,
+      "log": "/home/sunrise/luka_data/recordings/contract_demo/function-launch-live-lidar.log",
+      "exit_code": 0,
+      "traceback": false,
+      "fused": true,
+      "deskewed": true
+    }
+  }
+}

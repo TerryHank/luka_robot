@@ -1,0 +1,18 @@
+{
+  "started": "2026-10-08T11:38:38.632Z",
+  "provider": "aiui",
+  "moss_commit": "e0f163d8fa18dd8913854d6ccb6acbd0e084d15c",
+  "real_robot_commands": 0,
+  "pass": false,
+  "error": "PROVIDER_UPSTREAM_ERROR",
+  "trace": [
+    {
+      "tool": "destinations",
+      "error": false
+    }
+  ],
+  "model_replies": [
+    "{\"type\":\"tools\",\"calls\":[{\"name\":\"destinations\",\"arguments\":{}}]}",
+    "{\"type\":\"tools\",\"calls\":[{\"name\":\"navigation_start\",\"arguments\":{\"destination_id\": \"room_cc2109e0\"}}]]}"
+  ]
+}

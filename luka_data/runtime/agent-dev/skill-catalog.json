@@ -1,0 +1,157 @@
+{
+  "developer_only": true,
+  "entries": [
+    {
+      "name": "rdk-accessories",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-accessories",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-board-delegate",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-board-delegate",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-board-knowledge",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-board-knowledge",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-camera-setup",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-camera-setup",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-command-manual",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-command-manual",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-diagnostic",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-diagnostic",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-docs-reference",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-docs-reference",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-ecosystem",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-ecosystem",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-embodied-lerobot",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-embodied-lerobot",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-gpio-40pin",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-gpio-40pin",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-hardware",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-hardware",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-headless-mode",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-headless-mode",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-llm-deployment",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-llm-deployment",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-log-forensics",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-log-forensics",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-memory-audit",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-memory-audit",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-model-benchmark",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-model-benchmark",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-model-deploy",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-model-deploy",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-model-zoo",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-model-zoo",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-multimedia",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-multimedia",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-network-remote",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-network-remote",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-peripheral-cookbook",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-peripheral-cookbook",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-source-map",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-source-map",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-system-config",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-system-config",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-system-maintain",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-system-maintain",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-tros-setup",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-tros-setup",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-vision-pipeline",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-device-skills/skills/rdk-vision-pipeline",
+      "origin": "rdk-device-skills"
+    },
+    {
+      "name": "rdk-skill-finder",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-skills/skills/rdk-skill-finder",
+      "origin": "rdk-skills"
+    },
+    {
+      "name": "rdk-pack-installer",
+      "source": "/home/sunrise/luka_ws/src/system/luka_agent/vendor/rdk-skills/skills/rdk-pack-installer",
+      "origin": "rdk-skills"
+    }
+  ],
+  "upstream": {
+    "rdk-skills": {
+      "url": "https://codeload.github.com/D-Robotics/rdk-skills/tar.gz/c750d62aa7b7629d6d448e9ebaaf9a60f465b3ac",
+      "commit": "c750d62aa7b7629d6d448e9ebaaf9a60f465b3ac",
+      "sha256": "4a2a2b039b3614e5a9502e3ffb5bb00272f6399b3ee4e8babe5674029ba50fd8"
+    },
+    "rdk-device-skills": {
+      "url": "https://codeload.github.com/D-Robotics/rdk-device-skills/tar.gz/b192974b7472d4bf9ee34b8fb0b12ce231c65920",
+      "commit": "b192974b7472d4bf9ee34b8fb0b12ce231c65920",
+      "sha256": "c099cbaca8351e9beaae5096c4c5a129d204bf4bad7d2a1974a13e61df4f0f09"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "backup": "/home/sunrise/luka_data/backups/before_moss_20261008_192213/source_config.tgz",
+  "sha256": "7df89b910f376a88901dec1af105af71d03222aa2bd79067d5f461b5791ff7fe",
+  "git_head": "ee590e15d4fc4d434ccec5c0bedfb9b6cd17a5f6",
+  "status": "pre_migration"
+}

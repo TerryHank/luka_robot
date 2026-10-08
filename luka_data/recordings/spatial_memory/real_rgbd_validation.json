@@ -1,0 +1,26 @@
+{
+  "source": "Original static cupboard/chair RGB-D probe, live hardware capture; separate validation, not inserted into memory.",
+  "confidence_threshold": 0.3,
+  "objects": [
+    {
+      "class": "chair",
+      "confidence": 0.3354,
+      "bbox": [
+        0,
+        173,
+        101,
+        475
+      ],
+      "xyz_m": [
+        -0.573,
+        0.17,
+        1.17
+      ],
+      "quality": {
+        "valid_fraction": 0.931,
+        "depth_iqr_m": 0.072,
+        "method": "bbox_center_median_surface"
+      }
+    }
+  ]
+}
