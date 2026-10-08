@@ -1,0 +1,60 @@
+{
+  "configById": {
+    "RawMessages!luka0": {
+      "foxglovePanelTitle": "现有底盘安全门",
+      "topicPath": "/nx/web_teleop_status",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "RawMessages!luka1": {
+      "foxglovePanelTitle": "任务安全状态",
+      "topicPath": "/hotel/mission/safety_status",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "RawMessages!luka2": {
+      "foxglovePanelTitle": "语音设备状态",
+      "topicPath": "/voice/status",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "LukaConsole!diagnostics": {
+      "caseNumber": "25",
+      "section": "system"
+    }
+  },
+  "layout": {
+    "direction": "row",
+    "first": {
+      "direction": "row",
+      "first": {
+        "direction": "column",
+        "first": "RawMessages!luka0",
+        "second": "RawMessages!luka1",
+        "splitPercentage": 55
+      },
+      "second": "RawMessages!luka2",
+      "splitPercentage": 55
+    },
+    "second": "LukaConsole!diagnostics",
+    "splitPercentage": 52
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "version": 1
+}

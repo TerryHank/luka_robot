@@ -1,0 +1,10 @@
+{
+  "sensevoice_ros2": {"repository": "https://github.com/D-Robotics/sensevoice_ros2", "revision": "9200ec9a3b10ec558423a086f96d21ac3f862a7b"},
+  "hobot_tts": {"repository": "https://github.com/D-Robotics/hobot_tts", "revision": "ecb8ace02a2ada04a8cb311d4eb697ad41ad91ee"},
+  "xiaozhi-in-rdk": {"repository": "https://github.com/D-Robotics/xiaozhi-in-rdk", "revision": "ade6cd1cc25ee105dc7d0fee600c56b8dd8b4305", "role": "optional online dialogue client; not KWS; not launched by this gateway"},
+  "aiui": {"source": "User supplied V6.0_20260617 wheeltec_mic_aiui.zip", "role": "ARM64 host ASR/TTS SDK; proprietary runtime excluded from git"},
+  "models": {
+    "sense-voice-small-q4_k.gguf": {"url": "https://www.modelscope.cn/models/lovemefan/SenseVoiceGGUF/resolve/master/sense-voice-small-q4_k.gguf", "sha256": "c8e7bf77acd860c5b83d2106da44aa7b985026ef4e7dbf5236c7f0f4001d9e9b"},
+    "tts_model.tar.gz": {"url": "https://archive.d-robotics.cc/tts-model/tts_model.tar.gz", "sha256": "56ee19a878f7488a0c110dcbd0124b97292a5ecc226450980162075f93156e9c"}
+  }
+}

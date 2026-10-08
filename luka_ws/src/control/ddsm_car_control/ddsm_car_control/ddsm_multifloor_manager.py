@@ -319,10 +319,10 @@ class DDSMFloorMissionManager(Node):
         super().__init__("ddsm_multifloor_manager")
         self.declare_parameter(
             "building_config_file",
-            "/home/sunrise/luka_ws/common/config/multifloor_building.yaml",
+            "/home/sunrise/luka_ws/src/common/config/multifloor_building.yaml",
         )
         self.declare_parameter(
-            "state_file", "/home/sunrise/luka_ws/common/config/floor_mission_state.yaml"
+            "state_file", "/home/sunrise/luka_ws/src/common/config/floor_mission_state.yaml"
         )
         self.declare_parameter("goal_topic", "/hotel/floor_goal")
         self.declare_parameter("arrived_topic", "/hotel/floor_transfer/arrived")
@@ -337,7 +337,7 @@ class DDSMFloorMissionManager(Node):
         self.declare_parameter("mission_cancel_service", "/hotel/mission/cancel_now")
         self.declare_parameter("initial_pose_topic", "/initialpose")
         self.declare_parameter("map_frame", "map")
-        self.declare_parameter("restart_script", "/home/sunrise/luka_ws/system/bringup/restart_nav_reset.sh")
+        self.declare_parameter("restart_script", "/home/sunrise/luka_ws/src/system/bringup/restart_nav_reset.sh")
         self.declare_parameter("restart_mode", "auto_nav")
         self.declare_parameter("restart_foxglove", "0")
         self.declare_parameter("current_floor_id", "")

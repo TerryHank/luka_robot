@@ -146,8 +146,8 @@ class DDSMHomeManager(Node):
     def __init__(self) -> None:
         super().__init__("ddsm_home_manager")
 
-        self.declare_parameter("home_pose_file", "/home/sunrise/luka_ws/common/config/home_pose.yaml")
-        self.declare_parameter("map_file", "/home/sunrise/luka_ws/map/maps/ddsm_map.yaml")
+        self.declare_parameter("home_pose_file", "/home/sunrise/luka_ws/src/common/config/home_pose.yaml")
+        self.declare_parameter("map_file", "/home/sunrise/luka_data/maps/ddsm_map.yaml")
         self.declare_parameter("map_frame", "map")
         self.declare_parameter("base_frame", "base_link")
         self.declare_parameter("navigate_action", "navigate_to_pose")

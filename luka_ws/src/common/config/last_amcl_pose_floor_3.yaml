@@ -3,5 +3,5 @@ frame_id: map
 x: -0.015053429892568571
 y: -0.16243452084086102
 yaw: 0.24642568932176623
-map_file: /home/sunrise/luka_ws/map/maps/ddsm_map_floor_4.yaml
+map_file: /home/sunrise/luka_data/maps/ddsm_map_floor_4.yaml
 map_sha256: 38ef88ea52d7b7ddb8d918fb4e5a023069d14a6a4bab8edb8afe3b008207a8bc

@@ -1,11 +1,11 @@
 from pathlib import Path
 
 
-WORKSPACE_ROOT = Path(__file__).resolve().parents[3]
+WORKSPACE_ROOT = Path(__file__).resolve().parents[4]
 
 
 def test_restart_nav_script_uses_current_nav_defaults_and_foxglove_bridge():
-    script = (WORKSPACE_ROOT / "restart_nav_reset.sh").read_text(encoding="utf-8")
+    script = (WORKSPACE_ROOT / "src/system/bringup/restart_nav_reset.sh").read_text(encoding="utf-8")
 
     assert "EKF_PARAMS_FILE" in script
     assert "ekf_imu_yaw_rate.yaml" in script
@@ -22,7 +22,7 @@ def test_restart_nav_script_uses_current_nav_defaults_and_foxglove_bridge():
 
 
 def test_start_nav_with_foxglove_one_click_script_delegates_to_restart_script():
-    script_path = WORKSPACE_ROOT / "start_nav_with_foxglove.sh"
+    script_path = WORKSPACE_ROOT / "src/visualization/console/start_nav_with_foxglove.sh"
 
     assert script_path.exists()
     assert script_path.stat().st_mode & 0o111
@@ -32,7 +32,7 @@ def test_start_nav_with_foxglove_one_click_script_delegates_to_restart_script():
 
 
 def test_auto_nav_waits_for_delayed_navigation_lifecycle_startup():
-    script = (WORKSPACE_ROOT / "restart_nav_reset.sh").read_text(encoding="utf-8")
+    script = (WORKSPACE_ROOT / "src/system/bringup/restart_nav_reset.sh").read_text(encoding="utf-8")
 
     assert 'LOW_CPU_NAV="${LOW_CPU_NAV:-1}"' in script
     assert 'TIMEOUT="${TIMEOUT:-0.30}"' in script
@@ -96,7 +96,7 @@ def test_auto_nav_waits_for_delayed_navigation_lifecycle_startup():
 
 
 def test_explore_mode_uses_dedicated_low_load_params():
-    script = (WORKSPACE_ROOT / "restart_nav_reset.sh").read_text(encoding="utf-8")
+    script = (WORKSPACE_ROOT / "src/system/bringup/restart_nav_reset.sh").read_text(encoding="utf-8")
 
     assert 'if [[ "$MODE" == "explore" ]]' in script
     assert "ekf_explore.yaml" in script
@@ -106,7 +106,7 @@ def test_explore_mode_uses_dedicated_low_load_params():
 
 
 def test_failed_one_click_startup_cleans_only_its_launch_process_group():
-    script = (WORKSPACE_ROOT / "restart_nav_reset.sh").read_text(encoding="utf-8")
+    script = (WORKSPACE_ROOT / "src/system/bringup/restart_nav_reset.sh").read_text(encoding="utf-8")
 
     assert "cleanup_failed_start" in script
     assert "trap cleanup_failed_start EXIT" in script
@@ -117,7 +117,7 @@ def test_failed_one_click_startup_cleans_only_its_launch_process_group():
 
 
 def test_one_click_checks_live_lidar_before_stopping_navigation():
-    script = (WORKSPACE_ROOT / "restart_nav_reset.sh").read_text(encoding="utf-8")
+    script = (WORKSPACE_ROOT / "src/system/bringup/restart_nav_reset.sh").read_text(encoding="utf-8")
 
     assert 'KEEP_STACK_ON_LIDAR_FAILURE="${KEEP_STACK_ON_LIDAR_FAILURE:-false}"' in script
     assert "wait_for_live_scan_raw" in script

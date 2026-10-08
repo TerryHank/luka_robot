@@ -2,7 +2,7 @@
   ros__parameters:
     # User-selected local trial only; Baker training data is non-commercial.
     tts_engine: matcha
-    tts_model_dir: /home/sunrise/luka_ws/common/models/voice/matcha-icefall-zh-baker
+    tts_model_dir: /home/sunrise/luka_data/ml_models/common/voice/matcha-icefall-zh-baker
     tts_sid: 0
     tts_speed: 1.0
     tts_num_threads: 4

@@ -1,0 +1,11 @@
+{
+  "repository": "https://github.com/introlab/rtabmap",
+  "source_commit": "aa95581cd2f0adca514e0fa6747ea4d7ce53d962",
+  "source_built": false,
+  "runtime_packages": [
+    "ros-humble-rtabmap 0.23.7-1jammy.20260907.223800",
+    "ros-humble-rtabmap-odom 0.23.7-1jammy.20260910.004937",
+    "ros-humble-rtabmap-slam 0.23.7-1jammy.20260910.005045"
+  ],
+  "ros_wrapper_repository": "https://github.com/introlab/rtabmap_ros"
+}

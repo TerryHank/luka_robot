@@ -1,7 +1,7 @@
 """Short local mpv IPC calls for speech/audio focus; never starts playback."""
 import json,socket
 from pathlib import Path
-SOCKET='/home/sunrise/luka_ws/system/music/player.sock'
+SOCKET='/home/sunrise/luka_data/runtime/music/player.sock'
 def command(*args):
  if not Path(SOCKET).exists():return None
  try:

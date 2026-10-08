@@ -1,3 +1,0 @@
-CMake Error: The source directory "/home/sunrise/luka_ws/evaluator/yolo26_bpu_board/box64-src" does not exist.
-Specify --help for usage, or press the help button on the CMake GUI.
-Error: /home/sunrise/luka_ws/evaluator/yolo26_bpu_board/box64-src/build is not a directory

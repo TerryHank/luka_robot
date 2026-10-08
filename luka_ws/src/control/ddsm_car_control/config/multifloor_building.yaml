@@ -4,8 +4,8 @@ default_elevator_id: elevator_A
 
 floors:
   floor_1:
-    map: /home/sunrise/luka_ws/map/maps/ddsm_map.yaml
-    semantic_map: /home/sunrise/luka_ws/map/hotel_semantic_map/config/map_manifest.yaml
+    map: /home/sunrise/luka_data/maps/ddsm_map.yaml
+    semantic_map: /home/sunrise/luka_ws/src/map/hotel_semantic_map/config/map_manifest.yaml
     elevator_poses:
       elevator_A:
         entry_destination_id: wp_003

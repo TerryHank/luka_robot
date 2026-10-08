@@ -283,7 +283,7 @@ class DDSMPatrolManager(Node):
     def __init__(self) -> None:
         super().__init__("ddsm_patrol_manager")
 
-        self.declare_parameter("route_file", "/home/sunrise/luka_ws/common/config/patrol_route.yaml")
+        self.declare_parameter("route_file", "/home/sunrise/luka_ws/src/common/config/patrol_route.yaml")
         self.declare_parameter("map_frame", "map")
         self.declare_parameter("navigate_action", "navigate_to_pose")
         self.declare_parameter("final_goal_topic", "/goal_pose")

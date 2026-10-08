@@ -21,7 +21,7 @@ from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
 
 
-LOG = '/home/sunrise/luka_ws/common/legacy/nav_chain_trace.jsonl'
+LOG = '/home/sunrise/luka_ws/log/nav_chain_trace.jsonl'
 
 
 class Recorder(Node):

@@ -87,7 +87,7 @@ def speech_pcm(samples, sample_rate, volume, max_gain, lead_seconds):
 class VoiceGateway(Node):
     def __init__(self) -> None:
         super().__init__("voice_gateway")
-        model_root = "/home/sunrise/luka_ws/common/models/voice"
+        model_root = "/home/sunrise/luka_data/ml_models/common/voice"
         self.declare_parameter("audio_device", "plughw:5,0")
         self.declare_parameter("sample_rate", 16000)
         self.declare_parameter("chunk_ms", 100)

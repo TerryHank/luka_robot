@@ -1,16 +1,18 @@
-# /etc/systemd/system/luka-ws-chat.service
 [Unit]
-Description=Luka S100 local Qwen3 chat (CPU)
+Description=Luka S100 official OELLM Qwen2.5-1.5B-Instruct (BPU)
 After=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
 
 [Service]
 Type=simple
 User=sunrise
 Group=sunrise
-WorkingDirectory=/home/sunrise/luka_ws/system/nx_chat
-ExecStart=/home/sunrise/luka_ws/system/nx_chat/build/bin/llama-server --model /home/sunrise/luka_ws/system/nx_chat/models/Qwen3-4B-Instruct-2507-Q4_K_M.gguf --alias qwen3-4b-chat --host 127.0.0.1 --port 8092 --ctx-size 2048 --parallel 1 --n-gpu-layers 0 --threads 4 --batch-size 128 --ubatch-size 128 --jinja
+WorkingDirectory=/home/sunrise/luka_data/runtime/oellm
+ExecStart=/bin/bash /home/sunrise/luka_ws/src/system/luka_xiaozhi/scripts/start_oellm.sh
 Restart=on-failure
 RestartSec=5
+TimeoutStopSec=10
 
 [Install]
 WantedBy=multi-user.target

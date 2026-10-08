@@ -1,8 +1,0 @@
-{
-  "created_at": "2026-10-03T19:32:31.487268",
-  "motion_tests": false,
-  "excluded": [
-    "odin_ros_driver"
-  ],
-  "artifacts": "/home/sunrise/luka_ws/evaluator/stationary_audit_20261003"
-}

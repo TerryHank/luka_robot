@@ -55,7 +55,7 @@
 ```bash
 sudo systemctl start luka-ws-orbbec-camera luka-ws-people
 sudo systemctl start luka-ws-person-follow-preview
-source /home/sunrise/luka_ws/system/environment.bash
+source /home/sunrise/luka_ws/src/system/environment.bash
 ros2 topic echo /luka_person_following/adapter_status
 ```
 
@@ -69,14 +69,14 @@ ros2 topic echo /luka_person_following/adapter_status
 
 ```bash
 sudo systemctl stop luka-ws-person-follow-preview
-source /home/sunrise/luka_ws/system/environment.bash
+source /home/sunrise/luka_ws/src/system/environment.bash
 ros2 launch luka_person_following selected_follow.launch.py dry_run:=false
 ```
 
 另一终端在页面点选当前人后，明确启用：
 
 ```bash
-source /home/sunrise/luka_ws/system/environment.bash
+source /home/sunrise/luka_ws/src/system/environment.bash
 ros2 service call /luka_person_following/set_enabled std_srvs/srv/SetBool '{data: true}'
 ```
 

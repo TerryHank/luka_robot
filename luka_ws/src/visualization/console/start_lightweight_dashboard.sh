@@ -5,7 +5,7 @@ WS="${WS:-$HOME/ddsm_car_ws}"
 PORT="${LIGHT_DASHBOARD_PORT:-8503}"
 PID_FILE="/tmp/ddsm_lightweight_dashboard.pid"
 LOG_FILE="/tmp/ddsm_lightweight_dashboard.log"
-PROGRAM="$WS/system/runtime/tools/lightweight_robot_dashboard.py"
+PROGRAM="$WS/src/system/runtime/tools/lightweight_robot_dashboard.py"
 
 dashboard_url() {
   local ip
@@ -17,7 +17,7 @@ dashboard_url() {
 source /opt/ros/humble/setup.bash
 source "$WS/install/setup.bash"
 export RMW_IMPLEMENTATION="${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}"
-export CYCLONEDDS_URI="${CYCLONEDDS_URI:-file://$WS/common/config/cyclonedds_nav2.xml}"
+export CYCLONEDDS_URI="${CYCLONEDDS_URI:-file://$WS/src/common/config/cyclonedds_nav2.xml}"
 set -u
 
 dashboard_running() {

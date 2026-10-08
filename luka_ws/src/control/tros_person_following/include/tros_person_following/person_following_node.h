@@ -20,15 +20,16 @@
 #include <vector>
 #include <mutex>
 #include <atomic>
-#include <thread>
 #include <memory>
 
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
 #include <nav2_msgs/action/navigate_to_pose.hpp>
+#include <nav2_msgs/action/spin.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <nav_msgs/msg/path.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 #include <ai_msgs/msg/perception_targets.hpp>
@@ -65,6 +66,11 @@ public:
 
   explicit PersonFollowingNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
   ~PersonFollowingNode();
+  void prepareShutdown() { stopFollowing(); }
+  bool pendingNavRequests() const {
+    return pending_nav_requests_ != 0 || pending_spin_requests_ != 0 ||
+      !owned_nav_goals_.empty() || !owned_spin_goals_.empty();
+  }
 
 private:
   // Detection result callback — ported from frontier_exploration Explore::dectectResultCallback
@@ -82,7 +88,7 @@ private:
   void stopFollowing();
 
   // Navigate to a pose asynchronously
-  void asyncNavToGoal(const NavigateToPose::Goal & goal);
+  bool asyncNavToGoal(const NavigateToPose::Goal & goal);
 
   // Spin in place by the given radian using NavigateToPose action
   void spinInPlace(float spin_radian);
@@ -348,8 +354,21 @@ private:
   std::shared_ptr<geometry_msgs::msg::PoseStamped> last_nav_goal_pose_ = nullptr;
   rclcpp::Time last_goal_send_time_;
   bool goal_send_armed_{false};
-  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_ = nullptr;
-  void goalResponseCallback(GoalHandleNavigateToPose::SharedPtr goal_handle);
+  void cancelOwnedGoals();
+  bool stampFresh(const builtin_interfaces::msg::Time & stamp, double timeout, bool allow_static = false) const;
+  bool poseValid(const geometry_msgs::msg::PoseStamped & pose) const;
+  bool costmapFresh();
+  bool cameraTfFresh();
+  void diagnose(const std::string & text);
+  std::string output_mode_, camera_frame_;
+  double input_timeout_sec_, costmap_timeout_sec_, tf_timeout_sec_;
+  builtin_interfaces::msg::Time last_detection_stamp_;
+  uint64_t nav_generation_{0};
+  size_t pending_nav_requests_{0};
+  std::map<rclcpp_action::GoalUUID, GoalHandleNavigateToPose::SharedPtr> owned_nav_goals_;
+  rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr goal_candidate_pub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr diagnostics_pub_;
+  rclcpp::TimerBase::SharedPtr input_watchdog_;
   void resultCallback(const GoalHandleNavigateToPose::WrappedResult & result);
 
   // ======================================================================
@@ -374,6 +393,9 @@ private:
   // buzzer_min_interval_sec_: <0 不发任何蜂鸣器消息（禁用）；==0 不限制；>0 节流。
   void publishBuzzerPattern(uint8_t pattern);
   uint64_t tracking_track_id_{0};     // 当前跟随目标 track_id（IDLE 时为 0）
+  // Tracker IDs are temporary trajectory IDs. In single-person mode a new ID
+  // may represent the same continuous target after a brief association gap.
+  bool single_person_auto_relock_{true};
   bool target_lost_{false};           // TRACKING 期本帧未检测到目标（pending-lost 宽限期内）
   rclcpp::Time tp_target_lost_;       // 首次丢失时刻（进 pending-lost 宽限期）
   rclcpp::Time tp_lost_;             // 进 LOST 时刻（relock timeline 起点）
@@ -387,11 +409,30 @@ private:
   // ======================================================================
   // Spin machinery — 原地旋转线程（IDLE 搜索 / belief scan / edge-turn 共用）
   // ======================================================================
-  void SpinInPlaceWCmdVel(float spin_radian);
   std::atomic<bool> spin_stop_requested_{false};  // 请求停止旋转（线程内循环检查）
-  // SpinInPlaceWCmdVel 在 detached 线程跑（不阻塞 detectResultCallback，避免漏检）。
+  // Spin Action callbacks run in the existing executor; no detached velocity thread.
   std::atomic<bool> spin_active_{false};
-  std::shared_ptr<std::thread> spin_thread_;
+  using Spin = nav2_msgs::action::Spin;
+  using GoalHandleSpin = rclcpp_action::ClientGoalHandle<Spin>;
+  enum class SpinPurpose { IDLE, EDGE, BELIEF };
+  bool startSpin(float angle, SpinPurpose purpose);
+  bool spinBusy() const;
+  bool stopped() const;
+  bool odometryValid() const;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_sub_;
+  nav_msgs::msg::Odometry latest_odometry_;
+  size_t stopped_samples_{0};
+  double stopped_since_{0.0};
+  bool waiting_for_spin_stop_{false};
+  void cancelOwnedSpin();
+  rclcpp_action::Client<Spin>::SharedPtr spin_client_;
+  std::map<rclcpp_action::GoalUUID, GoalHandleSpin::SharedPtr> owned_spin_goals_;
+  uint64_t spin_generation_{0};
+  size_t pending_spin_requests_{0};
+  rclcpp::Time last_spin_send_time_;
+  rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr spin_candidate_pub_;
+  std::shared_ptr<NavigateToPose::Goal> queued_nav_goal_;
+
 
   // ======================================================================
   // Status & diagnostics — 状态发布 + 距离缓存（追加到状态串 :dist=）
@@ -442,6 +483,7 @@ private:
     bool has_motion = false;               // speed >= static_target_move_thr_ 则 true
     std::vector<geometry_msgs::msg::Point> searched_points;  // 已访观测点（下轮排除）
     rclcpp::Time start_time;                // belief search 开始时刻（计 timeout）
+    bool awaiting_scan = false;             // Reached-point retry while owned cancellation/action readiness settles.
     bool scanning = false;                  // 到达后原地扫描中
     bool scan_completed = false;            // 本观测点扫描完成（区别于 scanning==false 的"未开始"）
     bool at_lkp = false;                    // 观测点即 LKP/预测点（→ 到达即扫）；false 为过渡 free cell（→ 不扫，下轮重试 LKP）

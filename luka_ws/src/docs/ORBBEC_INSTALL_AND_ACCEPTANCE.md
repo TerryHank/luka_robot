@@ -61,7 +61,7 @@ RGB与配准深度的frame_id均为 `camera_color_optical_frame`，两路CameraI
 仅启动相机：
 
 ```bash
-source /home/sunrise/luka_ws/system/environment.bash
+source /home/sunrise/luka_ws/src/system/environment.bash
 sudo systemctl start luka-ws-orbbec-camera.service
 ros2 topic list | grep /camera/
 # 下列hz检查分别运行，Ctrl+C结束
@@ -72,8 +72,8 @@ ros2 topic hz /camera/depth/image_raw
 启动相机和页面/静态视觉；停止新工作区：
 
 ```bash
-/home/sunrise/luka_ws/system/luka.sh start ws stationary
-/home/sunrise/luka_ws/system/luka.sh stop ws
+/home/sunrise/luka_ws/src/system/luka.sh start ws stationary
+/home/sunrise/luka_ws/src/system/luka.sh stop ws
 ```
 
 启动/停止脚本已包含新相机服务并通过实际停启验证。网页 `http://192.168.3.150:8503/`。stationary不自动启动底盘；原页面中的硬件启动操作仍存在。full模式仍可能自动旋转定位，本次未执行。旧工作区仍按原相机配置启动。
@@ -82,4 +82,4 @@ ros2 topic hz /camera/depth/image_raw
 journalctl -u luka-ws-orbbec-camera -u luka-ws-vision -n 80 --no-pager
 ```
 
-备份：`/home/sunrise/luka_migration_backups/orbbec_20261003`，含原驱动SDK、COLCON_IGNORE、视觉服务/启动脚本/应用、DDS配置和原socket缓冲值。验收JSON及构建日志：`/home/sunrise/luka_ws/evaluator/orbbec_20261003`。
+备份：`/home/sunrise/luka_migration_backups/orbbec_20261003`，含原驱动SDK、COLCON_IGNORE、视觉服务/启动脚本/应用、DDS配置和原socket缓冲值。验收JSON及构建日志：`/home/sunrise/luka_ws/src/evaluator/orbbec_20261003`。

@@ -1,0 +1,92 @@
+{
+  "configById": {
+    "Plot!luka0": {
+      "foxglovePanelTitle": "导航速度链 / m/s",
+      "paths": [
+        {
+          "value": "/nx/nav_raw.linear.x",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "raw",
+          "color": "#38bdf8"
+        },
+        {
+          "value": "/nx/nav_smoothed.linear.x",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "smoothed",
+          "color": "#fb923c"
+        },
+        {
+          "value": "/nx/nav_guarded.linear.x",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "guarded",
+          "color": "#4ade80"
+        },
+        {
+          "value": "/nx/nav_safe.linear.x",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "safe",
+          "color": "#f472b6"
+        }
+      ],
+      "showLegend": true,
+      "legendDisplay": "top",
+      "showPlotValuesInLegend": true,
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "followingViewWidth": 30,
+      "sidebarDimension": 180
+    },
+    "RawMessages!luka1": {
+      "foxglovePanelTitle": "现有底盘安全门",
+      "topicPath": "/nx/web_teleop_status",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "RawMessages!luka2": {
+      "foxglovePanelTitle": "暂存目标与Nav2结果",
+      "topicPath": "/contract_demo/navigation_status",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "LukaConsole!smoothing": {
+      "caseNumber": "15",
+      "section": "navigation"
+    }
+  },
+  "layout": {
+    "direction": "row",
+    "first": {
+      "direction": "row",
+      "first": {
+        "direction": "column",
+        "first": "Plot!luka0",
+        "second": "RawMessages!luka1",
+        "splitPercentage": 55
+      },
+      "second": "RawMessages!luka2",
+      "splitPercentage": 55
+    },
+    "second": "LukaConsole!smoothing",
+    "splitPercentage": 52
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "version": 1
+}

@@ -1,0 +1,16 @@
+[Unit]
+Description=Luka local XiaoZhi agent: AIUI online, local LLM offline
+Requires=luka-ws-hardware@voice.service luka-ws-moss.service
+After=network-online.target luka-ws-hardware@voice.service luka-ws-moss.service
+
+[Service]
+Type=simple
+User=sunrise
+Group=sunrise
+WorkingDirectory=/home/sunrise/luka_data/runtime/xiaozhi
+ExecStart=/bin/bash /home/sunrise/luka_ws/src/system/luka_xiaozhi/scripts/start_xiaozhi.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

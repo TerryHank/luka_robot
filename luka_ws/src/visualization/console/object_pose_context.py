@@ -211,7 +211,7 @@ class ObjectPoseContext:
         result = dict(floor_id=None, map_id=None, map_version=None,
                       map_scope_valid=False, map_scope_reason='no_live_map')
         try:
-            active = self._read_json(Path(self.node.workspace) / 'common/config' / 'active_floor_context.json')
+            active = self._read_json(Path(self.node.workspace) / 'src/common/config' / 'active_floor_context.json')
             floor = active.get('floor_id')
             if not isinstance(floor, str) or not floor.startswith('floor_'):
                 raise ValueError('active floor unknown')
@@ -236,7 +236,7 @@ class ObjectPoseContext:
     def _observation_area(self, x, y, scope):
         """Name robot observation area; do not claim object is inside that room."""
         import yaml
-        base = Path(self.node.workspace) / 'common/config' / 'semantic' / scope['floor_id']
+        base = Path(self.node.workspace) / 'src/common/config' / 'semantic' / scope['floor_id']
         try:
             manifest = yaml.safe_load((base / 'map_manifest.yaml').read_text(encoding='utf-8')) or {}
             if manifest.get('floor_id') != scope['floor_id']:

@@ -1,0 +1,13 @@
+[Unit]
+Description=Luka contract demo face
+After=network.target
+
+[Service]
+Type=simple
+User=sunrise
+Group=sunrise
+WorkingDirectory=/home/sunrise/luka_ws
+ExecStart=/bin/bash /home/sunrise/luka_ws/src/examples/contract_demo/_shared/runtime.sh face
+Restart=no
+KillSignal=SIGINT
+TimeoutStopSec=15

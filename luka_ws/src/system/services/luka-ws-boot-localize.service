@@ -8,8 +8,8 @@ Wants=luka-ws-dashboard.service
 Type=simple
 User=sunrise
 Group=sunrise
-WorkingDirectory=/home/sunrise/luka_ws/system/runtime/tools
-ExecStart=/usr/bin/python3 /home/sunrise/luka_ws/system/runtime/tools/s100_boot_localize.py
+WorkingDirectory=/home/sunrise/luka_ws/src/system/runtime/tools
+ExecStart=/usr/bin/python3 /home/sunrise/luka_ws/src/system/runtime/tools/s100_boot_localize.py
 TimeoutStartSec=0
 
 [Install]

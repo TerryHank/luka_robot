@@ -128,7 +128,7 @@ def should_reject_new_goal(state: str) -> bool:
 class DDSMMissionControl(Node):
     def __init__(self) -> None:
         super().__init__("ddsm_mission_control")
-        self.declare_parameter("state_file", "/home/sunrise/luka_ws/common/config/mission_state.yaml")
+        self.declare_parameter("state_file", "/home/sunrise/luka_ws/src/common/config/mission_state.yaml")
         self.declare_parameter("cmd_vel_topic", "/cmd_vel_nav")
         self.declare_parameter("goal_request_topic", "/hotel/goal_destination")
         self.declare_parameter("navigation_status_topic", "/hotel/navigation_status")

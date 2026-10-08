@@ -1,4 +1,3 @@
 #!/usr/bin/env bash
-set -eo pipefail
-source /home/sunrise/luka_ws/system/environment.bash
-exec ros2 launch luka_person_following selected_follow.launch.py dry_run:=true
+# Compatibility name; implementation and default safety settings live in one entry.
+exec /bin/bash /home/sunrise/luka_ws/src/system/scripts/start_official_person_following.sh "$@"

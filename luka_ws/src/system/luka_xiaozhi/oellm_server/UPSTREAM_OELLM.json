@@ -1,0 +1,14 @@
+{
+  "upstream": "https://github.com/D-Robotics/oellm_server",
+  "commit": "7fa0ebe04ae0dbde379a7cb3d4c44ea7e0a73db0",
+  "upstream_sha256": "5347f62b088ad7562d10b0a2647f95edd76e45472165641514ed1d6344bb28ff",
+  "adaptations": [
+    "S100 model context1024",
+    "voice sampling temperature0.3",
+    "reject stale model aliases",
+    "render Qwen ChatML roles with a pass-through SDK template"
+  ],
+  "model": "Qwen2.5-1.5B-Instruct",
+  "sdk": "D-Robotics LLM S100 1.0.0",
+  "expected_md5": "488cf8fe4bb7c9bd784edf1d86063345"
+}

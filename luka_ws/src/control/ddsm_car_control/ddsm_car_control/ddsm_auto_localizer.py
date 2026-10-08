@@ -320,10 +320,10 @@ class DDSMAutoLocalizer(Node):
     def __init__(self) -> None:
         super().__init__("ddsm_auto_localizer")
 
-        self.declare_parameter("map_file", "/home/sunrise/luka_ws/map/maps/ddsm_map.yaml")
+        self.declare_parameter("map_file", "/home/sunrise/luka_data/maps/ddsm_map.yaml")
         self.declare_parameter(
             "last_pose_file",
-            "/home/sunrise/luka_ws/common/config/last_amcl_pose.yaml",
+            "/home/sunrise/luka_ws/src/common/config/last_amcl_pose.yaml",
         )
         self.declare_parameter("map_frame", "map")
         self.declare_parameter("base_frame", "base_link")

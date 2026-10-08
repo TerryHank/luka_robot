@@ -9,7 +9,7 @@ from nx_room_proposals import propose
 from nx_sonar_policy import preview
 from nx_voiceprint import VoiceprintStore
 
-ROOT=Path('/home/sunrise/luka_ws/system/product')
+ROOT=Path('/home/sunrise/luka_ws/src/system/product')
 class ProductAPI:
     def __init__(self,node):
         self.node=node;self.store=ProductStore(ROOT);self.rate={};self.rate_lock=threading.Lock();self.network_job={'state':'idle'}
@@ -18,7 +18,7 @@ class ProductAPI:
     def sonar_status_archived(self):
         try:
             data=json.loads(Path('/run/nx-sonar/status.json').read_text())
-            try:data['stop_protection']=json.loads(Path('/home/sunrise/luka_ws/common/state/sonar_stop_status.json').read_text())
+            try:data['stop_protection']=json.loads(Path('/home/sunrise/luka_ws/src/common/state/sonar_stop_status.json').read_text())
             except (OSError,ValueError):data['stop_protection']=None
             data['protection_preview']=preview(data)
             now=time.time();data['stale']=not 0<=now-data['updated_at']<2

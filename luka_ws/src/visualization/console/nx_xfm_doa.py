@@ -12,8 +12,8 @@ import threading
 import time
 from pathlib import Path
 
-RUNTIME_PATH = Path("/home/sunrise/luka_ws/common/runtime/xfm_doa.json")
-CALIBRATION_PATH = Path("/home/sunrise/luka_ws/common/runtime/xfm_doa_calibration.json")
+RUNTIME_PATH = Path("/home/sunrise/luka_data/runtime/audio/xfm_doa.json")
+CALIBRATION_PATH = Path("/home/sunrise/luka_ws/src/common/runtime/xfm_doa_calibration.json")
 
 
 class XfmDoaReader:

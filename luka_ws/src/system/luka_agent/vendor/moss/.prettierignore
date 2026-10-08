@@ -1,0 +1,22 @@
+# Dependencies, build output, coverage, and generated documentation
+node_modules/
+**/dist/
+**/coverage/
+**/docs-api/
+package-lock.json
+
+# Local caches and runtime data
+.git/
+.codegraph/
+.mimosa/
+.moss/
+sessions/
+tmp/
+.tmp/
+
+# Qoder IDE session artifacts
+.qoder/
+.qoder-collab-runtime/
+
+# WorkBuddy session-local runtime data (agent memory, not source)
+.workbuddy/

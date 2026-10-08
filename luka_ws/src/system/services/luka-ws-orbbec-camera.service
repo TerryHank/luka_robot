@@ -7,7 +7,7 @@ Type=simple
 User=sunrise
 Group=sunrise
 WorkingDirectory=/home/sunrise/luka_ws
-ExecStart=/bin/bash /home/sunrise/luka_ws/system/scripts/start_orbbec_camera.sh
+ExecStart=/bin/bash /home/sunrise/luka_ws/src/system/scripts/start_orbbec_camera.sh
 Restart=on-failure
 RestartSec=5
 

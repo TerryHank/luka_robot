@@ -1,16 +1,13 @@
-# /etc/systemd/system/luka-ws-object-api.service
 [Unit]
-Description=Luka YOLO26 person-only detector API
+Description=Luka independent bounded image inference API
 After=network-online.target
-
 [Service]
 Type=simple
 User=sunrise
 Group=sunrise
 WorkingDirectory=/home/sunrise/luka_ws
-ExecStart=/home/sunrise/luka_ws/perception/person_follow/yolo26_venv/bin/python /home/sunrise/luka_ws/common/legacy/s100_object_api.py
+ExecStart=/bin/bash /home/sunrise/luka_ws/src/system/scripts/start_image_inference.sh
 Restart=on-failure
 RestartSec=5
-
 [Install]
 WantedBy=multi-user.target

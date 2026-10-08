@@ -6,9 +6,9 @@ import time
 from pathlib import Path
 
 ROOT=Path('/home/sunrise/luka_ws')
-POSE_FILE=ROOT/'common/config/verified_boot_pose_floor_4.json'
-CANDIDATE_FILE=ROOT/'common/config/candidate_boot_pose_floor_4.json'
-MAP_FILES=(ROOT/'map/maps/ddsm_map_floor_4.yaml',ROOT/'map/maps/ddsm_map_floor_4.pgm')
+POSE_FILE=ROOT/'src/common/config/verified_boot_pose_floor_4.json'
+CANDIDATE_FILE=ROOT/'src/common/config/candidate_boot_pose_floor_4.json'
+MAP_FILES=(Path('/home/sunrise/luka_data/maps/ddsm_map_floor_4.yaml'),Path('/home/sunrise/luka_data/maps/ddsm_map_floor_4.pgm'))
 
 
 def map_signature():

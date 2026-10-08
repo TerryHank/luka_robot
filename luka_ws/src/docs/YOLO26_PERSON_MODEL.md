@@ -20,16 +20,16 @@
 - 实时检索使用Astra现场画面完成3帧，推理0.621秒，无错误；该次现场未检出人体。正向人体识别证据来自测试图，不将空场景结果当作识别准确率验证。
 - 8个新工作区静态服务运行；底盘、导航、旧工作区服务未启动。
 
-依赖安装在独立 `/home/sunrise/luka_ws/perception/person_follow/yolo26_venv`：torch2.6.0 CPU、torchvision0.21.0、ultralytics8.4.172、onnx1.17.0、onnxruntime。源模型副本及导出位于新工作区 `perception/person_follow/models/`。
+依赖安装在独立 `/home/sunrise/luka_ws/src/perception/luka_face_identity/yolo26_venv`：torch2.6.0 CPU、torchvision0.21.0、ultralytics8.4.172、onnx1.17.0、onnxruntime。源模型副本及导出位于新工作区 `perception/person_follow/models/`。
 
 变更备份：`/home/sunrise/luka_migration_backups/yolo26_person_20261004`。
-远端验收数据：`/home/sunrise/luka_ws/evaluator/yolo26_person_20261003/acceptance.json`、`live_acceptance.json`。
+远端验收数据：`/home/sunrise/luka_ws/src/evaluator/yolo26_person_20261003/acceptance.json`、`live_acceptance.json`。
 
 静态启动/停止：
 
 ```bash
-/home/sunrise/luka_ws/system/luka.sh start ws stationary
-/home/sunrise/luka_ws/system/luka.sh stop ws
+/home/sunrise/luka_ws/src/system/luka.sh start ws stationary
+/home/sunrise/luka_ws/src/system/luka.sh stop ws
 ```
 
 网页入口：<http://192.168.3.150:8503/>。

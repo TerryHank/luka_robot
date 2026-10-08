@@ -314,7 +314,7 @@ def test_unified_bringup_exposes_zdt_feedback_odometry_controls():
     unified_text = (PACKAGE_ROOT / "launch" / "ddsm_bringup.launch.py").read_text(
         encoding="utf-8"
     )
-    script_text = (PACKAGE_ROOT.parent.parent / "restart_nav_reset.sh").read_text(
+    script_text = (PACKAGE_ROOT.parent.parent / "system/bringup/restart_nav_reset.sh").read_text(
         encoding="utf-8"
     )
 

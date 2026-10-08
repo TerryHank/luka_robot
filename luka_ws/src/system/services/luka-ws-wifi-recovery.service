@@ -6,4 +6,4 @@ Wants=NetworkManager.service
 
 [Service]
 Type=oneshot
-ExecStart=/home/sunrise/luka_ws/system/helpers/luka-ws-wifi-recovery
+ExecStart=/home/sunrise/luka_ws/src/system/helpers/luka-ws-wifi-recovery

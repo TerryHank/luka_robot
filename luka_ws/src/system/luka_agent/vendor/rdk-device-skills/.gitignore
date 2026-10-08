@@ -1,0 +1,12 @@
+# Local reference clones of official docs (not part of the repo)
+.refs/
+
+# OS / editor noise
+.DS_Store
+*.swp
+
+# Node (docs sites, tooling)
+node_modules/
+
+# Isolated implementation worktrees
+.worktrees/

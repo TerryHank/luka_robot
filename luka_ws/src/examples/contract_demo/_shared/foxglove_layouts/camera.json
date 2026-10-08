@@ -1,0 +1,66 @@
+{
+  "configById": {
+    "Image!luka0": {
+      "foxglovePanelTitle": "RGB实景",
+      "imageMode": {
+        "imageTopic": "/camera/color/image_raw"
+      },
+      "scene": {},
+      "topics": {},
+      "transforms": {},
+      "layers": {},
+      "version": 1
+    },
+    "Image!luka1": {
+      "foxglovePanelTitle": "深度图",
+      "imageMode": {
+        "imageTopic": "/camera/depth/image_raw",
+        "colorMode": "colormap",
+        "colorMap": "turbo",
+        "minValue": 0,
+        "maxValue": 8000
+      },
+      "scene": {},
+      "topics": {},
+      "transforms": {},
+      "layers": {},
+      "version": 1
+    },
+    "RawMessages!luka2": {
+      "foxglovePanelTitle": "深度帧时间戳",
+      "topicPath": "/camera/depth/image_raw.header",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "LukaConsole!camera": {
+      "caseNumber": "05",
+      "section": "navigation"
+    }
+  },
+  "layout": {
+    "direction": "row",
+    "first": {
+      "direction": "row",
+      "first": {
+        "direction": "column",
+        "first": "Image!luka0",
+        "second": "Image!luka1",
+        "splitPercentage": 55
+      },
+      "second": "RawMessages!luka2",
+      "splitPercentage": 55
+    },
+    "second": "LukaConsole!camera",
+    "splitPercentage": 52
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "version": 1
+}

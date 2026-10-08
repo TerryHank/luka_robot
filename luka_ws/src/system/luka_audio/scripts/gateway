@@ -1,0 +1,3 @@
+#!/usr/bin/env python3
+from luka_audio.gateway import main
+main()

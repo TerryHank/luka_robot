@@ -3,9 +3,9 @@ current_floor_id: floor_1
 default_elevator_id: elevator_A
 floors:
   floor_1:
-    map: /home/sunrise/luka_ws/map/maps/ddsm_map_floor_1.yaml
-    semantic_map: /home/sunrise/luka_ws/common/config/semantic/floor_1/map_manifest.yaml
-    patrol_route: /home/sunrise/luka_ws/common/config/patrol_route_floor_1.yaml
+    map: /home/sunrise/luka_data/maps/ddsm_map_floor_1.yaml
+    semantic_map: /home/sunrise/luka_ws/src/common/config/semantic/floor_1/map_manifest.yaml
+    patrol_route: /home/sunrise/luka_ws/src/common/config/patrol_route_floor_1.yaml
     elevator_poses:
       elevator_A:
         entry_destination_id: wp_003
@@ -14,9 +14,9 @@ floors:
           y: 1.8145882145205219
           yaw: 1.3927942077167546
   floor_2:
-    map: /home/sunrise/luka_ws/map/maps/ddsm_map_floor_2.yaml
-    semantic_map: /home/sunrise/luka_ws/common/config/semantic/floor_2/map_manifest.yaml
-    patrol_route: /home/sunrise/luka_ws/common/config/patrol_route_floor_2.yaml
+    map: /home/sunrise/luka_data/maps/ddsm_map_floor_2.yaml
+    semantic_map: /home/sunrise/luka_ws/src/common/config/semantic/floor_2/map_manifest.yaml
+    patrol_route: /home/sunrise/luka_ws/src/common/config/patrol_route_floor_2.yaml
     elevator_poses:
       elevator_A:
         entry_destination_id: wp_001

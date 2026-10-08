@@ -31,7 +31,7 @@ def generate_launch_description():
     )
     map_arg = DeclareLaunchArgument(
         "map",
-        default_value="/home/sunrise/luka_ws/map/maps/ddsm_map.yaml",
+        default_value="/home/sunrise/luka_data/maps/ddsm_map.yaml",
         description="Full path to the saved map YAML file",
     )
     params_file_arg = DeclareLaunchArgument(

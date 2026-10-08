@@ -5,9 +5,9 @@ source /home/sunrise/luka_ws/install/setup.bash
 export ROS_DOMAIN_ID=87
 export ROS_LOCALHOST_ONLY=1
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-export CYCLONEDDS_URI=file:///home/sunrise/luka_ws/common/config/cyclonedds_offline.xml
+export CYCLONEDDS_URI=file:///home/sunrise/luka_ws/src/common/config/cyclonedds_offline.xml
 exec ros2 launch ddsm_car_control ddsm_bringup.launch.py \
- mode:=nav map:=/home/sunrise/luka_ws/map/maps/ddsm_map_floor_4.yaml \
+ mode:=nav map:=/home/sunrise/luka_data/maps/ddsm_map_floor_4.yaml \
  nav_params_file:=/home/sunrise/luka_ws/install/ddsm_car_control/share/ddsm_car_control/config/nav2_mecanum_mppi_params.yaml \
  nav_start_delay:=1.0 nav_node_batch_delay:=0.5 mission_start_delay:=3.0 \
  enable_base_driver:=false enable_imu:=false enable_lidar:=false \

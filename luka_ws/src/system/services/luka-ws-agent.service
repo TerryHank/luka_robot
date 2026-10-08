@@ -1,21 +1,11 @@
-# /etc/systemd/system/luka-ws-agent.service
 [Unit]
-Description=Luka S100 local command agent (dry run)
-After=network-online.target luka-ws-chat.service
-Requires=luka-ws-chat.service
+Description=Compatibility entry for the canonical Luka Moss task runtime
+After=network-online.target
 
 [Service]
-Type=simple
-User=sunrise
-Group=sunrise
-WorkingDirectory=/home/sunrise/luka_ws
-ExecStart=/bin/bash /home/sunrise/luka_ws/system/bringup/start_nx_agent.sh
-Restart=on-failure
-RestartSec=5
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/systemctl start luka-ws-moss.service
 
 [Install]
 WantedBy=multi-user.target
-
-# /etc/systemd/system/luka-ws-agent.service.d/live-tools.conf
-[Unit]
-Description=Luka S100 local command agent (validated dashboard tools)

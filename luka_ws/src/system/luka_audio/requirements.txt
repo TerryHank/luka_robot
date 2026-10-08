@@ -1,0 +1,4 @@
+adb-shell[usb]==0.4.4
+pyserial==3.5
+sherpa-onnx==1.13.6
+numpy<2

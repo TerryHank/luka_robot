@@ -215,7 +215,7 @@ class DashboardNode(Node):
         self.current_floor_id = os.environ.get('DASHBOARD_FLOOR_ID', '').strip()
         if not self.current_floor_id:
             try:
-                context = json.loads((self.workspace / 'common/config' / 'active_floor_context.json').read_text())
+                context = json.loads((self.workspace / 'src/common/config' / 'active_floor_context.json').read_text())
                 floor_id = context.get('floor_id', '')
                 self.current_floor_id = floor_id if re.fullmatch(r'floor_[0-9]+', floor_id) else 'unknown'
             except (OSError, ValueError, TypeError):
@@ -246,7 +246,7 @@ class DashboardNode(Node):
         self._goal_pub = self.create_publisher(String, '/hotel/goal_destination', 10)
         mode_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
                               durability=DurabilityPolicy.TRANSIENT_LOCAL)
-        self.navigation_mode_file = self.workspace / 'common/config' / 'navigation_motion_mode.txt'
+        self.navigation_mode_file = self.workspace / 'src/common/config' / 'navigation_motion_mode.txt'
         try:
             saved_navigation_mode = self.navigation_mode_file.read_text(encoding='utf-8').strip()
         except OSError:
@@ -369,7 +369,7 @@ class DashboardNode(Node):
     def list_maps(self):
         """枚举可选地图：maps/ 下的楼层图（ddsm_map_floor_N.yaml）。
         默认图 ddsm_map.yaml 若与某楼层图同一 PGM 则跳过，否则作为 'default' 列出。"""
-        maps_dir = self.workspace / 'map/maps'
+        maps_dir = FsPath('/home/sunrise/luka_data/maps')
         entries = []
         if maps_dir.is_dir():
             for yaml_path in sorted(maps_dir.glob('ddsm_map_floor_*.yaml')):
@@ -496,7 +496,7 @@ class DashboardNode(Node):
 
     def poi_file(self, create=False):
         candidates = (
-            self.workspace / 'common/config' / 'semantic' / self.current_floor_id / 'pois.yaml',
+            self.workspace / 'src/common/config' / 'semantic' / self.current_floor_id / 'pois.yaml',
             self.workspace / 'semantic' / self.current_floor_id / 'pois.yaml',
         )
         path = next((item for item in candidates if item.exists()), candidates[0])
@@ -538,7 +538,7 @@ class DashboardNode(Node):
     def floor_map_version(self, floor_id):
         """该楼层语义地图的 map_version（来自 map_manifest.yaml），
         新增 POI 必须与之一致，否则语义服务校验失败导致整图不可用。"""
-        manifest = self.workspace / 'common/config' / 'semantic' / floor_id / 'map_manifest.yaml'
+        manifest = self.workspace / 'src/common/config' / 'semantic' / floor_id / 'map_manifest.yaml'
         try:
             doc = yaml.safe_load(manifest.read_text(encoding='utf-8')) or {}
             version = str(doc.get('map_version') or '').strip()

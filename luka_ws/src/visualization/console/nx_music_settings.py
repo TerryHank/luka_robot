@@ -1,7 +1,7 @@
 """Atomic local playback preferences. Invalid files fall back to a safe default."""
 import json,os
 from pathlib import Path
-DEFAULT=Path('/home/sunrise/luka_ws/system/music/settings.json')
+DEFAULT=Path('/home/sunrise/luka_data/runtime/music/settings.json')
 def load_volume(path=DEFAULT):
  try:
   v=json.loads(Path(path).read_text())['volume']

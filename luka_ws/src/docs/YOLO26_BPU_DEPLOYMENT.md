@@ -6,7 +6,7 @@
 
 - 源模型：`/home/sunrise/yolo26m-objv1-seg.pt`，源文件未修改。
 - PT SHA-256：`ea190cec15d1425fc695ae6f8b911c55ccf0268a4f48d36fd9422b334f2192a2`。
-- HBM：`/home/sunrise/luka_ws/perception/person_follow/models/bpu_yolo26/yolo26m_objv1_seg_bpu_nashe_640x640_nv12.hbm`。
+- HBM：`/home/sunrise/luka_data/ml_models/person_follow/bpu_yolo26/yolo26m_objv1_seg_bpu_nashe_640x640_nv12.hbm`。
 - HBM SHA-256：`c4a47cf043abaca891a947fe10d250f1699041fc669eea8b4aa8603cddf0e144`；41,422,816 字节。
 - 编译环境：本机 Ubuntu-22.04 WSL，x86_64，uv 0.12.22 创建和管理 `.venv`，Python 3.10.12。没有使用 Docker 编译。
 - 工具链：OpenExplorer 3.7.0；hbdk4 4.7.5、hmct 2.6.5、horizon_tc_ui 3.5.3。

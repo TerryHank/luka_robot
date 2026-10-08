@@ -1,2 +1,0 @@
-/navigate_to_pose nav2_msgs/action/NavigateToPose
-/luka_follow_dryrun/navigate_to_pose nav2_msgs/action/NavigateToPose

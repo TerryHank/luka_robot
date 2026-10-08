@@ -774,7 +774,7 @@ multifloor_manager = Node(
 
 ```bash
 ENABLE_MULTIFLOOR_MANAGER="${ENABLE_MULTIFLOOR_MANAGER:-false}"
-MULTIFLOOR_BUILDING_CONFIG_FILE="${MULTIFLOOR_BUILDING_CONFIG_FILE:-$WS/src/ddsm_car_control/config/multifloor_building.yaml}"
+MULTIFLOOR_BUILDING_CONFIG_FILE="${MULTIFLOOR_BUILDING_CONFIG_FILE:-$WS/src/control/ddsm_car_control/config/multifloor_building.yaml}"
 MULTIFLOOR_STATE_FILE="${MULTIFLOOR_STATE_FILE:-$WS/config/floor_mission_state.yaml}"
 ```
 

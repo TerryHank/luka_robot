@@ -16,7 +16,7 @@ def generate_launch_description():
     # Only a narrow, measured bracket rectangle is removed before existing fusion.
     # Replace the lower input parameter on the existing fusion action below via
     # its construction (the upper scan and original mask remain unchanged).
-    nodes.append(ExecuteProcess(cmd=['python3','/home/sunrise/luka_ws/system/runtime/tools/nx_chassis_filter.py'],output='screen'))
+    nodes.append(ExecuteProcess(cmd=['python3','/home/sunrise/luka_ws/src/system/runtime/tools/nx_chassis_filter.py'],output='screen'))
     # UDP proxies must bind before the first RPLIDAR handshake is sent.
     proxies=[n for i,n in enumerate(nodes) if i in (0,2)]
     return LaunchDescription(proxies+[TimerAction(period=2.0,actions=[n for i,n in enumerate(nodes) if i not in (0,2)])])

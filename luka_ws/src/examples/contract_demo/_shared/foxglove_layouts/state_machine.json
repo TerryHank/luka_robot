@@ -1,0 +1,75 @@
+{
+  "configById": {
+    "RawMessages!luka0": {
+      "foxglovePanelTitle": "任务状态",
+      "topicPath": "/hotel/mission/status",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "RawMessages!luka1": {
+      "foxglovePanelTitle": "安全状态",
+      "topicPath": "/hotel/mission/safety_status",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "RawMessages!luka2": {
+      "foxglovePanelTitle": "目标状态",
+      "topicPath": "/hotel/mission/goal_status",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "RawMessages!luka3": {
+      "foxglovePanelTitle": "暂存目标与Nav2结果",
+      "topicPath": "/contract_demo/navigation_status",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "LukaConsole!state_machine": {
+      "caseNumber": "24",
+      "section": "patrol"
+    }
+  },
+  "layout": {
+    "direction": "row",
+    "first": {
+      "direction": "row",
+      "first": {
+        "direction": "column",
+        "first": "RawMessages!luka0",
+        "second": "RawMessages!luka1",
+        "splitPercentage": 55
+      },
+      "second": {
+        "direction": "column",
+        "first": "RawMessages!luka2",
+        "second": "RawMessages!luka3",
+        "splitPercentage": 55
+      },
+      "splitPercentage": 55
+    },
+    "second": "LukaConsole!state_machine",
+    "splitPercentage": 52
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "version": 1
+}

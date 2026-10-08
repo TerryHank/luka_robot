@@ -18,7 +18,7 @@
 | I-3 | 六轴 IMU 驱动、姿态解算、滤波融合 | `wit_imu_node.py`、`config/ekf_imu.yaml`、`ekf_imu_yaw_rate.yaml` | `wit_imu.launch.py`、`nx_sensors.launch.py`、`nx_localization.launch.py` | 已实现 | 现场传感器精度和标定效果仍需实车验收。 |
 | I-4 | 激光雷达驱动、点云滤波、畸变矫正、稳定输出 | `low_lidar_udp_proxy.py`、`laser_scan_deskewer.py`、`dual_laser_fusion.py`、`scan_throttler.py` | `nx_sensors.launch.py` | 部分实现 | 当前数据链路是 `LaserScan`，不是 3D 点云；只能证明二维扫描滤波、去畸变和融合。 |
 | I-5 | 深度相机驱动、图像/深度采集预处理及整机通信 | `perception/spatial_memory/orbbec_ros_camera.py`、`src/OrbbecSDK_ROS2/orbbec_camera` | `luka-ws-orbbec-camera.service`、`astra_pro_plus.launch.py`、`luka-ws-vision.service` | 已实现 | 证明的是 Astra Pro Plus RGB-D 链路。 |
-| II-1 | Ubuntu 22.04 + ROS2 环境和工程框架 | `system/environment.bash`、`src/`、`system/services/` | systemd 服务和 `source /home/sunrise/luka_ws/system/environment.bash` | 已实现 | OS 版本属于部署环境，应以 `lsb_release -a` 单独核验。 |
+| II-1 | Ubuntu 22.04 + ROS2 环境和工程框架 | `system/environment.bash`、`src/`、`system/services/` | systemd 服务和 `source /home/sunrise/luka_ws/src/system/environment.bash` | 已实现 | OS 版本属于部署环境，应以 `lsb_release -a` 单独核验。 |
 | II-2 | 底盘、传感器、控制指令专用消息和话题封装 | `src/ai_msgs`、`src/hotel_semantic_map_msgs`、各驱动节点 | `system/bringup`、`system/services`、只读 probe | 已实现 | 只证明仓库中已有消息和话题，不证明合同之外的新协议。 |
 | II-3 | 分层底盘、雷达、IMU、SLAM、导航、回充节点 | `control/ddsm_car_control`、`perception`、`nx_*` launch、`ddsm_*` launch | `nx_sensors.launch.py`、`nx_localization.launch.py`、`nx_navigation.launch.py`、`ddsm_bringup.launch.py` | 部分实现 | 回充层按用户要求不纳入，因此本条不能标为完整实现。 |
 | III-1 | 室内二维激光 SLAM 实时建图 | `config/slam_toolbox_mapping.yaml` | `ddsm_slam.launch.py` | 已实现 | 算法参数仍需现场调优。 |

@@ -11,7 +11,7 @@ Legacy workspace: /home/sunrise/luka_s100 (not modified by this change)
 - ROS_DOMAIN_ID: 87.
 - ROS_LOCALHOST_ONLY: 1.
 - RMW: rmw_cyclonedds_cpp.
-- Python worker environment: /home/sunrise/luka_ws/perception/person_follow/yolo26_venv.
+- Python worker environment: /home/sunrise/luka_ws/src/perception/luka_face_identity/yolo26_venv.
 - OSNet body appearance ReID: disabled by service override NX_APPEARANCE_REID_ENABLED=0.
 - CPU face recognition: disabled by NX_FACE_ENABLED=0.
 
@@ -30,7 +30,7 @@ Legacy workspace: /home/sunrise/luka_s100 (not modified by this change)
 ## Detection and segmentation
 
 - Model source: /home/sunrise/yolo26m-objv1-seg.pt.
-- BPU model: /home/sunrise/luka_ws/perception/person_follow/models/bpu_yolo26/yolo26m_objv1_seg_bpu_nashe_640x640_nv12.hbm.
+- BPU model: /home/sunrise/luka_data/ml_models/person_follow/bpu_yolo26/yolo26m_objv1_seg_bpu_nashe_640x640_nv12.hbm.
 - Detector: yolo26_seg, BPU runtime.
 - Person filter: class_id 0; public detector output is person-only.
 - Segmentation mask reconstruction and depth statistics remain CPU post-processing; the neural network inference remains on BPU.

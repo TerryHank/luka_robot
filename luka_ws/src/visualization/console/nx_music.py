@@ -28,7 +28,7 @@ class SafeRedirect(urllib.request.HTTPRedirectHandler):
 class Music:
  def __init__(self):
   self.lock=threading.RLock();self.proc=None;self.title='';self.error='';self.volume=load_volume();self.paused=False
-  self.root=Path('/home/sunrise/luka_ws/system/music');self.root.mkdir(exist_ok=True);self.ipc=str(self.root/'player.sock')
+  self.root=Path('/home/sunrise/luka_data/runtime/music');self.root.mkdir(exist_ok=True,parents=True);self.ipc=str(self.root/'player.sock')
  def search(self,query):
   from nx_alapi_music import search
   return search(query)
@@ -49,12 +49,20 @@ class Music:
    try:self.proc.wait(timeout=3)
    except subprocess.TimeoutExpired:os.killpg(self.proc.pid,signal.SIGKILL);self.proc.wait()
   self.proc=None;self.paused=False
- def action(self,kind,args):
+ def mark_control(self,kind):
+  file=self.root/'focus_epoch.json'
+  try:state=json.loads(file.read_text())
+  except (OSError,ValueError):state={'transport':0,'volume':0}
+  field='volume' if kind=='volume' else 'transport'
+  state[field]=int(state.get(field,0))+1
+  temp=file.with_suffix('.tmp');temp.write_text(json.dumps(state));temp.replace(file)
+ def action(self,kind,args,cancel=None):
   with self.lock:
    try:
     if kind=='status' and self.proc and self.proc.poll() is None:self.paused=bool(self.command('get_property','pause'))
     if kind=='status':return ('已暂停：' if self.paused else '正在播放：')+self.title if self.proc and self.proc.poll() is None else '音乐未在播放。'+self.error
     if kind in ('search','play'):
+     if cancel is not None and cancel.is_set():raise InterruptedError('music_cancelled')
      rows=self.search(args.get('query'))
      if kind=='search':return '找到：'+'；'.join(r['title']+' '+r['artist'] for r in rows[:5])
      from nx_alapi_music import resolve
@@ -64,12 +72,14 @@ class Music:
      with opener.open(track['url'],timeout=5) as r,p.open('wb') as f:
       if 'html' in r.headers.get('Content-Type','').lower():raise ValueError('歌曲地址返回网页，无法播放')
       while True:
+       if cancel is not None and cancel.is_set():raise InterruptedError('music_cancelled')
        chunk=r.read(65536)
        if not chunk:break
        if time.monotonic()>deadline:raise ValueError('歌曲下载超时')
        total+=len(chunk)
        if total>30_000_000:raise ValueError('歌曲文件过大，取消播放')
        f.write(chunk)
+     if cancel is not None and cancel.is_set():raise InterruptedError('music_cancelled')
      self.stop();audio=self.root/'current.audio';p.replace(audio);audio.chmod(0o644)
      try:Path(self.ipc).unlink()
      except FileNotFoundError:pass
@@ -78,6 +88,7 @@ class Music:
      log=(self.root/'player.log').open('w');self.proc=subprocess.Popen(cmd,stdout=log,stderr=log,start_new_session=True);log.close()
      end=time.monotonic()+5
      while time.monotonic()<end:
+      if cancel is not None and cancel.is_set():self.stop();raise InterruptedError('music_cancelled')
       if self.proc.poll() is not None:raise ValueError('播放器启动失败，请查看音乐状态')
       try:
        if self.command('get_property','time-pos') is not None:break
@@ -87,16 +98,16 @@ class Music:
      duration=self.command('get_property','duration')
      expected=track.get('duration_ms',0)
      preview=isinstance(expected,(int,float)) and expected>0 and isinstance(duration,(int,float)) and duration*1000<expected*.8
-     self.title=('试听片段：' if preview else '')+track['title']+('，'+track['artist'] if track['artist'] else '');self.paused=False;self.error='';return '正在播放'+self.title+'。'
-    if kind=='stop':self.stop();return '音乐已停止。'
+     self.title=('试听片段：' if preview else '')+track['title']+('，'+track['artist'] if track['artist'] else '');self.paused=False;self.error='';self.mark_control(kind);return '正在播放'+self.title+'。'
+    if kind=='stop':self.stop();self.mark_control(kind);return '音乐已停止。'
     if kind in ('pause','resume'):
-     self.command('set_property','pause',kind=='pause');self.paused=kind=='pause';return '音乐已暂停。' if self.paused else '音乐已继续。'
+     self.command('set_property','pause',kind=='pause');self.paused=kind=='pause';self.mark_control(kind);return '音乐已暂停。' if self.paused else '音乐已继续。'
     if kind=='volume':
      v=args.get('volume')
      if type(v) is not int or not 0<=v<=100:raise ValueError('音量须为0到100')
      if self.proc and self.proc.poll() is None:self.command('set_property','volume',v)
      save_volume(v)
-     self.volume=v;return '音乐音量已设为'+str(v)+'。'
+     self.volume=v;self.mark_control(kind);return '音乐音量已设为'+str(v)+'。'
     raise ValueError('不支持的音乐操作')
    except Exception as exc:
     self.error=str(exc);raise

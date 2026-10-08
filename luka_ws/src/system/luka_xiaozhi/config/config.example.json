@@ -1,0 +1,12 @@
+{
+  "dialogue_mode": "auto",
+  "aiui_config": "/home/sunrise/.config/luka_audio/aiui.cfg",
+  "aiui_bin": "/home/sunrise/luka_ws/install/luka_audio/lib/luka_audio/luka_aiui",
+  "aiui_cloud_endpoint": "wss://aiui.xf-yun.com/v3/aiint/sos",
+  "local_llm": {
+    "url": "http://127.0.0.1:8092/v1/chat/completions",
+    "model": "qwen2.5-1.5b-instruct-bpu",
+    "max_tokens": 64,
+    "timeout": 60
+  }
+}

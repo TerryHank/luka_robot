@@ -30,8 +30,8 @@ def main() -> int:
     args = parser.parse_args()
 
     workspace = args.workspace.resolve()
-    detections_path = workspace / "common/config/semantic_auto/floor_1/detections.yaml"
-    pois_path = workspace / "common/config/semantic/floor_1/pois.yaml"
+    detections_path = workspace / "src/common/config/semantic_auto/floor_1/detections.yaml"
+    pois_path = workspace / "src/common/config/semantic/floor_1/pois.yaml"
     stamp = time.strftime("%Y%m%d_%H%M%S")
 
     detections = yaml.safe_load(detections_path.read_text(encoding="utf-8")) or {}

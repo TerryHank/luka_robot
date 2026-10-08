@@ -5,8 +5,8 @@ from pathlib import Path
 import numpy as np
 from concurrent.futures import Future
 
-ROOT=Path('/home/sunrise/luka_ws/system/product/voiceprints')
-MODEL='/home/sunrise/luka_ws/common/models/voice/speaker/model.onnx'
+ROOT=Path('/home/sunrise/luka_data/recordings/voiceprints')
+MODEL='/home/sunrise/luka_data/ml_models/common/voice/speaker/model.onnx'
 THRESHOLD=.65
 MARGIN=.10
 

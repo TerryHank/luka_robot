@@ -1,0 +1,125 @@
+{
+  "configById": {
+    "Plot!luka0": {
+      "foxglovePanelTitle": "线加速度 / m/s²",
+      "paths": [
+        {
+          "value": "/imu/data.linear_acceleration.x",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "x",
+          "color": "#38bdf8"
+        },
+        {
+          "value": "/imu/data.linear_acceleration.y",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "y",
+          "color": "#fb923c"
+        },
+        {
+          "value": "/imu/data.linear_acceleration.z",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "z",
+          "color": "#4ade80"
+        }
+      ],
+      "showLegend": true,
+      "legendDisplay": "top",
+      "showPlotValuesInLegend": true,
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "followingViewWidth": 30,
+      "sidebarDimension": 180
+    },
+    "Plot!luka1": {
+      "foxglovePanelTitle": "角速度 / rad/s",
+      "paths": [
+        {
+          "value": "/imu/data.angular_velocity.x",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "x",
+          "color": "#38bdf8"
+        },
+        {
+          "value": "/imu/data.angular_velocity.y",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "y",
+          "color": "#fb923c"
+        },
+        {
+          "value": "/imu/data.angular_velocity.z",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "z",
+          "color": "#4ade80"
+        }
+      ],
+      "showLegend": true,
+      "legendDisplay": "top",
+      "showPlotValuesInLegend": true,
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "followingViewWidth": 30,
+      "sidebarDimension": 180
+    },
+    "RawMessages!luka2": {
+      "foxglovePanelTitle": "六轴IMU与时间戳",
+      "topicPath": "/imu/data",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "RawMessages!luka3": {
+      "foxglovePanelTitle": "可选EKF（with_ekf:=true）",
+      "topicPath": "/contract_demo/odometry/filtered",
+      "expansion": "all",
+      "diffEnabled": false,
+      "diffMethod": "previous message",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "fontSize": 14
+    },
+    "LukaConsole!imu_axes": {
+      "caseNumber": "03",
+      "section": "navigation"
+    }
+  },
+  "layout": {
+    "direction": "row",
+    "first": {
+      "direction": "row",
+      "first": {
+        "direction": "column",
+        "first": "Plot!luka0",
+        "second": "Plot!luka1",
+        "splitPercentage": 55
+      },
+      "second": {
+        "direction": "column",
+        "first": "RawMessages!luka2",
+        "second": "RawMessages!luka3",
+        "splitPercentage": 55
+      },
+      "splitPercentage": 55
+    },
+    "second": "LukaConsole!imu_axes",
+    "splitPercentage": 52
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "version": 1
+}

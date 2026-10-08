@@ -44,12 +44,12 @@
         <h3>人体跟随</h3>
         <p id="nxFollowStatus" role="status">正在检查目标、双目测距和雷达…</p>
         <label for="nxFollowMode">选择目标</label>
-        <select id="nxFollowMode"><option value="profile">已登记人员（丢锁后尝试找回）</option><option value="track">当前画面人体（换号即停车）</option></select>
-        <p id="nxFollowModeHint" class="np-muted">已登记人员须先通过人脸核对；遮挡后停车，重新认出同一人才能恢复。</p>
+        <select id="nxFollowMode"><option value="official">官方 MOT 动态选人</option></select>
+        <p id="nxFollowModeHint" class="np-muted">人脸识别独立保留；官方MOT不保证指定身份跟随，默认只观察候选目标。</p>
         <select id="nxFollowProfile" aria-label="选择已登记人员"><option value="">请选择人员</option></select>
         <p id="nxFollowSelected" class="np-muted" hidden>先点击画面中的人体框</p>
         <div class="np-actions">
-          <button id="nxFollowStart" class="np-primary" type="button" disabled>锁定并开始跟随</button>
+          <button id="nxFollowStart" class="np-primary" type="button" disabled>启用官方跟随</button>
           <button id="nxFollowStop" class="np-danger" type="button">停车并结束跟随</button>
         </div>
         <p class="np-muted">约保持 1.45 米；开阔区域前进最高 0.4 米/秒，靠近人或障碍会减速。人靠近时仅在后方雷达确认通畅后低速退让。目标到画面边缘时先原地转向找回双目距离。已登记人员丢框后停车等待人脸重新核对；未登记目标换号即停车。雷达障碍或画面过期时立即停车；网页“停车”始终可用。</p>

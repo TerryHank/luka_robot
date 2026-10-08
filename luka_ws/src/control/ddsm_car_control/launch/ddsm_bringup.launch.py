@@ -589,7 +589,7 @@ def generate_launch_description():
         default_value=EnvironmentVariable(
             "SEMANTIC_OUTPUT_FILE",
             default_value=(
-                "/home/sunrise/luka_ws/common/config/semantic_auto/"
+                "/home/sunrise/luka_ws/src/common/config/semantic_auto/"
                 "floor_1/detections.yaml"
             ),
         ),
@@ -662,12 +662,12 @@ def generate_launch_description():
     )
     map_arg = DeclareLaunchArgument(
         "map",
-        default_value="/home/sunrise/luka_ws/map/maps/ddsm_map.yaml",
+        default_value="/home/sunrise/luka_data/maps/ddsm_map.yaml",
         description="Full path to the saved map YAML file for Nav2",
     )
     home_pose_file_arg = DeclareLaunchArgument(
         "home_pose_file",
-        default_value="/home/sunrise/luka_ws/common/config/home_pose.yaml",
+        default_value="/home/sunrise/luka_ws/src/common/config/home_pose.yaml",
         description="Writable Home pose YAML file used by ddsm_home_manager",
     )
     home_map_file_arg = DeclareLaunchArgument(
@@ -677,7 +677,7 @@ def generate_launch_description():
     )
     auto_localizer_last_pose_file_arg = DeclareLaunchArgument(
         "auto_localizer_last_pose_file",
-        default_value="/home/sunrise/luka_ws/common/config/last_amcl_pose.yaml",
+        default_value="/home/sunrise/luka_ws/src/common/config/last_amcl_pose.yaml",
         description="Writable AMCL last pose YAML file used by auto_nav mode",
     )
     auto_localizer_enable_rotation_arg = DeclareLaunchArgument(
@@ -742,12 +742,12 @@ def generate_launch_description():
     )
     patrol_route_file_arg = DeclareLaunchArgument(
         "patrol_route_file",
-        default_value="/home/sunrise/luka_ws/common/config/patrol_route.yaml",
+        default_value="/home/sunrise/luka_ws/src/common/config/patrol_route.yaml",
         description="Writable patrol route YAML used by ddsm_patrol_manager",
     )
     mission_state_file_arg = DeclareLaunchArgument(
         "mission_state_file",
-        default_value="/home/sunrise/luka_ws/common/config/mission_state.yaml",
+        default_value="/home/sunrise/luka_ws/src/common/config/mission_state.yaml",
         description="Persistent mission control recovery-state YAML",
     )
     mission_zero_velocity_seconds_arg = DeclareLaunchArgument(
@@ -762,12 +762,12 @@ def generate_launch_description():
     )
     multifloor_building_config_file_arg = DeclareLaunchArgument(
         "multifloor_building_config_file",
-        default_value="/home/sunrise/luka_ws/common/config/multifloor_building.yaml",
+        default_value="/home/sunrise/luka_ws/src/common/config/multifloor_building.yaml",
         description="YAML file describing floors, maps, elevators, and destinations",
     )
     multifloor_state_file_arg = DeclareLaunchArgument(
         "multifloor_state_file",
-        default_value="/home/sunrise/luka_ws/common/config/floor_mission_state.yaml",
+        default_value="/home/sunrise/luka_ws/src/common/config/floor_mission_state.yaml",
         description="Persistent semi-automatic multi-floor mission state YAML",
     )
     semantic_map_manifest_arg = DeclareLaunchArgument(
@@ -789,7 +789,7 @@ def generate_launch_description():
     )
     waterplus_waypoints_file_arg = DeclareLaunchArgument(
         "waterplus_waypoints_file",
-        default_value="/home/sunrise/luka_ws/common/config/waypoints.xml",
+        default_value="/home/sunrise/luka_ws/src/common/config/waypoints.xml",
         description="Writable WaterPlus XML waypoint file used by Foxglove waypoint bridge",
     )
     waterplus_default_waypoint_type_arg = DeclareLaunchArgument(
@@ -1359,14 +1359,14 @@ def generate_launch_description():
                 "floor_id": LaunchConfiguration("semantic_floor_id"),
                 "output_file": LaunchConfiguration("semantic_output_file"),
                 "enable_door_model": False,
-                "door_model": "/home/sunrise/luka_ws/common/models/semantic/doorway_seg_yolo26n.onnx",
-                "furniture_model": "/home/sunrise/luka_ws/common/models/semantic/yolo11n_rk3588_fp16.rknn",
-                "furniture_fallback_model": "/home/sunrise/luka_ws/common/models/semantic/yolo11n.onnx",
-                "rknn_runtime_library": "/home/sunrise/luka_ws/common/vendor/rknn-downloads/librknnrt.so",
+                "door_model": "/home/sunrise/luka_data/ml_models/common/semantic/doorway_seg_yolo26n.onnx",
+                "furniture_model": "/home/sunrise/luka_data/ml_models/common/semantic/yolo11n_rk3588_fp16.rknn",
+                "furniture_fallback_model": "/home/sunrise/luka_data/ml_models/common/semantic/yolo11n.onnx",
+                "rknn_runtime_library": "/home/sunrise/luka_ws/src/common/vendor/rknn-downloads/librknnrt.so",
                 "rknn_input_size": 320,
-                "furniture_cfg": "/home/sunrise/luka_ws/common/models/semantic/yolov4-tiny.cfg",
-                "furniture_weights": "/home/sunrise/luka_ws/common/models/semantic/yolov4-tiny.weights",
-                "coco_names": "/home/sunrise/luka_ws/common/models/semantic/coco.names",
+                "furniture_cfg": "/home/sunrise/luka_data/ml_models/common/semantic/yolov4-tiny.cfg",
+                "furniture_weights": "/home/sunrise/luka_data/ml_models/common/semantic/yolov4-tiny.weights",
+                "coco_names": "/home/sunrise/luka_data/ml_models/common/semantic/coco.names",
                 "inference_rate": 0.2,
                 "preview_rate": 0.5,
                 "publish_annotated_image": True,
@@ -2455,7 +2455,7 @@ def generate_launch_description():
                 "single_floor_goal_topic": "/hotel/goal_destination",
                 "mission_cancel_service": "/hotel/mission/cancel_now",
                 "initial_pose_topic": "/initialpose",
-                "restart_script": "/home/sunrise/luka_ws/system/bringup/restart_nav_reset.sh",
+                "restart_script": "/home/sunrise/luka_ws/src/system/bringup/restart_nav_reset.sh",
                 "restart_mode": "auto_nav",
                 "restart_foxglove": "0",
                 "current_floor_id": LaunchConfiguration("multifloor_current_floor_id"),
@@ -2508,8 +2508,8 @@ def generate_launch_description():
                 "building_config_file": LaunchConfiguration(
                     "multifloor_building_config_file"
                 ),
-                "transfer_state_file": "/home/sunrise/luka_ws/common/config/llm_floor_transfer_state.yaml",
-                "restart_script": "/home/sunrise/luka_ws/system/bringup/restart_nav_reset.sh",
+                "transfer_state_file": "/home/sunrise/luka_ws/src/common/config/llm_floor_transfer_state.yaml",
+                "restart_script": "/home/sunrise/luka_ws/src/system/bringup/restart_nav_reset.sh",
                 "current_floor_id": LaunchConfiguration(
                     "multifloor_current_floor_id"
                 ),

@@ -12,7 +12,7 @@ lateral_escape_guard:
     camera_obstacle_persistence: 0.25
     camera_pixel_step: 8
     camera_processing_frequency: 8.0
-    cmd_vel_in_topic: /luka/motion/autonomy
+    cmd_vel_in_topic: /nx/nav_smoothed
     cmd_vel_out_topic: /nx/nav_guarded
     control_frequency: 15.0
     depth_distance_topic: /depth_camera/nearest_obstacle_distance

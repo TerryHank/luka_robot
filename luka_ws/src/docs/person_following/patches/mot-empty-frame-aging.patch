@@ -1,0 +1,14 @@
+--- a/src/tros_mot_node.cpp
++++ b/src/tros_mot_node.cpp
+@@ -93,6 +93,11 @@
+       type_to_indices[target.type].push_back(i);
+     }
+ 
++    // Existing trackers must age even when their type has no detections.
++    for (const auto & tracked : mot_map_) {
++      type_to_indices.try_emplace(tracked.first);
++    }
++
+     auto pub_msg = std::make_shared<ai_msgs::msg::PerceptionTargets>();
+     pub_msg->header = msg->header;
+     pub_msg->fps = msg->fps;

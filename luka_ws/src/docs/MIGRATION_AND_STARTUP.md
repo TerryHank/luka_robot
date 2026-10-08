@@ -42,14 +42,14 @@
 现在建议先用静态模式：
 
 ```bash
-/home/sunrise/luka_ws/system/luka.sh start ws stationary
+/home/sunrise/luka_ws/src/system/luka.sh start ws stationary
 # 停止本次启动的所有新工作区服务
-/home/sunrise/luka_ws/system/luka.sh stop ws
+/home/sunrise/luka_ws/src/system/luka.sh stop ws
 ```
 
 该模式启动页面、聊天、agent、物体 API、相机、人员识别和 YOLOE，不自动启动底盘、导航或定位。页面原有“一键启动”等硬件操作仍存在，不属于这个命令的静态约束。
 
-验收证据在目标板 `/home/sunrise/luka_ws/evaluator/stationary_audit_20261003`；最新原文件校验位于备份的 `original-after-stationary-audit.json`：8183 个源文件变化为 0，12 个旧服务定义检查变化为 0。
+验收证据在目标板 `/home/sunrise/luka_ws/src/evaluator/stationary_audit_20261003`；最新原文件校验位于备份的 `original-after-stationary-audit.json`：8183 个源文件变化为 0，12 个旧服务定义检查变化为 0。
 
 ## 功能包对比
 
@@ -96,7 +96,7 @@
 `.bashrc` 已加入：
 
 ```bash
-source /home/sunrise/luka_ws/system/environment.bash
+source /home/sunrise/luka_ws/src/system/environment.bash
 ```
 
 该文件加载 `/opt/ros/humble/setup.bash` 和 `/home/sunrise/luka_ws/install/local_setup.bash`，设置 DDSM_WS、ROS_DOMAIN_ID=87、ROS_LOCALHOST_ONLY=1 和 CycloneDDS。它只加载环境，不启动服务。目录本身不能作为 Bash source 文件。
@@ -110,24 +110,24 @@ source /home/sunrise/luka_ws/system/environment.bash
 ```bash
 source ~/.bashrc
 # 只启动页面、聊天、指令代理和 BPU API
-/home/sunrise/luka_ws/system/luka.sh start ws software
+/home/sunrise/luka_ws/src/system/luka.sh start ws software
 # 或启动完整硬件功能
-/home/sunrise/luka_ws/system/luka.sh start ws full
+/home/sunrise/luka_ws/src/system/luka.sh start ws full
 # 查看状态
-/home/sunrise/luka_ws/system/luka.sh status ws
+/home/sunrise/luka_ws/src/system/luka.sh status ws
 # 停止
-/home/sunrise/luka_ws/system/luka.sh stop ws
+/home/sunrise/luka_ws/src/system/luka.sh stop ws
 ```
 
 ## 启动原工作区
 
 ```bash
-/home/sunrise/luka_ws/system/luka.sh stop ws
-/home/sunrise/luka_ws/system/luka.sh start s100 software
+/home/sunrise/luka_ws/src/system/luka.sh stop ws
+/home/sunrise/luka_ws/src/system/luka.sh start s100 software
 # 或启动原完整功能
-/home/sunrise/luka_ws/system/luka.sh start s100 full
-/home/sunrise/luka_ws/system/luka.sh status s100
-/home/sunrise/luka_ws/system/luka.sh stop s100
+/home/sunrise/luka_ws/src/system/luka.sh start s100 full
+/home/sunrise/luka_ws/src/system/luka.sh status s100
+/home/sunrise/luka_ws/src/system/luka.sh stop s100
 ```
 
 启动脚本会拒绝在另一套服务 active/activating 时启动，必须先停止另一套。旧工作区通过原 systemd 服务及原安装环境启动，不改变 Bash 默认加载的新工作区环境。
@@ -158,4 +158,4 @@ journalctl -u luka-ws-vision -u luka-ws-people -n 80 --no-pager
 
 旧系统可用上述 s100 命令手动启动。若以后要恢复旧开机启动，依据备份中 old-service-state.json 的 enabled 条目；本次保持取消开机启动。
 
-远端也已保存完整说明 `/home/sunrise/luka_ws/docs/MIGRATION_AND_STARTUP.md` 和逐项 CSV `/home/sunrise/luka_ws/docs/function-comparison.csv`。文档交付阶段 SSH 出现过间歇性超时，随后远端文档保存已确认成功。
+远端也已保存完整说明 `/home/sunrise/luka_ws/src/docs/MIGRATION_AND_STARTUP.md` 和逐项 CSV `/home/sunrise/luka_ws/src/docs/function-comparison.csv`。文档交付阶段 SSH 出现过间歇性超时，随后远端文档保存已确认成功。

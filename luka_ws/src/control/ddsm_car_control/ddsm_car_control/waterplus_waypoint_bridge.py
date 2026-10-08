@@ -237,8 +237,8 @@ class WaterplusWaypointBridge(Node):
                 "the waterplus_map_tools package first"
             )
 
-        self.declare_parameter("route_file", "/home/sunrise/luka_ws/common/config/patrol_route.yaml")
-        self.declare_parameter("waterplus_file", "/home/sunrise/luka_ws/common/config/waypoints.xml")
+        self.declare_parameter("route_file", "/home/sunrise/luka_ws/src/common/config/patrol_route.yaml")
+        self.declare_parameter("waterplus_file", "/home/sunrise/luka_ws/src/common/config/waypoints.xml")
         self.declare_parameter("map_frame", "map")
         self.declare_parameter("route_id", "waterplus_route")
         self.declare_parameter("default_dwell_sec", 0.0)

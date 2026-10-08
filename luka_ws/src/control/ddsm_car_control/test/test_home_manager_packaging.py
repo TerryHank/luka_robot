@@ -22,7 +22,7 @@ def test_bringup_launch_exposes_home_manager_arguments_and_node():
     assert '"enable_home_manager"' in launch_text
     assert 'default_value="auto"' in launch_text
     assert '"home_pose_file"' in launch_text
-    assert "/home/sunrise/luka_ws/common/config/home_pose.yaml" in launch_text
+    assert "/home/sunrise/luka_ws/src/common/config/home_pose.yaml" in launch_text
     assert '"home_map_file"' in launch_text
     assert "executable=\"ddsm_home_manager\"" in launch_text
     assert (

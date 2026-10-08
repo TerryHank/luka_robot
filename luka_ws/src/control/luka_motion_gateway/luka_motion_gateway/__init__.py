@@ -1,1 +1,0 @@
-"""Luka product architecture package."""

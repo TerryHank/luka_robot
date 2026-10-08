@@ -3,8 +3,8 @@ set -Eeuo pipefail
 
 WS="${WS:-/home/sunrise/luka_ws}"
 NAV_RMW_IMPLEMENTATION="${NAV_RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}"
-NAV_CYCLONEDDS_URI="${NAV_CYCLONEDDS_URI:-file://$WS/common/config/cyclonedds_nav2.xml}"
-TUNING_ENV_FILE="${TUNING_ENV_FILE:-$WS/common/config/runtime_tuning.env}"
+NAV_CYCLONEDDS_URI="${NAV_CYCLONEDDS_URI:-file://$WS/src/common/config/cyclonedds_nav2.xml}"
+TUNING_ENV_FILE="${TUNING_ENV_FILE:-$WS/src/common/config/runtime_tuning.env}"
 USER_FEEDBACK_FREQ="${FEEDBACK_FREQ:-}"
 if [[ -r "$TUNING_ENV_FILE" ]]; then
   set -a
@@ -16,7 +16,7 @@ if [[ -n "$USER_FEEDBACK_FREQ" ]]; then
   FEEDBACK_FREQ="$USER_FEEDBACK_FREQ"
 fi
 MODE="${MODE:-auto_nav}"
-ACTIVE_FLOOR_CONTEXT_FILE="${ACTIVE_FLOOR_CONTEXT_FILE:-$WS/common/config/active_floor_context.json}"
+ACTIVE_FLOOR_CONTEXT_FILE="${ACTIVE_FLOOR_CONTEXT_FILE:-$WS/src/common/config/active_floor_context.json}"
 if [[ -z "${MAP:-}" && -z "${FLOOR_ID:-}" && -r "$ACTIVE_FLOOR_CONTEXT_FILE" ]]; then
   mapfile -t active_floor_values < <(
     python3 -c 'import json,sys; data=json.load(open(sys.argv[1], encoding="utf-8")); print(data.get("floor_id", "")); print(data.get("map_file", ""))' \
@@ -27,7 +27,7 @@ if [[ -z "${MAP:-}" && -z "${FLOOR_ID:-}" && -r "$ACTIVE_FLOOR_CONTEXT_FILE" ]];
     MAP="${active_floor_values[1]}"
   fi
 fi
-MAP="${MAP:-$WS/map/maps/ddsm_map.yaml}"
+MAP="${MAP:-/home/sunrise/luka_data/maps/ddsm_map.yaml}"
 FLOOR_ID="${FLOOR_ID:-}"
 if [[ -z "$FLOOR_ID" ]]; then
   map_base="$(basename "$MAP")"
@@ -52,7 +52,7 @@ LOW_LIDAR_KEEP_MIN_DEG="${LOW_LIDAR_KEEP_MIN_DEG:--180.0}"
 LOW_LIDAR_KEEP_MAX_DEG="${LOW_LIDAR_KEEP_MAX_DEG:-0.0}"
 ENABLE_SEMANTIC_MAPPING="${ENABLE_SEMANTIC_MAPPING:-false}"
 SEMANTIC_FLOOR_ID="${SEMANTIC_FLOOR_ID:-$FLOOR_ID}"
-SEMANTIC_OUTPUT_FILE="${SEMANTIC_OUTPUT_FILE:-$WS/common/config/semantic_auto/$SEMANTIC_FLOOR_ID/detections.yaml}"
+SEMANTIC_OUTPUT_FILE="${SEMANTIC_OUTPUT_FILE:-$WS/src/common/config/semantic_auto/$SEMANTIC_FLOOR_ID/detections.yaml}"
 export ENABLE_DEPTH_CAMERA ENABLE_COLORED_POINT_CLOUD ENABLE_SEMANTIC_MAPPING
 export ENABLE_DUAL_LIDAR ENABLE_DEPTH_OBSTACLE_FUSION
 export LOW_LIDAR_IP LOW_LIDAR_PORT LOW_LIDAR_X LOW_LIDAR_Y LOW_LIDAR_Z
@@ -64,7 +64,7 @@ LASER_YAW="${LASER_YAW:-0.0}"
 ENABLE_SCAN_DESKEW="${ENABLE_SCAN_DESKEW:-true}"
 AMCL_TRANSFORM_TOLERANCE="${AMCL_TRANSFORM_TOLERANCE:-0.2}"
 export ENABLE_SCAN_DESKEW AMCL_TRANSFORM_TOLERANCE
-NAVIGATION_MOTION_MODE_FILE="${NAVIGATION_MOTION_MODE_FILE:-$WS/common/config/navigation_motion_mode.txt}"
+NAVIGATION_MOTION_MODE_FILE="${NAVIGATION_MOTION_MODE_FILE:-$WS/src/common/config/navigation_motion_mode.txt}"
 if [[ -z "${NAVIGATION_MOTION_MODE:-}" && -r "$NAVIGATION_MOTION_MODE_FILE" ]]; then
   NAVIGATION_MOTION_MODE="$(tr -d '[:space:]' < "$NAVIGATION_MOTION_MODE_FILE")"
 fi
@@ -116,7 +116,7 @@ MECANUM_FORWARD_SCALE="${MECANUM_FORWARD_SCALE:-1.00}"
 MECANUM_LATERAL_SCALE="${MECANUM_LATERAL_SCALE:-0.80}"
 MECANUM_LATERAL_DIRECTION="${MECANUM_LATERAL_DIRECTION:-1}"
 MECANUM_ANGULAR_SCALE="${MECANUM_ANGULAR_SCALE:-0.70}"
-AUTO_LOCALIZER_LAST_POSE_FILE="${AUTO_LOCALIZER_LAST_POSE_FILE:-$WS/common/config/last_amcl_pose_${FLOOR_ID}.yaml}"
+AUTO_LOCALIZER_LAST_POSE_FILE="${AUTO_LOCALIZER_LAST_POSE_FILE:-$WS/src/common/config/last_amcl_pose_${FLOOR_ID}.yaml}"
 AUTO_LOCALIZER_ENABLE_ROTATION="${AUTO_LOCALIZER_ENABLE_ROTATION:-true}"
 AUTO_LOCALIZER_MAX_ROTATION_SPEED="${AUTO_LOCALIZER_MAX_ROTATION_SPEED:-0.45}"
 AUTO_LOCALIZER_ROTATION_CLEARANCE="${AUTO_LOCALIZER_ROTATION_CLEARANCE:-0.45}"
@@ -135,9 +135,9 @@ else
   ENABLE_FINAL_APPROACH="${ENABLE_FINAL_APPROACH:-true}"
   ENABLE_PATROL_MANAGER="${ENABLE_PATROL_MANAGER:-true}"
 fi
-PATROL_ROUTE_FILE="${PATROL_ROUTE_FILE:-$WS/common/config/patrol_route_${FLOOR_ID}.yaml}"
+PATROL_ROUTE_FILE="${PATROL_ROUTE_FILE:-$WS/src/common/config/patrol_route_${FLOOR_ID}.yaml}"
 if [[ ! -r "$PATROL_ROUTE_FILE" ]]; then
-  PATROL_ROUTE_FILE="$WS/common/config/patrol_route.yaml"
+  PATROL_ROUTE_FILE="$WS/src/common/config/patrol_route.yaml"
 fi
 PATROL_REQUIRE_LOCALIZATION_READY="${PATROL_REQUIRE_LOCALIZATION_READY:-true}"
 if [[ "$MODE" == "explore" ]]; then
@@ -145,9 +145,9 @@ if [[ "$MODE" == "explore" ]]; then
 else
   ENABLE_WATERPLUS_BRIDGE="${ENABLE_WATERPLUS_BRIDGE:-true}"
 fi
-WATERPLUS_WAYPOINTS_FILE="${WATERPLUS_WAYPOINTS_FILE:-$WS/common/config/waypoints_${FLOOR_ID}.xml}"
+WATERPLUS_WAYPOINTS_FILE="${WATERPLUS_WAYPOINTS_FILE:-$WS/src/common/config/waypoints_${FLOOR_ID}.xml}"
 if [[ ! -r "$WATERPLUS_WAYPOINTS_FILE" ]]; then
-  WATERPLUS_WAYPOINTS_FILE="$WS/common/config/waypoints.xml"
+  WATERPLUS_WAYPOINTS_FILE="$WS/src/common/config/waypoints.xml"
 fi
 WATERPLUS_DEFAULT_WAYPOINT_TYPE="${WATERPLUS_DEFAULT_WAYPOINT_TYPE:-stop}"
 WATERPLUS_DEFAULT_FINAL_APPROACH="${WATERPLUS_DEFAULT_FINAL_APPROACH:-false}"
@@ -176,19 +176,19 @@ if [[ "$MODE" == "explore" ]]; then
   MAP_PUBLISH_FREQUENCY="${EXPLORE_MAP_PUBLISH_FREQUENCY:-3.0}"
   SLAM_MAP_UPDATE_INTERVAL="${EXPLORE_SLAM_MAP_UPDATE_INTERVAL:-0.25}"
 fi
-SEMANTIC_MAP_MANIFEST="${SEMANTIC_MAP_MANIFEST:-$WS/common/config/semantic/${FLOOR_ID}/map_manifest.yaml}"
+SEMANTIC_MAP_MANIFEST="${SEMANTIC_MAP_MANIFEST:-$WS/src/common/config/semantic/${FLOOR_ID}/map_manifest.yaml}"
 if [[ ! -r "$SEMANTIC_MAP_MANIFEST" ]]; then
   SEMANTIC_MAP_MANIFEST="$WS/install/hotel_semantic_map/share/hotel_semantic_map/config/map_manifest.yaml"
 fi
-MISSION_STATE_FILE="${MISSION_STATE_FILE:-$WS/common/config/mission_state_${FLOOR_ID}.yaml}"
+MISSION_STATE_FILE="${MISSION_STATE_FILE:-$WS/src/common/config/mission_state_${FLOOR_ID}.yaml}"
 MISSION_ZERO_VELOCITY_SECONDS="${MISSION_ZERO_VELOCITY_SECONDS:-1.0}"
 MISSION_ZERO_VELOCITY_HZ="${MISSION_ZERO_VELOCITY_HZ:-30.0}"
 ENABLE_MULTIFLOOR_MANAGER="${ENABLE_MULTIFLOOR_MANAGER:-false}"
 ENABLE_ELEVATOR_ADAPTER="${ENABLE_ELEVATOR_ADAPTER:-true}"
 ENABLE_ELEVATOR_ENTRY_CONTROLLER="${ENABLE_ELEVATOR_ENTRY_CONTROLLER:-true}"
 ELEVATOR_ENTRY_PARAMS_FILE="${ELEVATOR_ENTRY_PARAMS_FILE:-$WS/install/ddsm_car_control/share/ddsm_car_control/config/elevator_entry_v1.yaml}"
-MULTIFLOOR_BUILDING_CONFIG_FILE="${MULTIFLOOR_BUILDING_CONFIG_FILE:-$WS/common/config/multifloor_building.yaml}"
-MULTIFLOOR_STATE_FILE="${MULTIFLOOR_STATE_FILE:-$WS/common/config/floor_mission_state.yaml}"
+MULTIFLOOR_BUILDING_CONFIG_FILE="${MULTIFLOOR_BUILDING_CONFIG_FILE:-$WS/src/common/config/multifloor_building.yaml}"
+MULTIFLOOR_STATE_FILE="${MULTIFLOOR_STATE_FILE:-$WS/src/common/config/floor_mission_state.yaml}"
 MULTIFLOOR_CURRENT_FLOOR_ID="${MULTIFLOOR_CURRENT_FLOOR_ID:-$FLOOR_ID}"
 LIFECYCLE_BOND_TIMEOUT="${LIFECYCLE_BOND_TIMEOUT:-180.0}"
 LIFECYCLE_STARTUP_TIMEOUT="${LIFECYCLE_STARTUP_TIMEOUT:-240}"
@@ -199,7 +199,7 @@ LIDAR_RETRY_DELAY="${LIDAR_RETRY_DELAY:-3}"
 LIDAR_PREFLIGHT_TIMEOUT="${LIDAR_PREFLIGHT_TIMEOUT:-18}"
 KEEP_STACK_ON_LIDAR_FAILURE="${KEEP_STACK_ON_LIDAR_FAILURE:-false}"
 START_LIDAR_DRIVER="${START_LIDAR_DRIVER:-false}"
-PERSISTENT_LIDAR_SCRIPT="${PERSISTENT_LIDAR_SCRIPT:-$WS/system/bringup/start_persistent_lidar.sh}"
+PERSISTENT_LIDAR_SCRIPT="${PERSISTENT_LIDAR_SCRIPT:-$WS/src/system/bringup/start_persistent_lidar.sh}"
 export START_LIDAR_DRIVER
 NAV_START_DELAY="${NAV_START_DELAY:-45.0}"
 NAV_NODE_BATCH_DELAY="${NAV_NODE_BATCH_DELAY:-12.0}"

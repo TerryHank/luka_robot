@@ -44,10 +44,14 @@ ament_target_dependencies(${PROJECT_NAME}_component
   "builtin_interfaces"
 )
 
-rclcpp_components_register_node(${PROJECT_NAME}_component
-  PLUGIN "tros_person_following::PersonFollowingNode"
-  EXECUTABLE ${PROJECT_NAME}
+rclcpp_components_register_nodes(${PROJECT_NAME}_component
+  "tros_person_following::PersonFollowingNode"
 )
+
+add_executable(${PROJECT_NAME} src/main.cpp)
+target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}_component)
+ament_target_dependencies(${PROJECT_NAME} rclcpp rclcpp_action nav2_msgs nav2_util
+  geometry_msgs nav_msgs tf2_ros angles ai_msgs std_srvs std_msgs builtin_interfaces)
 
 install(TARGETS ${PROJECT_NAME}_component
   DESTINATION lib/)

@@ -1,7 +1,7 @@
 """Volatile, bounded speaker-scoped chat histories; no identity carry-over."""
 import re,time,sqlite3
 from pathlib import Path
-DB=Path('/home/sunrise/luka_ws/system/product/voiceprints/profiles.sqlite3')
+DB=Path('/home/sunrise/luka_data/recordings/voiceprints/profiles.sqlite3')
 def enrolled():
  try:
   with sqlite3.connect('file:'+str(DB)+'?mode=ro',uri=True,timeout=1) as c:

@@ -11,8 +11,8 @@ WorkingDirectory=/home/sunrise/luka_ws
 Environment=ROS_DOMAIN_ID=87
 Environment=ROS_LOCALHOST_ONLY=1
 Environment=RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-Environment=CYCLONEDDS_URI=file:///home/sunrise/luka_ws/common/config/cyclonedds_offline.xml
-ExecStart=/bin/bash -c 'source /opt/ros/humble/setup.bash && source /home/sunrise/luka_ws/install/setup.bash && exec /usr/bin/python3 /home/sunrise/luka_ws/system/runtime/tools/nav_chain_recorder.py'
+Environment=CYCLONEDDS_URI=file:///home/sunrise/luka_ws/src/common/config/cyclonedds_offline.xml
+ExecStart=/bin/bash -c 'source /opt/ros/humble/setup.bash && source /home/sunrise/luka_ws/install/setup.bash && exec /usr/bin/python3 /home/sunrise/luka_ws/src/system/runtime/tools/nav_chain_recorder.py'
 Restart=on-failure
 RestartSec=5
 

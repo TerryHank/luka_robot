@@ -69,8 +69,8 @@
 ## 只读验证入口
 
 ```bash
-source /home/sunrise/luka_ws/system/environment.bash
-bash /home/sunrise/luka_ws/examples/contract_readonly_probe.sh
+source /home/sunrise/luka_ws/src/system/environment.bash
+bash /home/sunrise/luka_ws/src/examples/contract_readonly_probe.sh
 ```
 
 该脚本只读取话题、服务和状态，不启用导航、不启用人体跟随、不发布速度指令。

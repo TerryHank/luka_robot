@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.8)
+project(luka_live_detection)
+find_package(ament_cmake REQUIRED)
+file(GLOB runtime_files "${CMAKE_CURRENT_SOURCE_DIR}/*.py" "${CMAKE_CURRENT_SOURCE_DIR}/*.html" "${CMAKE_CURRENT_SOURCE_DIR}/*.json")
+install(FILES ${runtime_files} DESTINATION share/${PROJECT_NAME}/runtime)
+ament_package()

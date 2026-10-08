@@ -80,7 +80,7 @@
 ## 可直接执行的无移动证明命令
 
 ```bash
-source /home/sunrise/luka_ws/system/environment.bash
+source /home/sunrise/luka_ws/src/system/environment.bash
 
 ros2 topic echo /scan --once
 ros2 topic echo /scan_low_filtered --once

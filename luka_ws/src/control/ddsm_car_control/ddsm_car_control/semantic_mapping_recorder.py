@@ -250,15 +250,15 @@ class SemanticMappingRecorder(Node):
         self.declare_parameter("door_model", "")
         self.declare_parameter(
             "furniture_model",
-            "/home/sunrise/luka_ws/common/models/semantic/yolo11n.onnx",
+            "/home/sunrise/luka_data/ml_models/common/semantic/yolo11n.onnx",
         )
         self.declare_parameter(
             "furniture_fallback_model",
-            "/home/sunrise/luka_ws/common/models/semantic/yolo11n.onnx",
+            "/home/sunrise/luka_data/ml_models/common/semantic/yolo11n.onnx",
         )
         self.declare_parameter(
             "rknn_runtime_library",
-            "/home/sunrise/luka_ws/common/vendor/rknn-downloads/librknnrt.so",
+            "/home/sunrise/luka_ws/src/common/vendor/rknn-downloads/librknnrt.so",
         )
         self.declare_parameter("rknn_input_size", 320)
         self.declare_parameter("furniture_cfg", "")

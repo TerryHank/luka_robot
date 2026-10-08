@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "follow_sha": "202e8c8a04dc41e3d3771daa131b852cc24f7c0d",
+  "mot_reference_sha": "0120205146d88c3474bfc2936522e349e169fa8d",
+  "dnn_reference_sha": "a5d6c3312315599b03d09ce5f00a8a9761702f12",
+  "vims_archive_url": "https://archive.d-robotics.cc/TogetheROS/files/vision_mobile_solution/install-vims-v0.0.6.tar.gz",
+  "vims_archive_sha256": "f2b2ccc554d77de7ec9b2df1e7f336068175acd7442bb859ba2b6e519d294d34",
+  "sha256": {
+    "fusion_plugin": "4acbfa20c99306324ff85a180c00e08ddc5ecc643f73f26fef0e0d50507a8899",
+    "runtime_stats": "19fa311ca23369328185b448b029f49f401f87de083eb6ebb9729b8e07a92593",
+    "tros-humble-dnn-node_2.6.1-jammy.20260506.085853_arm64.deb": "70b6b715ffc7b6c402ccc2f2de11602a03deb3aaa7d5f9e41cfd89baa5b7fa12",
+    "tros-humble-dnn-node-example_2.6.1-jammy.20260506.100419_arm64.deb": "1624c32c7e7962baeccbf367504ded69322d41d75bb0a939ed42bd7f78ab1c33",
+    "tros-humble-hbm-img-msgs_2.0.0-jammy.20250812.102904_arm64.deb": "e1db12c2b85969319c01e6a094734b6c018a68fb2ba06102bb08a5ca9d2ceefc",
+    "tros-humble-hobot-cv_2.3.7-jammy.20260506.092400_arm64.deb": "ba10a7be77854fa53d4ddb42fdfd0e2509d830c45409de568f126eec8fde390d",
+    "/opt/hobot/model/s100/basic/yolov8n_seg_640x640_nv12.hbm": "acd56bcec2a07079427b2bcb26088fbd2739cb4ba95ceae2c348f0258793a115"
+  },
+  "pytest_counts": {
+    "adapters_ros.xunit.xml": 1,
+    "core_ros.xunit.xml": 22,
+    "fusion_ros.xunit.xml": 1,
+    "mot_ros.xunit.xml": 1
+  },
+  "physical_motion_test": false,
+  "status": "PASS_STATIC_PASS_SIM_PENDING_PERSON_AND_GROUND_VALIDATION"
+}

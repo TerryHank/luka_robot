@@ -1,0 +1,17 @@
+[Unit]
+Description=Luka person-follow Foxglove controls and visualization (no auto motion)
+After=network-online.target
+
+[Service]
+Type=simple
+User=sunrise
+Group=sunrise
+WorkingDirectory=/home/sunrise/luka_ws
+ExecStart=/bin/bash /home/sunrise/luka_ws/src/system/scripts/start_person_follow_gui.sh
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

@@ -9,9 +9,9 @@ UnsetEnvironment=NX_STEREO_CALIBRATION_JSON
 Type=simple
 User=sunrise
 Group=sunrise
-WorkingDirectory=/home/sunrise/luka_ws/perception/locateanything_trial_20260907
+WorkingDirectory=/home/sunrise/luka_ws/src/perception/luka_visual_runtime
 Environment=NX_CAMERA_SOURCE=orbbec_ros
-ExecStart=/bin/bash /home/sunrise/luka_ws/system/scripts/start_orbbec_vision.sh
+ExecStart=/bin/bash /home/sunrise/luka_ws/src/system/scripts/start_orbbec_vision.sh
 Restart=on-failure
 RestartSec=10
 
