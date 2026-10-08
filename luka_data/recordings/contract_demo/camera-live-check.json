@@ -1,0 +1,21 @@
+{
+  "item": "05",
+  "purpose": "RGB-D startup and header reception only",
+  "motion_sent": false,
+  "start_exit": 0,
+  "start_output": "启动 luka-ws-orbbec-camera.service\n05 I-5 RGBD深度相机 IMPLEMENTED\n对应范围： Astra Pro Plus驱动和RGB-D预处理存在；实时帧率和深度质量需要现场验证。\nluka-ws-foxglove-bridge.service active\nluka-ws-orbbec-camera.service active\n/camera/color/image_raw 尚无数据/话题\n/camera/depth/image_raw 尚无数据/话题\nFoxglove：ws://192.168.3.150:8765；查看上方话题。\n启动成功只证明节点已运行；实时数据和合同完整闭环仍须按 README 验证。\n",
+  "start_error": "",
+  "/camera/color/image_raw": {
+    "exit": 0,
+    "header": "stamp:\n  sec: 1791430148\n  nanosec: 296950016\nframe_id: camera_color_optical_frame\n---\n",
+    "error": ""
+  },
+  "/camera/depth/image_raw": {
+    "exit": 0,
+    "header": "stamp:\n  sec: 1791430150\n  nanosec: 87296000\nframe_id: camera_color_optical_frame\n---\n",
+    "error": ""
+  },
+  "stop_exit": 0,
+  "final_entry_exit": 0,
+  "final_entry_output": "启动 luka-ws-orbbec-camera.service\n等待相机消息： /camera/color/image_raw\nstamp:\n  sec: 1791430461\n  nanosec: 759269888\nframe_id: camera_color_optical_frame\n---\n等待相机消息： /camera/depth/image_raw\nstamp:\n  sec: 1791430463\n  nanosec: 149179904\nframe_id: camera_color_optical_frame\n---\n05 I-5 RGBD深度相机 IMPLEMENTED\n对应范围： Astra Pro Plus驱动和RGB-D预处理存在；实时帧率和深度质量需要现场验证。\nluka-ws-foxglove-bridge.service active\nluka-ws-orbbec-camera.service active\n/camera/color/image_raw Type: sensor_msgs/msg/Image\nPublisher count: 1\nSubscription count: 0\n/camera/depth/image_raw Type: sensor_msgs/msg/Image\nPublisher count: 1\nSubscription count: 0\nFoxglove：ws://192.168.3.150:8765；查看上方话题。\n启动成功只证明节点已运行；实时数据和合同完整闭环仍须按 README 验证。\n"
+}

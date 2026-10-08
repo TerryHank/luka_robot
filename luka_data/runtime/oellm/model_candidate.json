@@ -1,0 +1,11 @@
+{
+  "model": "Qwen2.5-7B-Instruct",
+  "format": "HBM W8 context1024",
+  "bytes": 7928646448,
+  "official_md5": "a857af160c4effb0fcd5a22cab90f793",
+  "actual_md5": "a857af160c4effb0fcd5a22cab90f793",
+  "verified": true,
+  "target_robot": "RDK S100 V1P1 nash-e",
+  "target_compatibility": "pending bounded SDK check",
+  "deployed": false
+}

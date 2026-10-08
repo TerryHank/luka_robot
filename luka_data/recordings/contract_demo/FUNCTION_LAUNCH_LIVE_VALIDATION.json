@@ -1,0 +1,16 @@
+{
+  "camera": {
+    "live_message": true,
+    "log": "/home/sunrise/luka_data/recordings/contract_demo/function-launch-live-camera.log",
+    "exit_code": 0,
+    "traceback": false
+  },
+  "lidar": {
+    "live_message": true,
+    "log": "/home/sunrise/luka_data/recordings/contract_demo/function-launch-live-lidar.log",
+    "exit_code": 0,
+    "traceback": false,
+    "fused": true,
+    "deskewed": true
+  }
+}

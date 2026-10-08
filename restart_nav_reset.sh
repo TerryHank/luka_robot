@@ -1,1 +1,0 @@
-system/bringup/restart_nav_reset.sh

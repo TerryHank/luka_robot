@@ -1,1 +1,0 @@
-system/bringup/start_nx_sonar_ros.sh

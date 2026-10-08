@@ -1,0 +1,11 @@
+{
+  "source_prepared": true,
+  "runtime_provider": "D-Robotics/oellm_server",
+  "sdk": "1.0.0",
+  "model": "Qwen2.5-1.5B-Instruct",
+  "port": 8092,
+  "live_private_config_changed": false,
+  "systemd_unit_changed": false,
+  "boot_changed": false,
+  "reboot_pending": true
+}

@@ -1,0 +1,14 @@
+{
+  "process_exit": 0,
+  "wall_seconds": 12.1,
+  "motion_commands_sent": false,
+  "destroy_code": 0,
+  "driver": "official_oellm_1.0.0",
+  "ended": true,
+  "failed": false,
+  "infer_code": 0,
+  "init_code": 0,
+  "ok": true,
+  "seconds": 10.202500012,
+  "text": "我是一个AI助手，可以帮助您解答问题和提供信息。"
+}

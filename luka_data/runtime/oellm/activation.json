@@ -1,0 +1,17 @@
+{
+  "timestamp": 1791457633.4284704,
+  "active_model": "qwen2.5-1.5b-instruct-bpu",
+  "dialogue_mode": "auto",
+  "service": "luka-ws-chat.service",
+  "local_http": "http://127.0.0.1:8092/v1/chat/completions",
+  "runtime_provider": "D-Robotics/oellm_server",
+  "online_provider": "AIUI",
+  "local_model_autostart": "on offline request",
+  "motion_dispatch": false,
+  "accepted_at": 1791457924.6924078,
+  "carveout_bytes": 2415919104,
+  "native_smoke_pass": true,
+  "http_two_turn_pass": true,
+  "recorded_offline_chain_pass": true,
+  "human_offline_chain": "pending"
+}

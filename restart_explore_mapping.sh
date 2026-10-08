@@ -1,1 +1,0 @@
-system/bringup/restart_explore_mapping.sh

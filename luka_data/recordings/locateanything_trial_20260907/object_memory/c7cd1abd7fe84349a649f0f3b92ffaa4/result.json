@@ -1,0 +1,1 @@
+{"image":"/home/sunrise/luka_data/recordings/locateanything_trial_20260907/object_memory/c7cd1abd7fe84349a649f0f3b92ffaa4/input.jpg","prompt":"Locate all the instances that matches the following description: 电源适配器.","mode":"slow-greedy","inference_seconds":1.9091335,"detections":[{"label":"电源适配器","box":[378.112,231.84,447.104,261.07199]}]}

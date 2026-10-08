@@ -1,0 +1,144 @@
+{
+  "platform": "S100 V1P1 nash-e",
+  "boardid": "0x6A87",
+  "model": "Qwen2.5-1.5B-Instruct",
+  "carveout_bytes": 2415919104,
+  "unchanged_nodes": [
+    "ion_reserved",
+    "ion_cma"
+  ],
+  "source_sha256": "890114921d6c0544d648b3ba7388e25e99fa168d4cde8106b6251f7ea702d9bf",
+  "candidate_sha256": "6104924d42048064cdb21f91da7dda66b6c2333204fb8dfa1362608030385852",
+  "candidate_path": "/home/sunrise/luka_data/runtime/oellm/boot-candidate/rdk-s100-v1p1.oellm-small.dtb",
+  "reserved_regions": [
+    [
+      "ipc_mcu_ddr_reserved@B4000000",
+      3019898880,
+      19922944
+    ],
+    [
+      "ipc_oth_ddr_reserved@B5300000",
+      3039821824,
+      13631488
+    ],
+    [
+      "configure_region@A0000000",
+      2684354560,
+      1048576
+    ],
+    [
+      "atf_region@A0100000",
+      2685403136,
+      1048576
+    ],
+    [
+      "smc_scmi_region@A0200000",
+      2686451712,
+      15728640
+    ],
+    [
+      "spl@A1100000",
+      2702180352,
+      15728640
+    ],
+    [
+      "optee_region@A2000000",
+      2717908992,
+      134217728
+    ],
+    [
+      "acore_cfg@AB000000",
+      2868903936,
+      1048576
+    ],
+    [
+      "uboot@AB200000",
+      2871001088,
+      2097152
+    ],
+    [
+      "pcie0_func0_bar4_reserved@c0000000",
+      3221225472,
+      33554432
+    ],
+    [
+      "pcie0_func0_bar2_reserved@c2000000",
+      3254779904,
+      2097152
+    ],
+    [
+      "hsm_log@C6800000",
+      3330277376,
+      1048576
+    ],
+    [
+      "bl31_log@81200000",
+      2166358016,
+      131072
+    ],
+    [
+      "optee_log@81220000",
+      2166489088,
+      65536
+    ],
+    [
+      "spl_uboot_log@81230000",
+      2166554624,
+      65536
+    ],
+    [
+      "vspiflash_reserved@CF000000",
+      3472883712,
+      5242880
+    ],
+    [
+      "ramoops@80000000",
+      2147483648,
+      4128768
+    ],
+    [
+      "minidump_share@CFE10000",
+      3487629312,
+      65536
+    ],
+    [
+      "bpu_region@9A000000",
+      2583691264,
+      100663296
+    ],
+    [
+      "ion_reserved@C80000000",
+      17179869184,
+      1073741824
+    ],
+    [
+      "ion_carveout@800000000",
+      34359738368,
+      2415919104
+    ],
+    [
+      "ion_cma@400000000",
+      53687091200,
+      536870912
+    ],
+    [
+      "dsp0_ddr_reserved@B0000000",
+      2952790016,
+      67108864
+    ],
+    [
+      "vpu_ddr_reserved@C0000000",
+      3489660928,
+      67108864
+    ],
+    [
+      "mcu_crash_reserved@803f0000",
+      2151612416,
+      4096
+    ]
+  ],
+  "overlap_check": true,
+  "live_boot_changed": true,
+  "reboot_required": true,
+  "reboot_completed": true
+}
